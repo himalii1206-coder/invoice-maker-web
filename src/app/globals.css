@@ -1,0 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  border-radius: 0px !important;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #f7f4ef;
+  color: #2b180d;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom warm scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f7f4ef;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #e6dfd5;
+  border-radius: 0px !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #6b5a4e;
+}
+
+/* Toastify custom warm sharp styles */
+.Toastify__toast {
+  border-radius: 0px !important;
+  font-family: var(--font-sans) !important;
+  box-shadow: 0 4px 12px rgba(43, 24, 13, 0.08) !important;
+}
+
+.Toastify__toast--success {
+  background-color: #ffffff !important;
+  color: #2b180d !important;
+  border-left: 4px solid #047857 !important;
+}
+
+.Toastify__toast--error {
+  background-color: #ffffff !important;
+  color: #2b180d !important;
+  border-left: 4px solid #b91c1c !important;
+}
+
+.Toastify__toast--info {
+  background-color: #ffffff !important;
+  color: #2b180d !important;
+  border-left: 4px solid #7c4a27 !important;
+}
