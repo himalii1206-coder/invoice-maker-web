@@ -76,7 +76,7 @@ export default function RegisterPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="First Name"
-                placeholder="Ramesh"
+                placeholder="Enter your first name"
                 leftIcon={<User className="w-4 h-4" />}
                 error={errors.firstName?.message}
                 required
@@ -84,7 +84,7 @@ export default function RegisterPage() {
               />
               <Input
                 label="Last Name"
-                placeholder="Kumar"
+                placeholder="Enter your last name"
                 error={errors.lastName?.message}
                 required
                 {...register('lastName')}
@@ -95,7 +95,7 @@ export default function RegisterPage() {
             <Input
               label="Work Email"
               type="email"
-              placeholder="ramesh@acmeenterprises.com"
+              placeholder="Enter your work email"
               leftIcon={<Mail className="w-4 h-4" />}
               error={errors.email?.message}
               required
@@ -105,7 +105,7 @@ export default function RegisterPage() {
             <Input
               label="Password"
               type="password"
-              placeholder="At least 8 characters"
+              placeholder="Enter a secure password"
               leftIcon={<Lock className="w-4 h-4" />}
               error={errors.password?.message}
               required
@@ -120,7 +120,7 @@ export default function RegisterPage() {
 
               <Input
                 label="Business / Enterprise Name"
-                placeholder="Acme Enterprises Pvt Ltd"
+                placeholder="Enter your business name"
                 leftIcon={<Building2 className="w-4 h-4" />}
                 error={errors.businessName?.message}
                 required
@@ -130,14 +130,14 @@ export default function RegisterPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   label="Phone Number (Optional)"
-                  placeholder="+91 98765 43210"
+                  placeholder="Enter your phone number"
                   leftIcon={<Phone className="w-4 h-4" />}
                   error={errors.phone?.message}
                   {...register('phone')}
                 />
                 <Input
                   label="GSTIN Number (Optional)"
-                  placeholder="27AAAAA0000A1Z5"
+                  placeholder="Enter your GSTIN"
                   error={errors.gstin?.message}
                   {...register('gstin')}
                 />
