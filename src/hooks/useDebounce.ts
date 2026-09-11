@@ -1,0 +1,15 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+
+/** Delays a rapidly-changing value so typing in search does not fire a request per keystroke. */
+export function useDebounce<T>(value: T, delay = 400): T {
+  const [debounced, setDebounced] = useState<T>(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debounced;
+}

@@ -47,8 +47,8 @@ export function TableHead({ className, children, ...props }: HTMLAttributes<HTML
 
 export function TableCell({ className, children, ...props }: HTMLAttributes<HTMLTableCellElement>) {
   return (
-    <th className={cn('py-3.5 px-4 font-normal text-warm-text align-middle', className)} {...props}>
+    <td className={cn('py-3.5 px-4 font-normal text-warm-text align-middle', className)} {...props}>
       {children}
-    </th>
+    </td>
   );
 }
