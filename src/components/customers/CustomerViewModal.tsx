@@ -110,12 +110,12 @@ export function CustomerViewModal({
               <div className="flex flex-wrap items-center gap-2">
                 <Badge status={customer.type} />
                 {customer.accountGroup && (
-                  <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200/60 rounded">
-                    Group: {customer.accountGroup}
+                  <span className="inline-flex items-center px-2 py-0.5 text-xs font-bold text-warm-text uppercase tracking-wider bg-warm-surface border border-warm-border">
+                    {customer.accountGroup.toUpperCase()}
                   </span>
                 )}
                 {customer.partyCategory && (
-                  <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-800 border border-blue-200/60 rounded">
+                  <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-warm-surface text-warm-text border border-warm-border">
                     {customer.partyCategory}
                   </span>
                 )}

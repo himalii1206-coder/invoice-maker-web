@@ -195,6 +195,8 @@ export default function CustomersPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Account Head</TableHead>
+              <TableHead>Account Group</TableHead>
+              <TableHead>Category</TableHead>
               <TableHead className="hidden md:table-cell">Contact</TableHead>
               <TableHead className="table-cell">City</TableHead>
               <TableHead className="table-cell">State</TableHead>
@@ -208,34 +210,46 @@ export default function CustomersPage() {
           <TableBody>
             {customers.map((customer) => (
               <TableRow key={customer.id}>
+                {/* Account Head */}
                 <TableCell>
-                  <div className="space-y-1">
+                  <div className="space-y-0.5">
                     <Link
                       href={`/customers/${customer.id}`}
-                      className="font-semibold text-warm-text hover:text-warm-accent transition-colors"
+                      className="font-semibold text-warm-text hover:text-warm-accent transition-colors block"
                     >
                       {customer.name}
                     </Link>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {customer.accountGroup && (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200/60 rounded">
-                          {customer.accountGroup}
-                        </span>
-                      )}
-                      {customer.partyCategory && (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 bg-blue-50 text-blue-800 border border-blue-200/60 rounded">
-                          {customer.partyCategory}
-                        </span>
-                      )}
-                    </div>
+                    {customer.contactPerson && (
+                      <p className="text-xs text-warm-textMuted">{customer.contactPerson}</p>
+                    )}
                   </div>
                 </TableCell>
 
+                {/* Account Group - In Capital */}
+                <TableCell>
+                  {customer.accountGroup ? (
+                    <span className="text-xs font-bold text-warm-text tracking-wider uppercase">
+                      {customer.accountGroup.toUpperCase()}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-warm-textMuted">—</span>
+                  )}
+                </TableCell>
+
+                {/* Category - Theme Badge */}
+                <TableCell>
+                  {customer.partyCategory ? (
+                    <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-warm-surface border border-warm-border text-warm-text shadow-sm">
+                      {customer.partyCategory}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-warm-textMuted">—</span>
+                  )}
+                </TableCell>
+
+                {/* Contact */}
                 <TableCell className="hidden md:table-cell">
                   <div className="space-y-1 text-xs text-warm-textMuted">
-                    {customer.contactPerson && (
-                      <p className="font-semibold text-warm-text">{customer.contactPerson}</p>
-                    )}
                     {customer.phone && (
                       <p className="flex items-center gap-1.5">
                         <Phone className="w-3.5 h-3.5 shrink-0 text-warm-accent" />
@@ -254,16 +268,18 @@ export default function CustomersPage() {
                         <span className="break-all">{customer.email}</span>
                       </p>
                     )}
-                    {!customer.contactPerson && !customer.phone && !customer.email && <span>—</span>}
+                    {!customer.phone && !customer.email && !customer.officeNo && <span>—</span>}
                   </div>
                 </TableCell>
 
+                {/* City */}
                 <TableCell className="table-cell">
                   <span className="text-xs font-semibold text-warm-text">
                     {customer.city || '—'}
                   </span>
                 </TableCell>
 
+                {/* State */}
                 <TableCell className="table-cell">
                   <span className="text-xs font-medium text-warm-text">
                     {customer.state || '—'}

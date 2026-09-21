@@ -193,15 +193,15 @@ export default function CustomerDetailPage() {
                 <h3 className="text-xl font-bold text-warm-text">{customer.name}</h3>
                 <Badge status={customer.isActive ? 'ACTIVE' : 'INACTIVE'} />
               </div>
-              <div className="flex items-center gap-3 text-xs text-warm-textMuted mt-1">
+              <div className="flex items-center gap-3 text-xs text-warm-textMuted mt-1 flex-wrap">
                 {customer.accountGroup && (
-                  <span className="font-medium bg-amber-50 text-amber-800 px-2 py-0.5 border border-amber-200/60">
-                    Group: {customer.accountGroup}
+                  <span className="font-bold text-warm-text uppercase tracking-wider bg-warm-surface px-2 py-0.5 border border-warm-border">
+                    {customer.accountGroup.toUpperCase()}
                   </span>
                 )}
                 {customer.partyCategory && (
-                  <span className="font-medium bg-blue-50 text-blue-800 px-2 py-0.5 border border-blue-200/60">
-                    Category: {customer.partyCategory}
+                  <span className="font-medium bg-warm-surface text-warm-text px-2 py-0.5 border border-warm-border">
+                    {customer.partyCategory}
                   </span>
                 )}
                 <span>Added on {formatDate(customer.createdAt)}</span>
