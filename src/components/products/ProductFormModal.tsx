@@ -1,82 +1,88 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'react-toastify';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { Textarea } from '@/components/ui/Textarea';
 import { Button } from '@/components/ui/Button';
-import { CustomerSelect } from '@/components/customers/CustomerSelect';
 import { productsApi, toNumber } from '@/lib/products';
 import { apiErrorMessage } from '@/lib/customers';
 import { Product } from '@/types/index';
-import { Package, IndianRupee, Hash, Barcode, Percent } from 'lucide-react';
+import { Package, IndianRupee, Hash, Barcode, Tag } from 'lucide-react';
 
-// Mirrors the server-side rules so mistakes surface before a round trip.
 const HSN_REGEX = /^[0-9]{4,8}$/;
 
 const productSchema = z.object({
-  customerId: z.string().uuid('Please select a customer'),
+  category: z.string().max(100, 'Category must be at most 100 characters').optional(),
+  productCode: z.string().max(50, 'Product code must be at most 50 characters').optional(),
   name: z
     .string()
     .trim()
-    .min(2, 'Product name must be at least 2 characters')
+    .min(1, 'Product name is required')
     .max(150, 'Product name must be at most 150 characters'),
-  description: z.string().max(500, 'Description must be at most 500 characters'),
-  sku: z.string().max(50, 'SKU must be at most 50 characters'),
+  unit: z.string().trim().min(1, 'Unit is required').max(20, 'Unit must be at most 20 characters'),
+  hsnSacCode: z.union([
+    z.literal(''),
+    z.string().regex(HSN_REGEX, 'HSN code must be 4 to 8 digits')
+  ]),
   price: z.coerce
     .number({ invalid_type_error: 'Price must be a number' })
     .min(0, 'Price cannot be negative')
-    .max(99999999.99, 'Price is too large'),
-  unit: z.string().trim().min(1, 'Unit is required').max(20, 'Unit must be at most 20 characters'),
-  taxRate: z.coerce
-    .number({ invalid_type_error: 'Tax rate must be a number' })
-    .min(0, 'Tax rate cannot be negative')
-    .max(100, 'Tax rate cannot exceed 100'),
-  hsnSacCode: z.union([
-    z.literal(''),
-    z.string().regex(HSN_REGEX, 'HSN/SAC code must be 4 to 8 digits')
-  ]),
-  isActive: z.enum(['true', 'false'])
+    .max(99999999.99, 'Price is too large')
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
 
 const UNIT_OPTIONS = [
-  'PCS',
-  'KG',
-  'GM',
-  'LTR',
-  'MTR',
-  'BOX',
-  'SET',
-  'HOUR',
-  'DAY',
-  'MONTH',
-  'YEAR',
-  'SERVICE'
-].map((u) => ({ value: u, label: u }));
+  { value: 'PCS', label: 'PCS' },
+  { value: 'NOS', label: 'NOS' },
+  { value: 'KG', label: 'KG' },
+  { value: 'GM', label: 'GM' },
+  { value: 'LTR', label: 'LTR' },
+  { value: 'MTR', label: 'MTR' },
+  { value: 'BOX', label: 'BOX' },
+  { value: 'SET', label: 'SET' },
+  { value: 'BUNDLE', label: 'BUNDLE' },
+  { value: 'PAIR', label: 'PAIR' },
+  { value: 'DOZEN', label: 'DOZEN' },
+  { value: 'TON', label: 'TON' },
+  { value: 'HOUR', label: 'HOUR' },
+  { value: 'DAY', label: 'DAY' },
+  { value: 'MONTH', label: 'MONTH' },
+  { value: 'SERVICE', label: 'SERVICE' }
+];
+
+const CATEGORY_OPTIONS = [
+  { value: 'General', label: 'General' },
+  { value: 'Raw Material', label: 'Raw Material' },
+  { value: 'Finished Goods', label: 'Finished Goods' },
+  { value: 'Packaging', label: 'Packaging' },
+  { value: 'Electronics', label: 'Electronics' },
+  { value: 'Hardware', label: 'Hardware' },
+  { value: 'Textiles', label: 'Textiles' },
+  { value: 'Chemicals', label: 'Chemicals' },
+  { value: 'Machinery', label: 'Machinery' },
+  { value: 'FMCG', label: 'FMCG' },
+  { value: 'Services', label: 'Services' },
+  { value: 'Other', label: 'Other' }
+];
 
 const EMPTY_FORM: ProductFormData = {
-  customerId: '',
+  category: '',
+  productCode: '',
   name: '',
-  description: '',
-  sku: '',
-  price: 0,
   unit: 'PCS',
-  taxRate: 18,
   hsnSacCode: '',
-  isActive: 'true'
+  price: 0
 };
 
 export interface ProductFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Present in edit mode, absent when adding a new product. */
   product?: Product | null;
   onSaved: () => void;
 }
@@ -88,8 +94,6 @@ export function ProductFormModal({ isOpen, onClose, product, onSaved }: ProductF
     register,
     handleSubmit,
     reset,
-    control,
-    watch,
     setError,
     formState: { errors, isSubmitting }
   } = useForm<ProductFormData>({
@@ -97,36 +101,27 @@ export function ProductFormModal({ isOpen, onClose, product, onSaved }: ProductF
     defaultValues: EMPTY_FORM
   });
 
-  // Reload values whenever the modal opens so a previous edit never leaks in.
   useEffect(() => {
     if (!isOpen) return;
 
     reset(
       product
         ? {
-            customerId: product.customerId ?? '',
+            category: product.category ?? '',
+            productCode: product.productCode ?? product.sku ?? '',
             name: product.name ?? '',
-            description: product.description ?? '',
-            sku: product.sku ?? '',
-            price: toNumber(product.price),
             unit: product.unit ?? 'PCS',
-            taxRate: toNumber(product.taxRate),
             hsnSacCode: product.hsnSacCode ?? '',
-            isActive: product.isActive ? 'true' : 'false'
+            price: toNumber(product.price)
           }
         : EMPTY_FORM
     );
   }, [isOpen, product, reset]);
 
-  const price = watch('price');
-  const taxRate = watch('taxRate');
-  const taxAmount = (toNumber(price) * toNumber(taxRate)) / 100;
-  const grossTotal = toNumber(price) + taxAmount;
-
   const onSubmit = async (values: ProductFormData) => {
     const payload = {
       ...values,
-      isActive: values.isActive === 'true'
+      sku: values.productCode || undefined
     };
 
     try {
@@ -142,9 +137,8 @@ export function ProductFormModal({ isOpen, onClose, product, onSaved }: ProductF
     } catch (error: any) {
       const message = apiErrorMessage(error, 'Could not save product');
 
-      // A duplicate SKU is the one server error worth pinning to its field.
-      if (error?.response?.status === 409 && /sku/i.test(message)) {
-        setError('sku', { type: 'server', message });
+      if (error?.response?.status === 409 && /(sku|code)/i.test(message)) {
+        setError('productCode', { type: 'server', message });
       }
       toast.error(message);
     }
@@ -154,125 +148,92 @@ export function ProductFormModal({ isOpen, onClose, product, onSaved }: ProductF
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      maxWidth="2xl"
-      title={isEdit ? 'Edit Product / Service' : 'Add Product / Service'}
+      maxWidth="lg"
+      title={isEdit ? 'Edit Product' : 'Add Product'}
       description={
         isEdit
-          ? 'Update pricing, tax and catalog details for this item.'
-          : 'Add an item with preset pricing to speed up invoice drafting.'
+          ? 'Update product details, classification, and pricing.'
+          : 'Enter product details to add to catalog.'
       }
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="sm:col-span-2">
-            <Controller
-              control={control}
-              name="customerId"
-              render={({ field }) => (
-                <CustomerSelect
-                  label="Customer / Business"
-                  required
-                  value={field.value}
-                  onChange={(id) => field.onChange(id)}
-                  initialLabel={product?.customer?.name}
-                  error={errors.customerId?.message}
-                  helperText="Search by name, email, phone or GSTIN"
-                />
-              )}
+          {/* 1. Category */}
+          <div className="sm:col-span-1">
+            <Input
+              label="Category"
+              placeholder="Enter category"
+              leftIcon={<Tag className="w-4 h-4" />}
+              error={errors.category?.message}
+              list="category-suggestions"
+              {...register('category')}
+            />
+            <datalist id="category-suggestions">
+              {CATEGORY_OPTIONS.map((c) => (
+                <option key={c.value} value={c.value} />
+              ))}
+            </datalist>
+          </div>
+
+          {/* 2. Product Code */}
+          <div className="sm:col-span-1">
+            <Input
+              label="Product Code"
+              placeholder="Enter product code"
+              leftIcon={<Barcode className="w-4 h-4" />}
+              error={errors.productCode?.message}
+              {...register('productCode')}
             />
           </div>
 
+          {/* 3. Product Name */}
           <div className="sm:col-span-2">
             <Input
-              label="Product / Service Name"
+              label="Product Name"
               required
-              placeholder="Enter product or service name"
+              placeholder="Enter product name"
               leftIcon={<Package className="w-4 h-4" />}
               error={errors.name?.message}
               {...register('name')}
             />
           </div>
 
-          <Input
-            label="Price"
-            type="number"
-            step="0.01"
-            min="0"
-            required
-            placeholder="0.00"
-            leftIcon={<IndianRupee className="w-4 h-4" />}
-            error={errors.price?.message}
-            {...register('price')}
-          />
-
-          <Select
-            label="Unit"
-            options={UNIT_OPTIONS}
-            error={errors.unit?.message}
-            {...register('unit')}
-          />
-
-          <Input
-            label="Tax Rate (%)"
-            type="number"
-            step="0.01"
-            min="0"
-            max="100"
-            placeholder="18"
-            leftIcon={<Percent className="w-4 h-4" />}
-            error={errors.taxRate?.message}
-            {...register('taxRate')}
-          />
-
-          <Input
-            label="HSN / SAC Code"
-            placeholder="Enter 4 to 8 digit code"
-            leftIcon={<Hash className="w-4 h-4" />}
-            error={errors.hsnSacCode?.message}
-            helperText="Optional, required for GST invoices"
-            {...register('hsnSacCode')}
-          />
-
-          <Input
-            label="SKU"
-            placeholder="Enter stock keeping unit"
-            leftIcon={<Barcode className="w-4 h-4" />}
-            error={errors.sku?.message}
-            helperText="Optional, must be unique in your business"
-            {...register('sku')}
-          />
-
-          <Select
-            label="Status"
-            options={[
-              { value: 'true', label: 'Active' },
-              { value: 'false', label: 'Inactive' }
-            ]}
-            error={errors.isActive?.message}
-            {...register('isActive')}
-          />
-
-          <div className="sm:col-span-2">
-            <Textarea
-              label="Description"
-              placeholder="Enter an optional description"
-              className="min-h-[70px]"
-              error={errors.description?.message}
-              helperText="Optional, shown on the invoice line item"
-              {...register('description')}
+          {/* 4. Units */}
+          <div>
+            <Select
+              label="Units"
+              required
+              options={UNIT_OPTIONS}
+              error={errors.unit?.message}
+              {...register('unit')}
             />
           </div>
-        </div>
 
-        {/* Live preview so the tax rate's effect is obvious before saving. */}
-        <div className="bg-warm-input border border-warm-border/60 px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-warm-textMuted">
-            Price incl. tax
-          </span>
-          <span className="text-sm text-warm-text">
-            ₹{toNumber(price).toFixed(2)} + ₹{taxAmount.toFixed(2)} tax ={' '}
-            <span className="font-semibold">₹{grossTotal.toFixed(2)}</span>
-          </span>
+          {/* 5. HSN Code */}
+          <div>
+            <Input
+              label="HSN Code"
+              placeholder="Enter HSN code"
+              leftIcon={<Hash className="w-4 h-4" />}
+              error={errors.hsnSacCode?.message}
+              {...register('hsnSacCode')}
+            />
+          </div>
+
+          {/* 6. Price in INR */}
+          <div className="sm:col-span-2">
+            <Input
+              label="Price in INR"
+              type="number"
+              step="0.01"
+              min="0"
+              required
+              placeholder="Enter price in INR"
+              leftIcon={<IndianRupee className="w-4 h-4" />}
+              error={errors.price?.message}
+              {...register('price')}
+            />
+          </div>
         </div>
 
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-warm-border/50">

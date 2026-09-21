@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -20,12 +22,10 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/Table';
-import { CustomerFormModal } from '@/components/customers/CustomerFormModal';
-import { CustomerViewModal } from '@/components/customers/CustomerViewModal';
 import { customersApi, apiErrorMessage } from '@/lib/customers';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Customer, CustomerListParams, PaginationMeta } from '@/types/index';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatCurrency } from '@/lib/utils';
 import {
   Users,
   Plus,
@@ -36,7 +36,9 @@ import {
   RotateCcw,
   Ban,
   Mail,
-  Phone
+  Phone,
+  PhoneCall,
+  Filter
 } from 'lucide-react';
 
 const PAGE_SIZE = 10;
@@ -53,23 +55,21 @@ const EMPTY_META: PaginationMeta = {
 type SortValue = `${NonNullable<CustomerListParams['sortBy']>}:${'asc' | 'desc'}`;
 
 export default function CustomersPage() {
+  const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [meta, setMeta] = useState<PaginationMeta>(EMPTY_META);
   const [isLoading, setIsLoading] = useState(true);
 
   // Filters
   const [search, setSearch] = useState('');
-  const [type, setType] = useState<'' | 'BUSINESS' | 'INDIVIDUAL'>('');
+  const [accountGroup, setAccountGroup] = useState('');
+  const [partyCategory, setPartyCategory] = useState('');
   const [status, setStatus] = useState<'' | 'true' | 'false'>('');
   const [sort, setSort] = useState<SortValue>('createdAt:desc');
   const [page, setPage] = useState(1);
 
   const debouncedSearch = useDebounce(search, 400);
 
-  // Modals
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editing, setEditing] = useState<Customer | null>(null);
-  const [viewingId, setViewingId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Customer | null>(null);
   const [isDeletingBusy, setIsDeletingBusy] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -86,7 +86,8 @@ export default function CustomersPage() {
         page,
         limit: PAGE_SIZE,
         search: debouncedSearch,
-        type,
+        accountGroup: accountGroup || undefined,
+        partyCategory: partyCategory || undefined,
         isActive: status,
         sortBy,
         sortOrder
@@ -100,36 +101,25 @@ export default function CustomersPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, debouncedSearch, type, status, sort]);
+  }, [page, debouncedSearch, accountGroup, partyCategory, status, sort]);
 
   useEffect(() => {
     fetchCustomers();
   }, [fetchCustomers]);
 
-  // Any filter change invalidates the current page number.
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, type, status, sort]);
+  }, [debouncedSearch, accountGroup, partyCategory, status, sort]);
 
-  const hasFilters = Boolean(search || type || status);
+  const hasFilters = Boolean(search || accountGroup || partyCategory || status);
 
   const resetFilters = () => {
     setSearch('');
-    setType('');
+    setAccountGroup('');
+    setPartyCategory('');
     setStatus('');
     setSort('createdAt:desc');
     setPage(1);
-  };
-
-  const openCreate = () => {
-    setEditing(null);
-    setIsFormOpen(true);
-  };
-
-  const openEdit = (customer: Customer) => {
-    setViewingId(null);
-    setEditing(customer);
-    setIsFormOpen(true);
   };
 
   const handleToggleStatus = async (customer: Customer) => {
@@ -137,8 +127,6 @@ export default function CustomersPage() {
     try {
       const updated = await customersApi.setStatus(customer.id, !customer.isActive);
 
-      // Patch just this row from the server's response - refetching the page
-      // here would flash the whole table and lose the user's scroll position.
       setCustomers((rows) =>
         rows.map((row) => (row.id === updated.id ? { ...row, ...updated } : row))
       );
@@ -159,7 +147,6 @@ export default function CustomersPage() {
       toast.success('Customer deleted successfully');
       setDeleting(null);
 
-      // Stepping back avoids landing on a page that no longer exists.
       if (customers.length === 1 && page > 1) {
         setPage((p) => p - 1);
       } else {
@@ -186,7 +173,7 @@ export default function CustomersPage() {
       return hasFilters ? (
         <EmptyState
           title="No customers match your filters"
-          description="Try a different search term, or clear the filters to see your full directory."
+          description="Try modifying search keywords or clearing filters to see your full directory."
           icon={<Search className="w-6 h-6 text-warm-accent" />}
           actionLabel="Clear Filters"
           onAction={resetFilters}
@@ -197,7 +184,7 @@ export default function CustomersPage() {
           description="Add client businesses or individuals to easily select them during invoice creation."
           icon={<Users className="w-6 h-6 text-warm-accent" />}
           actionLabel="Add First Customer"
-          onAction={openCreate}
+          onAction={() => router.push('/customers/new')}
         />
       );
     }
@@ -207,12 +194,13 @@ export default function CustomersPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Customer</TableHead>
+              <TableHead>Account Head</TableHead>
               <TableHead className="hidden md:table-cell">Contact</TableHead>
-              <TableHead className="hidden lg:table-cell">GSTIN</TableHead>
-              <TableHead className="hidden sm:table-cell">Location</TableHead>
+              <TableHead className="table-cell">City</TableHead>
+              <TableHead className="table-cell">State</TableHead>
+              <TableHead className="hidden xl:table-cell">GSTIN</TableHead>
+              <TableHead className="hidden sm:table-cell">Opening Balance</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="hidden xl:table-cell">Added</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -222,67 +210,107 @@ export default function CustomersPage() {
               <TableRow key={customer.id}>
                 <TableCell>
                   <div className="space-y-1">
-                    <p className="font-semibold text-warm-text">{customer.name}</p>
-                    <Badge status={customer.type} />
+                    <Link
+                      href={`/customers/${customer.id}`}
+                      className="font-semibold text-warm-text hover:text-warm-accent transition-colors"
+                    >
+                      {customer.name}
+                    </Link>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {customer.accountGroup && (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200/60 rounded">
+                          {customer.accountGroup}
+                        </span>
+                      )}
+                      {customer.partyCategory && (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 bg-blue-50 text-blue-800 border border-blue-200/60 rounded">
+                          {customer.partyCategory}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </TableCell>
 
                 <TableCell className="hidden md:table-cell">
                   <div className="space-y-1 text-xs text-warm-textMuted">
+                    {customer.contactPerson && (
+                      <p className="font-semibold text-warm-text">{customer.contactPerson}</p>
+                    )}
+                    {customer.phone && (
+                      <p className="flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 shrink-0 text-warm-accent" />
+                        <span className="font-medium text-warm-text">{customer.phone}</span>
+                      </p>
+                    )}
+                    {customer.officeNo && (
+                      <p className="flex items-center gap-1.5 text-warm-textMuted">
+                        <PhoneCall className="w-3.5 h-3.5 shrink-0" />
+                        <span>{customer.officeNo}</span>
+                      </p>
+                    )}
                     {customer.email && (
                       <p className="flex items-center gap-1.5">
                         <Mail className="w-3.5 h-3.5 shrink-0" />
                         <span className="break-all">{customer.email}</span>
                       </p>
                     )}
-                    {customer.phone && (
-                      <p className="flex items-center gap-1.5">
-                        <Phone className="w-3.5 h-3.5 shrink-0" />
-                        {customer.phone}
-                      </p>
-                    )}
-                    {!customer.email && !customer.phone && <span>—</span>}
+                    {!customer.contactPerson && !customer.phone && !customer.email && <span>—</span>}
                   </div>
                 </TableCell>
 
-                <TableCell className="hidden lg:table-cell">
+                <TableCell className="table-cell">
+                  <span className="text-xs font-semibold text-warm-text">
+                    {customer.city || '—'}
+                  </span>
+                </TableCell>
+
+                <TableCell className="table-cell">
+                  <span className="text-xs font-medium text-warm-text">
+                    {customer.state || '—'}
+                  </span>
+                </TableCell>
+
+                <TableCell className="hidden xl:table-cell">
                   <span className="text-xs font-mono text-warm-textMuted">
                     {customer.gstin || '—'}
                   </span>
                 </TableCell>
 
                 <TableCell className="hidden sm:table-cell">
-                  <span className="text-xs text-warm-textMuted">
-                    {[customer.city, customer.state].filter(Boolean).join(', ') || '—'}
-                  </span>
+                  <div className="text-xs">
+                    {customer.openingBalance !== null && customer.openingBalance !== undefined ? (
+                      <span className="font-semibold text-warm-text">
+                        {formatCurrency(Number(customer.openingBalance))}{' '}
+                        <span className="text-[11px] text-warm-textMuted font-normal">
+                          ({customer.balanceType || 'Dr.'})
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="text-warm-textMuted">—</span>
+                    )}
+                  </div>
                 </TableCell>
 
                 <TableCell>
                   <Badge status={customer.isActive ? 'ACTIVE' : 'INACTIVE'} />
                 </TableCell>
 
-                <TableCell className="hidden xl:table-cell">
-                  <span className="text-xs text-warm-textMuted">
-                    {formatDate(customer.createdAt)}
-                  </span>
-                </TableCell>
-
                 <TableCell>
                   <div className="flex items-center justify-end gap-1">
-                    <button
+                    <Link
+                      href={`/customers/${customer.id}`}
                       title="View details"
-                      onClick={() => setViewingId(customer.id)}
-                      className="p-1.5 text-warm-textMuted hover:text-warm-accent hover:bg-warm-accentLight transition-colors"
+                      className="p-1.5 text-warm-textMuted hover:text-warm-accent hover:bg-warm-accentLight transition-colors inline-flex items-center"
                     >
                       <Eye className="w-4 h-4" />
-                    </button>
-                    <button
+                    </Link>
+                    <Link
+                      href={`/customers/${customer.id}/edit`}
                       title="Edit customer"
-                      onClick={() => openEdit(customer)}
-                      className="p-1.5 text-warm-textMuted hover:text-warm-accent hover:bg-warm-accentLight transition-colors"
+                      className="p-1.5 text-warm-textMuted hover:text-warm-accent hover:bg-warm-accentLight transition-colors inline-flex items-center"
                     >
                       <Pencil className="w-4 h-4" />
-                    </button>
+                    </Link>
                     <button
                       title={customer.isActive ? 'Deactivate' : 'Activate'}
                       disabled={togglingId === customer.id}
@@ -309,7 +337,6 @@ export default function CustomersPage() {
           </TableBody>
         </Table>
 
-        {/* Table brings its own card border, so the footer only needs the sides. */}
         {meta.totalPages > 1 && (
           <div className="border-x border-b border-warm-border/60 shadow-warm">
             <Pagination
@@ -329,21 +356,23 @@ export default function CustomersPage() {
     <DashboardLayout>
       <PageHeader
         title="Customers"
-        description="Manage client directory, business information, and invoice histories."
+        description="Manage client directory, ledger account groups, contacts, and balances."
         breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Customers' }]}
         actions={
-          <Button leftIcon={<Plus className="w-4 h-4" />} onClick={openCreate}>
-            Add Customer
-          </Button>
+          <Link href="/customers/new">
+            <Button leftIcon={<Plus className="w-4 h-4" />}>
+              Add Customer
+            </Button>
+          </Link>
         }
       />
 
-      {/* Filter bar */}
-      <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-4 mb-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="lg:col-span-2">
+      {/* Filter & Search Bar */}
+      <div className="bg-warm-surface border border-warm-border/70 shadow-warm p-4 mb-5 space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="sm:col-span-2 md:col-span-1">
             <Input
-              placeholder="Search name, email, phone, GSTIN or city..."
+              placeholder="Search by name, phone, email, contact, GSTIN..."
               leftIcon={<Search className="w-4 h-4" />}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -352,12 +381,35 @@ export default function CustomersPage() {
 
           <Select
             options={[
-              { value: '', label: 'All Types' },
-              { value: 'BUSINESS', label: 'Business' },
-              { value: 'INDIVIDUAL', label: 'Individual' }
+              { value: '', label: 'All Account Groups' },
+              { value: 'Sales', label: 'Sales' },
+              { value: 'Purchase', label: 'Purchase' },
+              { value: 'Sundry Debtors', label: 'Sundry Debtors' },
+              { value: 'Sundry Creditors', label: 'Sundry Creditors' },
+              { value: 'Customers', label: 'Customers' },
+              { value: 'Distributors', label: 'Distributors' },
+              { value: 'Retailers', label: 'Retailers' },
+              { value: 'Branch / Division', label: 'Branch / Division' },
+              { value: 'Other', label: 'Other' }
             ]}
-            value={type}
-            onChange={(e) => setType(e.target.value as typeof type)}
+            value={accountGroup}
+            onChange={(e) => setAccountGroup(e.target.value)}
+          />
+
+          <Select
+            options={[
+              { value: '', label: 'All Categories' },
+              { value: 'Wholesaler', label: 'Wholesaler' },
+              { value: 'Retailer', label: 'Retailer' },
+              { value: 'Manufacturer', label: 'Manufacturer' },
+              { value: 'Trader', label: 'Trader' },
+              { value: 'Distributor', label: 'Distributor' },
+              { value: 'Service Provider', label: 'Service Provider' },
+              { value: 'End Consumer', label: 'End Consumer' },
+              { value: 'Other', label: 'Other' }
+            ]}
+            value={partyCategory}
+            onChange={(e) => setPartyCategory(e.target.value)}
           />
 
           <Select
@@ -371,17 +423,18 @@ export default function CustomersPage() {
           />
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 mt-3 pt-3 border-t border-warm-border/50">
-          <p className="text-xs text-warm-textMuted">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-warm-border/50">
+          <div className="flex items-center gap-2 text-xs text-warm-textMuted">
+            <Filter className="w-3.5 h-3.5 text-warm-accent" />
             {isLoading ? (
-              'Loading...'
+              'Searching...'
             ) : (
               <>
                 <span className="font-semibold text-warm-text">{meta.total}</span> customer
                 {meta.total === 1 ? '' : 's'} found
               </>
             )}
-          </p>
+          </div>
 
           <div className="flex items-center gap-2">
             <Select
@@ -389,8 +442,10 @@ export default function CustomersPage() {
               options={[
                 { value: 'createdAt:desc', label: 'Newest first' },
                 { value: 'createdAt:asc', label: 'Oldest first' },
-                { value: 'name:asc', label: 'Name (A–Z)' },
-                { value: 'name:desc', label: 'Name (Z–A)' },
+                { value: 'name:asc', label: 'Account Head (A–Z)' },
+                { value: 'name:desc', label: 'Account Head (Z–A)' },
+                { value: 'openingBalance:desc', label: 'Opening Balance (High to Low)' },
+                { value: 'openingBalance:asc', label: 'Opening Balance (Low to High)' },
                 { value: 'updatedAt:desc', label: 'Recently updated' },
                 { value: 'city:asc', label: 'City (A–Z)' }
               ]}
@@ -409,20 +464,6 @@ export default function CustomersPage() {
 
       {renderContent()}
 
-      <CustomerFormModal
-        isOpen={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
-        customer={editing}
-        onSaved={fetchCustomers}
-      />
-
-      <CustomerViewModal
-        isOpen={Boolean(viewingId)}
-        onClose={() => setViewingId(null)}
-        customerId={viewingId}
-        onEdit={openEdit}
-      />
-
       <ConfirmDialog
         isOpen={Boolean(deleting)}
         onClose={() => setDeleting(null)}
@@ -431,7 +472,7 @@ export default function CustomersPage() {
         isDanger
         title="Delete this customer?"
         message={`"${deleting?.name}" will be permanently removed. Customers with existing invoices cannot be deleted — deactivate them instead.`}
-        confirmLabel="Delete"
+        confirmLabel="Delete Customer"
       />
     </DashboardLayout>
   );

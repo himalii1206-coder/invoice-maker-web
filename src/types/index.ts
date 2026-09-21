@@ -59,10 +59,23 @@ export interface Customer {
   type: CustomerType;
   gstin?: string | null;
   address?: string | null;
+  factoryAddress?: string | null;
   city?: string | null;
   state?: string | null;
   country?: string | null;
   postalCode?: string | null;
+  officeNo?: string | null;
+  contactPerson?: string | null;
+  accountGroup?: string | null;
+  openingBalance?: Decimalish | null;
+  openingBalanceDate?: string | null;
+  balanceType?: string | null;
+  partyCategory?: string | null;
+  narration1?: string | null;
+  narration2?: string | null;
+  bankName?: string | null;
+  accountNumber?: string | null;
+  ifscCode?: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -77,10 +90,23 @@ export interface CustomerPayload {
   type?: CustomerType;
   gstin?: string;
   address?: string;
+  factoryAddress?: string;
   city?: string;
   state?: string;
   country?: string;
   postalCode?: string;
+  officeNo?: string;
+  contactPerson?: string;
+  accountGroup?: string;
+  openingBalance?: number;
+  openingBalanceDate?: string;
+  balanceType?: string;
+  partyCategory?: string;
+  narration1?: string;
+  narration2?: string;
+  bankName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
   isActive?: boolean;
 }
 
@@ -90,9 +116,11 @@ export interface CustomerListParams {
   search?: string;
   type?: CustomerType | '';
   isActive?: 'true' | 'false' | '';
+  accountGroup?: string;
+  partyCategory?: string;
   city?: string;
   state?: string;
-  sortBy?: 'name' | 'email' | 'city' | 'state' | 'createdAt' | 'updatedAt';
+  sortBy?: 'name' | 'email' | 'city' | 'state' | 'accountGroup' | 'openingBalance' | 'createdAt' | 'updatedAt';
   sortOrder?: 'asc' | 'desc';
 }
 
@@ -111,28 +139,31 @@ export type Decimalish = string | number;
 export interface ProductCustomerRef {
   id: string;
   name: string;
-  type: CustomerType;
+  type?: CustomerType;
   isActive: boolean;
 }
 
 export interface Product {
   id: string;
-  customerId: string;
-  customer: ProductCustomerRef;
+  category?: string | null;
+  productCode?: string | null;
   name: string;
   description?: string | null;
   sku?: string | null;
   price: Decimalish;
   unit: string;
-  taxRate: Decimalish;
+  taxRate?: Decimalish;
   hsnSacCode?: string | null;
+  customerId?: string | null;
+  customer?: ProductCustomerRef | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ProductPayload {
-  customerId?: string;
+  category?: string;
+  productCode?: string;
   name?: string;
   description?: string;
   sku?: string;
@@ -140,6 +171,7 @@ export interface ProductPayload {
   unit?: string;
   taxRate?: number;
   hsnSacCode?: string;
+  customerId?: string;
   isActive?: boolean;
 }
 
@@ -147,10 +179,11 @@ export interface ProductListParams {
   page?: number;
   limit?: number;
   search?: string;
+  category?: string;
   customerId?: string;
   isActive?: 'true' | 'false' | '';
   minPrice?: number | '';
   maxPrice?: number | '';
-  sortBy?: 'name' | 'price' | 'taxRate' | 'sku' | 'createdAt' | 'updatedAt';
+  sortBy?: 'name' | 'price' | 'taxRate' | 'sku' | 'productCode' | 'category' | 'createdAt' | 'updatedAt';
   sortOrder?: 'asc' | 'desc';
 }

@@ -12,33 +12,89 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Button } from '@/components/ui/Button';
 import { customersApi, apiErrorMessage } from '@/lib/customers';
 import { Customer } from '@/types/index';
-import { Building2, Mail, Phone, MapPin, Hash, Receipt } from 'lucide-react';
+import {
+  Building2,
+  Mail,
+  Phone,
+  MapPin,
+  Hash,
+  Receipt,
+  User,
+  PhoneCall,
+  Landmark,
+  CreditCard,
+  Calendar,
+  Layers,
+  FileText,
+  BadgePercent
+} from 'lucide-react';
 
-// Mirrors the server-side rules so mistakes surface before a round trip.
 const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-const PHONE_REGEX = /^[+]?[0-9\s\-()]{7,20}$/;
+const IFSC_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+const PINCODE_REGEX = /^[1-9][0-9]{5}$/;
+const PHONE_REGEX = /^(\+91[\-\s]?)?[6-9]\d{9}$|^[0-9]{10}$/;
+const ACCOUNT_NO_REGEX = /^[0-9]{9,18}$/;
 
 const customerSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(2, 'Customer name must be at least 2 characters')
-    .max(150, 'Customer name must be at most 150 characters'),
+    .min(1, 'Account Head is required')
+    .max(150, 'Account Head must be at most 150 characters'),
   email: z.union([z.literal(''), z.string().email('Please enter a valid email address')]),
-  phone: z.union([
-    z.literal(''),
-    z.string().regex(PHONE_REGEX, 'Please enter a valid phone number')
-  ]),
-  type: z.enum(['INDIVIDUAL', 'BUSINESS']),
+  phone: z
+    .string()
+    .trim()
+    .min(1, 'Mobile number is required')
+    .regex(PHONE_REGEX, 'Invalid mobile number (must be a valid 10-digit number)'),
+  type: z.enum(['INDIVIDUAL', 'BUSINESS']).optional(),
   gstin: z.union([
     z.literal(''),
-    z.string().regex(GSTIN_REGEX, 'GSTIN must look like 24AAACC1206D1ZM')
+    z.string().regex(GSTIN_REGEX, 'Invalid GSTIN format (15 characters, e.g. 24AAACC1206D1ZM)')
   ]),
-  address: z.string().max(255, 'Address must be at most 255 characters'),
-  city: z.string().max(100, 'City must be at most 100 characters'),
-  state: z.string().max(100, 'State must be at most 100 characters'),
-  country: z.string().max(100, 'Country must be at most 100 characters'),
-  postalCode: z.string().max(20, 'Postal code must be at most 20 characters'),
+  address: z
+    .string()
+    .trim()
+    .min(1, 'Billing address is required')
+    .max(500, 'Billing address must be at most 500 characters'),
+  factoryAddress: z
+    .string()
+    .trim()
+    .min(1, 'Factory address is required')
+    .max(500, 'Factory address must be at most 500 characters'),
+  city: z
+    .string()
+    .trim()
+    .min(1, 'City is required')
+    .max(100, 'City must be at most 100 characters'),
+  state: z
+    .string()
+    .trim()
+    .min(1, 'State is required')
+    .max(100, 'State must be at most 100 characters'),
+  country: z.string().max(100, 'Country must be at most 100 characters').optional(),
+  postalCode: z.union([
+    z.literal(''),
+    z.string().regex(PINCODE_REGEX, 'Invalid pincode (must be a 6-digit number)')
+  ]),
+  officeNo: z.string().max(30, 'Office number must be at most 30 characters').optional(),
+  contactPerson: z.string().max(150, 'Contact person must be at most 150 characters').optional(),
+  accountGroup: z.string().optional(),
+  openingBalance: z.union([z.number(), z.string()]).optional(),
+  openingBalanceDate: z.string().optional(),
+  balanceType: z.string().optional(),
+  partyCategory: z.string().optional(),
+  narration1: z.string().max(255, 'Narration 1 must be at most 255 characters').optional(),
+  narration2: z.string().max(255, 'Narration 2 must be at most 255 characters').optional(),
+  bankName: z.string().max(150, 'Bank name must be at most 150 characters').optional(),
+  accountNumber: z.union([
+    z.literal(''),
+    z.string().regex(ACCOUNT_NO_REGEX, 'Invalid account number (must be 9 to 18 digits)')
+  ]),
+  ifscCode: z.union([
+    z.literal(''),
+    z.string().regex(IFSC_REGEX, 'Invalid IFSC code format (11 characters, e.g. HDFC0001234)')
+  ]),
   isActive: z.enum(['true', 'false'])
 });
 
@@ -51,27 +107,34 @@ const EMPTY_FORM: CustomerFormData = {
   type: 'BUSINESS',
   gstin: '',
   address: '',
+  factoryAddress: '',
   city: '',
   state: '',
   country: 'India',
   postalCode: '',
+  officeNo: '',
+  contactPerson: '',
+  accountGroup: 'Sales',
+  openingBalance: '0',
+  openingBalanceDate: '',
+  balanceType: 'Dr.',
+  partyCategory: 'Wholesaler',
+  narration1: '',
+  narration2: '',
+  bankName: '',
+  accountNumber: '',
+  ifscCode: '',
   isActive: 'true'
 };
 
 export interface CustomerFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Present in edit mode, absent when adding a new customer. */
   customer?: Customer | null;
   onSaved: () => void;
 }
 
-export function CustomerFormModal({
-  isOpen,
-  onClose,
-  customer,
-  onSaved
-}: CustomerFormModalProps) {
+export function CustomerFormModal({ isOpen, onClose, customer, onSaved }: CustomerFormModalProps) {
   const isEdit = Boolean(customer);
 
   const {
@@ -85,33 +148,60 @@ export function CustomerFormModal({
     defaultValues: EMPTY_FORM
   });
 
-  // Reload values whenever the modal opens so a previous edit never leaks in.
   useEffect(() => {
     if (!isOpen) return;
 
-    reset(
-      customer
-        ? {
-            name: customer.name ?? '',
-            email: customer.email ?? '',
-            phone: customer.phone ?? '',
-            type: customer.type ?? 'BUSINESS',
-            gstin: customer.gstin ?? '',
-            address: customer.address ?? '',
-            city: customer.city ?? '',
-            state: customer.state ?? '',
-            country: customer.country ?? 'India',
-            postalCode: customer.postalCode ?? '',
-            isActive: customer.isActive ? 'true' : 'false'
-          }
-        : EMPTY_FORM
-    );
+    if (customer) {
+      const formattedDate = customer.openingBalanceDate
+        ? new Date(customer.openingBalanceDate).toISOString().slice(0, 10)
+        : '';
+
+      reset({
+        name: customer.name ?? '',
+        email: customer.email ?? '',
+        phone: customer.phone ?? '',
+        type: customer.type ?? 'BUSINESS',
+        gstin: customer.gstin ?? '',
+        address: customer.address ?? '',
+        factoryAddress: customer.factoryAddress ?? '',
+        city: customer.city ?? '',
+        state: customer.state ?? '',
+        country: customer.country ?? 'India',
+        postalCode: customer.postalCode ?? '',
+        officeNo: customer.officeNo ?? '',
+        contactPerson: customer.contactPerson ?? '',
+        accountGroup: customer.accountGroup ?? 'Sales',
+        openingBalance:
+          customer.openingBalance !== undefined && customer.openingBalance !== null
+            ? String(customer.openingBalance)
+            : '0',
+        openingBalanceDate: formattedDate,
+        balanceType: customer.balanceType ?? 'Dr.',
+        partyCategory: customer.partyCategory ?? 'Wholesaler',
+        narration1: customer.narration1 ?? '',
+        narration2: customer.narration2 ?? '',
+        bankName: customer.bankName ?? '',
+        accountNumber: customer.accountNumber ?? '',
+        ifscCode: customer.ifscCode ?? '',
+        isActive: customer.isActive ? 'true' : 'false'
+      });
+    } else {
+      reset(EMPTY_FORM);
+    }
   }, [isOpen, customer, reset]);
 
   const onSubmit = async (values: CustomerFormData) => {
     const payload = {
       ...values,
-      gstin: values.gstin ? values.gstin.toUpperCase() : '',
+      gstin: values.gstin ? values.gstin.trim().toUpperCase() : undefined,
+      ifscCode: values.ifscCode ? values.ifscCode.trim().toUpperCase() : undefined,
+      postalCode: values.postalCode ? values.postalCode.trim() : undefined,
+      accountNumber: values.accountNumber ? values.accountNumber.trim() : undefined,
+      openingBalance:
+        values.openingBalance !== '' && values.openingBalance !== undefined
+          ? parseFloat(String(values.openingBalance)) || 0
+          : 0,
+      openingBalanceDate: values.openingBalanceDate || undefined,
       isActive: values.isActive === 'true'
     };
 
@@ -128,7 +218,6 @@ export function CustomerFormModal({
     } catch (error: any) {
       const message = apiErrorMessage(error, 'Could not save customer');
 
-      // A duplicate email is the one server error worth pinning to its field.
       if (error?.response?.status === 409 && /email/i.test(message)) {
         setError('email', { type: 'server', message });
       }
@@ -140,105 +229,67 @@ export function CustomerFormModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      maxWidth="2xl"
+      maxWidth="3xl"
       title={isEdit ? 'Edit Customer' : 'Add Customer'}
       description={
         isEdit
-          ? 'Update contact, tax and address details for this client.'
-          : 'Add a client to your business directory for faster invoicing.'
+          ? 'Update account head, contact details, address, accounting, and banking records.'
+          : 'Register a new customer/party with complete ledger, contact, and address information.'
       }
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="sm:col-span-2">
-            <Input
-              label="Customer Name"
-              required
-              placeholder="Enter customer name"
-              leftIcon={<Building2 className="w-4 h-4" />}
-              error={errors.name?.message}
-              {...register('name')}
-            />
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-h-[75vh] overflow-y-auto px-1 pr-2">
+        {/* Section 1: Account Head & Basic Info */}
+        <div className="bg-warm-surface/80 border border-warm-border/70 p-4 space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b border-warm-border/50 text-xs font-bold uppercase tracking-wider text-warm-accent">
+            <Building2 className="w-4 h-4" />
+            <span>Account Details</span>
           </div>
 
-          <Input
-            label="Email"
-            type="email"
-            placeholder="Enter email address"
-            leftIcon={<Mail className="w-4 h-4" />}
-            error={errors.email?.message}
-            {...register('email')}
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
+              <Input
+                label="Account Head"
+                required
+                placeholder="Enter account head"
+                leftIcon={<Building2 className="w-4 h-4" />}
+                error={errors.name?.message}
+                {...register('name')}
+              />
+            </div>
 
-          <Input
-            label="Phone"
-            placeholder="Enter phone number"
-            leftIcon={<Phone className="w-4 h-4" />}
-            error={errors.phone?.message}
-            {...register('phone')}
-          />
-
-          <Select
-            label="Customer Type"
-            options={[
-              { value: 'BUSINESS', label: 'Business' },
-              { value: 'INDIVIDUAL', label: 'Individual' }
-            ]}
-            error={errors.type?.message}
-            {...register('type')}
-          />
-
-          <Input
-            label="GSTIN / Tax Number"
-            placeholder="Enter GSTIN or tax number"
-            className="uppercase"
-            leftIcon={<Receipt className="w-4 h-4" />}
-            error={errors.gstin?.message}
-            helperText="Optional, for GST registered clients"
-            {...register('gstin')}
-          />
-
-          <div className="sm:col-span-2">
-            <Textarea
-              label="Address"
-              placeholder="Enter complete address"
-              className="min-h-[70px]"
-              error={errors.address?.message}
-              {...register('address')}
+            <Select
+              label="Account Group"
+              options={[
+                { value: 'Sales', label: 'Sales' },
+                { value: 'Purchase', label: 'Purchase' },
+                { value: 'Sundry Debtors', label: 'Sundry Debtors' },
+                { value: 'Sundry Creditors', label: 'Sundry Creditors' },
+                { value: 'Customers', label: 'Customers' },
+                { value: 'Distributors', label: 'Distributors' },
+                { value: 'Retailers', label: 'Retailers' },
+                { value: 'Branch / Division', label: 'Branch / Division' },
+                { value: 'Other', label: 'Other' }
+              ]}
+              error={errors.accountGroup?.message}
+              {...register('accountGroup')}
             />
-          </div>
 
-          <Input
-            label="City"
-            placeholder="Enter city"
-            leftIcon={<MapPin className="w-4 h-4" />}
-            error={errors.city?.message}
-            {...register('city')}
-          />
+            <Select
+              label="Party Category"
+              options={[
+                { value: 'Wholesaler', label: 'Wholesaler' },
+                { value: 'Retailer', label: 'Retailer' },
+                { value: 'Manufacturer', label: 'Manufacturer' },
+                { value: 'Trader', label: 'Trader' },
+                { value: 'Distributor', label: 'Distributor' },
+                { value: 'Service Provider', label: 'Service Provider' },
+                { value: 'End Consumer', label: 'End Consumer' },
+                { value: 'Other', label: 'Other' }
+              ]}
+              error={errors.partyCategory?.message}
+              {...register('partyCategory')}
+            />
 
-          <Input
-            label="State"
-            placeholder="Enter state"
-            error={errors.state?.message}
-            {...register('state')}
-          />
-
-          <Input
-            label="Country"
-            placeholder="Enter country"
-            error={errors.country?.message}
-            {...register('country')}
-          />
-
-          <Input
-            label="Postal Code"
-            placeholder="Enter postal code"
-            leftIcon={<Hash className="w-4 h-4" />}
-            error={errors.postalCode?.message}
-            {...register('postalCode')}
-          />
-
-          <div className="sm:col-span-2">
             <Select
               label="Status"
               options={[
@@ -246,13 +297,224 @@ export function CustomerFormModal({
                 { value: 'false', label: 'Inactive' }
               ]}
               error={errors.isActive?.message}
-              helperText="Inactive customers stay on past invoices but are hidden from new ones"
               {...register('isActive')}
             />
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-warm-border/50">
+        {/* Section 2: Contact Information */}
+        <div className="bg-warm-surface/80 border border-warm-border/70 p-4 space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b border-warm-border/50 text-xs font-bold uppercase tracking-wider text-warm-accent">
+            <Phone className="w-4 h-4" />
+            <span>Contact Information</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Mob No."
+              required
+              placeholder="Enter mobile number"
+              leftIcon={<Phone className="w-4 h-4" />}
+              error={errors.phone?.message}
+              {...register('phone')}
+            />
+
+            <Input
+              label="Email ID"
+              type="email"
+              placeholder="Enter email ID"
+              leftIcon={<Mail className="w-4 h-4" />}
+              error={errors.email?.message}
+              {...register('email')}
+            />
+
+            <Input
+              label="Contact Person"
+              placeholder="Enter contact person name"
+              leftIcon={<User className="w-4 h-4" />}
+              error={errors.contactPerson?.message}
+              {...register('contactPerson')}
+            />
+
+            <Input
+              label="Office No."
+              placeholder="Enter office number"
+              leftIcon={<PhoneCall className="w-4 h-4" />}
+              error={errors.officeNo?.message}
+              {...register('officeNo')}
+            />
+          </div>
+        </div>
+
+        {/* Section 3: Addresses */}
+        <div className="bg-warm-surface/80 border border-warm-border/70 p-4 space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b border-warm-border/50 text-xs font-bold uppercase tracking-wider text-warm-accent">
+            <MapPin className="w-4 h-4" />
+            <span>Address Details</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
+              <Textarea
+                label="Billing Address"
+                required
+                placeholder="Enter billing address"
+                className="min-h-[65px]"
+                error={errors.address?.message}
+                {...register('address')}
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <Textarea
+                label="Factory Address"
+                required
+                placeholder="Enter factory address"
+                className="min-h-[65px]"
+                error={errors.factoryAddress?.message}
+                {...register('factoryAddress')}
+              />
+            </div>
+
+            <Input
+              label="City"
+              required
+              placeholder="Enter city"
+              leftIcon={<MapPin className="w-4 h-4" />}
+              error={errors.city?.message}
+              {...register('city')}
+            />
+
+            <Input
+              label="State"
+              required
+              placeholder="Enter state"
+              error={errors.state?.message}
+              {...register('state')}
+            />
+
+            <Input
+              label="Pincode"
+              placeholder="Enter pincode"
+              leftIcon={<Hash className="w-4 h-4" />}
+              error={errors.postalCode?.message}
+              {...register('postalCode')}
+            />
+
+            <Input
+              label="Country"
+              placeholder="Enter country"
+              error={errors.country?.message}
+              {...register('country')}
+            />
+          </div>
+        </div>
+
+        {/* Section 4: Opening Balance & Ledger Info */}
+        <div className="bg-warm-surface/80 border border-warm-border/70 p-4 space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b border-warm-border/50 text-xs font-bold uppercase tracking-wider text-warm-accent">
+            <Layers className="w-4 h-4" />
+            <span>Opening Balance & Ledger Info</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Input
+              label="Opening Balance"
+              type="number"
+              step="0.01"
+              placeholder="Enter opening balance"
+              leftIcon={<BadgePercent className="w-4 h-4" />}
+              error={errors.openingBalance?.message}
+              {...register('openingBalance')}
+            />
+
+            <Input
+              label="Date"
+              type="date"
+              leftIcon={<Calendar className="w-4 h-4" />}
+              error={errors.openingBalanceDate?.message}
+              {...register('openingBalanceDate')}
+            />
+
+            <Select
+              label="Dr. / Cr."
+              options={[
+                { value: 'Dr.', label: 'Dr. (Debit / Receivable)' },
+                { value: 'Cr.', label: 'Cr. (Credit / Payable)' }
+              ]}
+              error={errors.balanceType?.message}
+              {...register('balanceType')}
+            />
+
+            <div className="sm:col-span-3">
+              <Input
+                label="Narration 1"
+                placeholder="Enter narration 1"
+                leftIcon={<FileText className="w-4 h-4" />}
+                error={errors.narration1?.message}
+                {...register('narration1')}
+              />
+            </div>
+
+            <div className="sm:col-span-3">
+              <Input
+                label="Narration 2"
+                placeholder="Enter narration 2"
+                leftIcon={<FileText className="w-4 h-4" />}
+                error={errors.narration2?.message}
+                {...register('narration2')}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Section 5: Bank & Tax Information */}
+        <div className="bg-warm-surface/80 border border-warm-border/70 p-4 space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b border-warm-border/50 text-xs font-bold uppercase tracking-wider text-warm-accent">
+            <Landmark className="w-4 h-4" />
+            <span>Bank & Tax Information</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
+              <Input
+                label="GSTIN No"
+                placeholder="Enter GSTIN number"
+                className="uppercase font-mono"
+                leftIcon={<Receipt className="w-4 h-4" />}
+                error={errors.gstin?.message}
+                helperText="Optional, 15-digit GSTIN for registered clients"
+                {...register('gstin')}
+              />
+            </div>
+
+            <Input
+              label="Bank Name"
+              placeholder="Enter bank name"
+              leftIcon={<Landmark className="w-4 h-4" />}
+              error={errors.bankName?.message}
+              {...register('bankName')}
+            />
+
+            <Input
+              label="Acc No"
+              placeholder="Enter account number"
+              leftIcon={<CreditCard className="w-4 h-4" />}
+              error={errors.accountNumber?.message}
+              {...register('accountNumber')}
+            />
+
+            <Input
+              label="IFSC Code"
+              placeholder="Enter IFSC code"
+              className="uppercase font-mono"
+              error={errors.ifscCode?.message}
+              {...register('ifscCode')}
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-warm-border/50 sticky bottom-0 bg-warm-surface py-2">
           <Button type="button" variant="secondary" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>

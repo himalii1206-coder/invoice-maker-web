@@ -6,22 +6,12 @@ import { productsApi, toNumber } from '@/lib/products';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Product } from '@/types/index';
 import { formatCurrency } from '@/lib/utils';
-import { Search, Package, Loader2, X } from 'lucide-react';
-
-/**
- * Type-ahead used inside an invoice line.
- *
- * Doubles as the line's name input: the user can pick a catalogued product to
- * fill rate, tax and HSN in one action, or simply type a free-text description
- * for a one-off item. Forcing a catalogue entry for every line would make
- * ad-hoc invoicing slower than a spreadsheet.
- */
+import { Search, Package, Loader2, X, Tag } from 'lucide-react';
 
 export interface ProductPickerProps {
   value: string;
   onTextChange: (value: string) => void;
   onSelect: (product: Product) => void;
-  /** Products are owned by a customer, so results are scoped to the selection. */
   customerId?: string;
   placeholder?: string;
   error?: boolean;
@@ -46,7 +36,6 @@ export function ProductPicker({
   const inputRef = useRef<HTMLInputElement>(null);
   const debouncedValue = useDebounce(value, 300);
 
-  // Search only while the panel is open, so typing a free-text item is silent.
   useEffect(() => {
     if (!isOpen) return;
 
@@ -59,7 +48,7 @@ export function ProductPicker({
           search: debouncedValue,
           customerId: customerId || undefined,
           isActive: 'true',
-          limit: 8,
+          limit: 10,
           sortBy: 'name',
           sortOrder: 'asc'
         });
@@ -114,8 +103,6 @@ export function ProductPicker({
       e.preventDefault();
       setHighlighted((index) => Math.max(index - 1, -1));
     } else if (e.key === 'Enter' && highlighted >= 0) {
-      // Only intercept Enter when a suggestion is actually highlighted, so it
-      // still submits the form when the user is typing free text.
       e.preventDefault();
       const product = products[highlighted];
       if (product) pick(product);
@@ -155,10 +142,10 @@ export function ProductPicker({
       </button>
 
       {isOpen && (
-        <div className="absolute z-40 mt-1 w-full min-w-[260px] bg-warm-surface border border-warm-border shadow-warmLg">
+        <div className="absolute z-40 mt-1 w-full min-w-[280px] bg-warm-surface border border-warm-border shadow-warmLg">
           <div className="flex items-center justify-between px-3 py-1.5 border-b border-warm-border/50 bg-warm-input/40">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-warm-textSubtle">
-              Catalog
+              Product Catalog
             </span>
             <button
               type="button"
@@ -174,7 +161,7 @@ export function ProductPicker({
             {isLoading && (
               <li className="px-3 py-3 flex items-center justify-center gap-2 text-xs text-warm-textMuted">
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-warm-accent" />
-                Searching...
+                Searching catalog...
               </li>
             )}
 
@@ -182,43 +169,52 @@ export function ProductPicker({
               <li className="px-3 py-4 text-center">
                 <Package className="w-4 h-4 text-warm-textSubtle mx-auto mb-1" />
                 <p className="text-[11px] text-warm-textMuted">
-                  {customerId
-                    ? 'No matching products for this customer'
-                    : 'Select a customer to browse their catalog'}
+                  No matching products found
                 </p>
                 <p className="text-[10px] text-warm-textSubtle mt-0.5">
-                  You can still type any item name.
+                  You can type any custom item name.
                 </p>
               </li>
             )}
 
             {!isLoading &&
-              products.map((product, index) => (
-                <li key={product.id}>
-                  <button
-                    type="button"
-                    onMouseEnter={() => setHighlighted(index)}
-                    onClick={() => pick(product)}
-                    className={cn(
-                      'w-full px-3 py-2 flex items-start justify-between gap-3 text-left transition-colors hover:bg-warm-accentLight',
-                      highlighted === index && 'bg-warm-accentLight'
-                    )}
-                  >
-                    <span className="min-w-0">
-                      <span className="block text-xs font-semibold text-warm-text truncate">
-                        {product.name}
+              products.map((product, index) => {
+                const code = product.productCode || product.sku;
+                return (
+                  <li key={product.id}>
+                    <button
+                      type="button"
+                      onMouseEnter={() => setHighlighted(index)}
+                      onClick={() => pick(product)}
+                      className={cn(
+                        'w-full px-3 py-2 flex items-start justify-between gap-3 text-left transition-colors hover:bg-warm-accentLight',
+                        highlighted === index && 'bg-warm-accentLight'
+                      )}
+                    >
+                      <span className="min-w-0">
+                        <span className="flex items-center gap-1.5">
+                          <span className="text-xs font-semibold text-warm-text truncate">
+                            {product.name}
+                          </span>
+                          {code && (
+                            <span className="font-mono text-[10px] px-1 bg-warm-input border border-warm-border text-warm-textMuted">
+                              {code}
+                            </span>
+                          )}
+                        </span>
+                        <span className="block text-[10px] text-warm-textMuted truncate">
+                          {product.category ? `${product.category} · ` : ''}
+                          {product.hsnSacCode ? `HSN ${product.hsnSacCode} · ` : ''}
+                          per {product.unit || 'PCS'}
+                        </span>
                       </span>
-                      <span className="block text-[10px] text-warm-textMuted truncate">
-                        {product.hsnSacCode ? `HSN ${product.hsnSacCode} · ` : ''}
-                        GST {toNumber(product.taxRate)}% · per {product.unit}
+                      <span className="text-xs font-semibold text-warm-accent shrink-0 tabular-nums">
+                        {formatCurrency(toNumber(product.price))}
                       </span>
-                    </span>
-                    <span className="text-xs font-semibold text-warm-accent shrink-0 tabular-nums">
-                      {formatCurrency(toNumber(product.price))}
-                    </span>
-                  </button>
-                </li>
-              ))}
+                    </button>
+                  </li>
+                );
+              })}
           </ul>
         </div>
       )}
