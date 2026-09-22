@@ -110,7 +110,7 @@ export function ProductViewModal({
               label="Product Code"
               value={
                 product.productCode || product.sku ? (
-                  <span className="font-mono text-warm-accent font-semibold">
+                  <span className="text-warm-accent font-semibold">
                     {product.productCode || product.sku}
                   </span>
                 ) : (
@@ -130,7 +130,7 @@ export function ProductViewModal({
               label="HSN Code"
               value={
                 product.hsnSacCode ? (
-                  <span className="font-mono font-semibold">{product.hsnSacCode}</span>
+                  <span className="font-semibold">{product.hsnSacCode}</span>
                 ) : (
                   '—'
                 )

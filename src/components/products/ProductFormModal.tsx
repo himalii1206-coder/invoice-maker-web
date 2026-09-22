@@ -213,7 +213,7 @@ export function ProductFormModal({ isOpen, onClose, product, onSaved }: ProductF
           <div>
             <Input
               label="HSN Code"
-              placeholder="Enter HSN code"
+              placeholder="Enter HSN / SAC code"
               leftIcon={<Hash className="w-4 h-4" />}
               error={errors.hsnSacCode?.message}
               {...register('hsnSacCode')}

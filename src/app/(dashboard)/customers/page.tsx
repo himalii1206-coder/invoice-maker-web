@@ -287,7 +287,7 @@ export default function CustomersPage() {
                 </TableCell>
 
                 <TableCell className="hidden xl:table-cell">
-                  <span className="text-xs font-mono text-warm-textMuted">
+                  <span className="text-xs text-warm-textMuted">
                     {customer.gstin || '—'}
                   </span>
                 </TableCell>

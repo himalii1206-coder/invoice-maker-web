@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { getInitials } from '@/lib/utils';
-import { Button } from '../ui/Button';
 import {
   Menu,
   Plus,
@@ -48,20 +47,13 @@ export function Header({ onOpenMobileSidebar }: HeaderProps) {
 
       {/* Right section: Quick actions & User menu */}
       <div className="flex items-center gap-3">
-        <Link href="/invoices">
-          <Button size="sm" leftIcon={<Plus className="w-4 h-4" />}>
-            <span className="hidden sm:inline">New Invoice</span>
-            <span className="sm:hidden">Invoice</span>
-          </Button>
-        </Link>
-
         {/* Notifications Icon */}
         <button
-          className="p-2 text-warm-textMuted hover:text-warm-text hover:bg-warm-input transition-colors relative rounded-none"
+          className="relative p-2 text-warm-textMuted hover:text-warm-text hover:bg-warm-input/80 transition-colors rounded-full focus:outline-none"
           title="Notifications"
         >
           <Bell className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-none bg-warm-accent" />
+          <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-warm-accent ring-2 ring-warm-surface animate-pulse notification-badge" />
         </button>
 
         {/* Vertical Divider */}

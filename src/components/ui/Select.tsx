@@ -15,17 +15,30 @@ export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   error?: string;
   helperText?: string;
   required?: boolean;
+  containerClassName?: string;
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   (
-    { className, label, options, error, helperText, required, id, disabled, children, ...props },
+    {
+      className,
+      containerClassName,
+      label,
+      options,
+      error,
+      helperText,
+      required,
+      id,
+      disabled,
+      children,
+      ...props
+    },
     ref
   ) => {
     const selectId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
 
     return (
-      <div className="w-full space-y-1.5">
+      <div className={cn('w-full space-y-1.5', containerClassName)}>
         {label && (
           <label
             htmlFor={selectId}

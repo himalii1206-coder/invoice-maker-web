@@ -115,9 +115,20 @@ export interface LinkedNoteRef {
 export interface InvoiceListRow {
   id: string;
   invoiceNumber: string;
+  billType?: string;
   status: InvoiceStatus;
   issueDate: string;
   dueDate: string;
+  poNumber?: string | null;
+  orderDate?: string | null;
+  challanNo?: string | null;
+  challanDate?: string | null;
+  modeOfDispatch?: string | null;
+  lhNo?: string | null;
+  lhDate?: string | null;
+  dcNo?: string | null;
+  dcDate?: string | null;
+  paymentTerms?: string | null;
   financialYear: string;
   currency: string;
   billingName: string;
@@ -153,7 +164,16 @@ export interface InvoiceListRow {
 export interface Invoice extends InvoiceListRow {
   sequenceNo: number;
   poNumber?: string | null;
+  orderDate?: string | null;
+  challanNo?: string | null;
+  challanDate?: string | null;
   reference?: string | null;
+  modeOfDispatch?: string | null;
+  lhNo?: string | null;
+  lhDate?: string | null;
+  dcNo?: string | null;
+  dcDate?: string | null;
+  paymentTerms?: string | null;
   placeOfSupplyCode?: string | null;
   isReverseCharge: boolean;
   notes?: string | null;
@@ -187,10 +207,20 @@ export interface InvoiceItemPayload {
 export interface InvoicePayload {
   customerId: string;
   invoiceNumber?: string;
+  billType?: string;
   issueDate?: string;
   dueDate?: string;
   poNumber?: string;
+  orderDate?: string;
+  challanNo?: string;
+  challanDate?: string;
   reference?: string;
+  modeOfDispatch?: string;
+  lhNo?: string;
+  lhDate?: string;
+  dcNo?: string;
+  dcDate?: string;
+  paymentTerms?: string;
   currency?: string;
   placeOfSupply?: string;
   isReverseCharge?: boolean;
@@ -207,12 +237,15 @@ export interface InvoiceListParams {
   search?: string;
   /** Comma separated list, e.g. "SENT,OVERDUE". */
   status?: string;
+  billType?: string;
   customerId?: string;
   financialYear?: string;
   year?: number | '';
   month?: number | '';
   dateFrom?: string;
   dateTo?: string;
+  startDate?: string;
+  endDate?: string;
   minAmount?: number | '';
   maxAmount?: number | '';
   onlyOutstanding?: 'true' | 'false' | '';
@@ -248,6 +281,30 @@ export interface InvoiceStatusBucket {
   balanceDue: number;
 }
 
+export interface MonthlyTrend {
+  month: string;
+  year: number;
+  invoiced: number;
+  collected: number;
+  count: number;
+}
+
+export interface TopCustomer {
+  customerId: string;
+  name: string;
+  totalInvoiced: number;
+  totalPaid: number;
+  count: number;
+}
+
+export interface GstSummary {
+  cgst: number;
+  sgst: number;
+  igst: number;
+  taxableAmount: number;
+  totalTax: number;
+}
+
 export interface InvoiceDashboard {
   totalInvoices: number;
   totalAmount: number;
@@ -263,6 +320,10 @@ export interface InvoiceDashboard {
   draftAmount: number;
   draftInvoices: number;
   byStatus: InvoiceStatusBucket[];
+  recentInvoices?: Invoice[];
+  monthlyTrends?: MonthlyTrend[];
+  topCustomers?: TopCustomer[];
+  gstSummary?: GstSummary;
 }
 
 export interface InvoiceDefaults {

@@ -190,7 +190,12 @@ export function InvoiceItemsEditor({
               <th className="py-2.5 px-2 w-[90px]">Unit</th>
               <th className="py-2.5 px-2 w-[110px] text-right">Rate</th>
               {showDiscount && <th className="py-2.5 px-2 w-[80px] text-right">Disc %</th>}
-              <th className="py-2.5 px-2 w-[95px] text-right">GST %</th>
+              <th className="py-2.5 px-2 w-[125px] text-right">
+                <span>GST %</span>
+                <span className="block text-[9px] font-semibold text-warm-accent uppercase tracking-normal">
+                  {isIgst ? 'IGST (Inter-State)' : 'CGST + SGST'}
+                </span>
+              </th>
               <th className="py-2.5 px-2 w-[110px] text-right">Amount</th>
               <th className="py-2.5 px-2 w-10"></th>
             </tr>
@@ -224,7 +229,6 @@ export function InvoiceItemsEditor({
                   <td className="py-2 px-2 align-top">
                     <ProductPicker
                       value={item.name}
-                      customerId={customerId}
                       disabled={disabled}
                       error={Boolean(rowError)}
                       onTextChange={(value) =>
@@ -256,7 +260,7 @@ export function InvoiceItemsEditor({
                         onChange={(e) =>
                           patch(index, { hsnSacCode: e.target.value.replace(/\D/g, '') })
                         }
-                        placeholder="0000"
+                        placeholder="HSN/SAC"
                         className={cellInput}
                       />
                     </td>
@@ -331,21 +335,35 @@ export function InvoiceItemsEditor({
                       value={item.taxRate}
                       disabled={disabled}
                       onChange={(e) => patch(index, { taxRate: e.target.value })}
-                      className={cn(cellInput, 'cursor-pointer text-right pr-1')}
+                      className={cn(cellInput, 'cursor-pointer text-right pr-1 font-medium')}
                     >
                       {!gstRates.map(String).includes(item.taxRate) && (
-                        <option value={item.taxRate}>{item.taxRate}%</option>
+                        <option value={item.taxRate}>
+                          {item.taxRate}%{' '}
+                          {isIgst
+                            ? `(IGST ${item.taxRate}%)`
+                            : `(C ${Number(item.taxRate) / 2}% + S ${Number(item.taxRate) / 2}%)`}
+                        </option>
                       )}
                       {gstRates.map((rate) => (
                         <option key={rate} value={rate}>
-                          {rate}%
+                          {rate}%{' '}
+                          {rate > 0
+                            ? isIgst
+                              ? `(IGST ${rate}%)`
+                              : `(C ${rate / 2}% + S ${rate / 2}%)`
+                            : '(Nil)'}
                         </option>
                       ))}
                     </select>
                     <p className="text-[10px] text-warm-textSubtle text-right mt-0.5 tabular-nums">
                       {isIgst
-                        ? `IGST ${formatCurrency(line.igstAmount)}`
-                        : `${formatCurrency(line.cgstAmount)} + ${formatCurrency(line.sgstAmount)}`}
+                        ? line.taxAmount > 0
+                          ? `IGST (${line.igstRate}%): ${formatCurrency(line.igstAmount)}`
+                          : `IGST ${line.igstRate}%`
+                        : line.taxAmount > 0
+                        ? `C (${line.cgstRate}%): ${formatCurrency(line.cgstAmount)} + S (${line.sgstRate}%): ${formatCurrency(line.sgstAmount)}`
+                        : `CGST ${line.cgstRate}% + SGST ${line.sgstRate}%`}
                     </p>
                   </td>
 

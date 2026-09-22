@@ -173,7 +173,7 @@ export function RecordPaymentModal({
             label="Reference Number"
             value={referenceNumber}
             onChange={(e) => setReferenceNumber(e.target.value)}
-            placeholder="UTR, cheque no, txn id"
+            placeholder="Enter UTR, cheque number, or transaction ID"
           />
         </div>
 
@@ -181,7 +181,7 @@ export function RecordPaymentModal({
           label="Notes"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="Anything worth remembering about this payment"
+          placeholder="Enter payment notes, bank account remarks or receipt reference..."
           className="min-h-[60px]"
         />
 

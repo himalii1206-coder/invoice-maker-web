@@ -10,12 +10,14 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   required?: boolean;
+  containerClassName?: string;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   (
     {
       className,
+      containerClassName,
       label,
       error,
       helperText,
@@ -31,7 +33,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
 
     return (
-      <div className="w-full space-y-1.5">
+      <div className={cn('w-full space-y-1.5', containerClassName)}>
         {label && (
           <label
             htmlFor={inputId}

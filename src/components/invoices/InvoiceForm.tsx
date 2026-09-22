@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { toast } from 'react-toastify';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -17,7 +18,8 @@ import { apiErrorMessage } from '@/lib/customers';
 import { Customer } from '@/types/index';
 import { Invoice, InvoiceDefaults, InvoiceReferenceData } from '@/types/invoice';
 import { cn } from '@/lib/utils';
-import { Save, Send, X, Info, MapPin, AlertTriangle } from 'lucide-react';
+import { INDIAN_STATES, normalizeStateName } from '@/lib/geo';
+import { Save, Send, X, AlertTriangle, MapPin } from 'lucide-react';
 
 /**
  * Create / edit form for an invoice.
@@ -35,10 +37,20 @@ export interface InvoiceFormProps {
 interface FormState {
   customerId: string;
   customerName: string;
+  billType: string;
   issueDate: string;
   dueDate: string;
   poNumber: string;
+  orderDate: string;
+  challanNo: string;
+  challanDate: string;
   reference: string;
+  modeOfDispatch: string;
+  lhNo: string;
+  lhDate: string;
+  dcNo: string;
+  dcDate: string;
+  paymentTerms: string;
   placeOfSupply: string;
   isReverseCharge: boolean;
   notes: string;
@@ -49,16 +61,52 @@ interface FormState {
 const EMPTY_FORM: FormState = {
   customerId: '',
   customerName: '',
+  billType: 'TAX_INVOICE',
   issueDate: '',
   dueDate: '',
   poNumber: '',
+  orderDate: '',
+  challanNo: '',
+  challanDate: '',
   reference: '',
+  modeOfDispatch: '',
+  lhNo: '',
+  lhDate: '',
+  dcNo: '',
+  dcDate: '',
+  paymentTerms: '',
   placeOfSupply: '',
   isReverseCharge: false,
   notes: '',
   terms: '',
   internalNotes: ''
 };
+
+const BILL_TYPES = [
+  { value: 'TAX_INVOICE', label: 'Tax Invoice' },
+  { value: 'BILL_OF_SUPPLY', label: 'Bill of Supply' },
+  { value: 'DELIVERY_CHALLAN', label: 'Delivery Challan' },
+  { value: 'PROFORMA_INVOICE', label: 'Proforma Invoice' }
+];
+
+const DISPATCH_MODES = [
+  'Road Transport',
+  'Courier',
+  'Hand Delivery',
+  'Air Cargo',
+  'Train / Railway',
+  'Sea Freight',
+  'Customer Pick-Up'
+];
+
+const PAYMENT_TERMS_PRESETS = [
+  'Immediate',
+  'Net 15 Days',
+  'Net 30 Days',
+  'Net 45 Days',
+  'Against Delivery',
+  'Advance Payment'
+];
 
 export function InvoiceForm({ invoice }: InvoiceFormProps) {
   const router = useRouter();
@@ -106,10 +154,20 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
           setForm({
             customerId: invoice.customerId,
             customerName: invoice.customer?.name ?? invoice.billingName,
+            billType: invoice.billType ?? 'TAX_INVOICE',
             issueDate: toDateInput(invoice.issueDate),
             dueDate: toDateInput(invoice.dueDate),
             poNumber: invoice.poNumber ?? '',
+            orderDate: toDateInput(invoice.orderDate),
+            challanNo: invoice.challanNo ?? '',
+            challanDate: toDateInput(invoice.challanDate),
             reference: invoice.reference ?? '',
+            modeOfDispatch: invoice.modeOfDispatch ?? '',
+            lhNo: invoice.lhNo ?? '',
+            lhDate: toDateInput(invoice.lhDate),
+            dcNo: invoice.dcNo ?? '',
+            dcDate: toDateInput(invoice.dcDate),
+            paymentTerms: invoice.paymentTerms ?? '',
             placeOfSupply: invoice.placeOfSupply ?? '',
             isReverseCharge: invoice.isReverseCharge,
             notes: invoice.notes ?? '',
@@ -176,27 +234,38 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
     [items, isIgst, defaults]
   );
 
-  const handleCustomerChange = useCallback(
-    (customerId: string, customer: Customer | null) => {
-      setSelectedCustomer(customer);
-      setForm((prev) => ({
-        ...prev,
-        customerId,
-        customerName: customer?.name ?? '',
-        // An explicit override is cleared so the new customer's state applies.
-        placeOfSupply: ''
-      }));
-      setFieldErrors((prev) => ({ ...prev, customerId: '' }));
-    },
-    []
-  );
+  // ---------------------------------------------------------------------------
+  // Handlers
+  // ---------------------------------------------------------------------------
 
-  /** Re-derives the due date when the issue date moves, if it was untouched. */
+  const handleCustomerChange = (customerIdOrCustomer: string | Customer | null, maybeCustomer?: Customer | null) => {
+    const customer = typeof customerIdOrCustomer === 'string' ? maybeCustomer : customerIdOrCustomer;
+    const customerId = typeof customerIdOrCustomer === 'string' ? customerIdOrCustomer : customer?.id ?? '';
+    setSelectedCustomer(customer ?? null);
+    setForm((prev) => ({
+      ...prev,
+      customerId,
+      customerName: customer?.name ?? '',
+      placeOfSupply: customer?.state ? `${customer.state}` : ''
+    }));
+    if (customerId) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next.customerId;
+        return next;
+      });
+    }
+  };
+
+  /**
+   * Updating the issue date slides the due date forward by the company's
+   * default terms window, unless the due date was already customised.
+   */
   const handleIssueDateChange = (value: string) => {
     setForm((prev) => {
       const next = { ...prev, issueDate: value };
 
-      if (!isEdit && defaults && value) {
+      if (defaults?.defaultDueDays && value) {
         const issue = new Date(value);
         if (!Number.isNaN(issue.getTime())) {
           issue.setDate(issue.getDate() + defaults.defaultDueDays);
@@ -217,16 +286,16 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
     const rowErrors: Record<number, string> = {};
 
     if (!form.customerId) errors.customerId = 'Select a customer for this invoice';
-    if (!form.issueDate) errors.issueDate = 'Issue date is required';
+    if (!form.issueDate) errors.issueDate = 'Bill date is required';
     if (!form.dueDate) errors.dueDate = 'Due date is required';
 
     if (form.issueDate && form.dueDate && new Date(form.dueDate) < new Date(form.issueDate)) {
-      errors.dueDate = 'Due date cannot be earlier than the issue date';
+      errors.dueDate = 'Due date cannot be earlier than the bill date';
     }
 
     items.forEach((item, index) => {
       if (!item.name.trim()) {
-        rowErrors[index] = 'Item name is required';
+        rowErrors[index] = 'Material / Item name is required';
         return;
       }
       if (!(Number(item.quantity) > 0)) {
@@ -253,10 +322,20 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
 
   const buildPayload = () => ({
     customerId: form.customerId,
+    billType: form.billType,
     issueDate: form.issueDate,
     dueDate: form.dueDate,
     poNumber: form.poNumber.trim(),
+    orderDate: form.orderDate || undefined,
+    challanNo: form.challanNo.trim(),
+    challanDate: form.challanDate || undefined,
     reference: form.reference.trim(),
+    modeOfDispatch: form.modeOfDispatch.trim(),
+    lhNo: form.lhNo.trim(),
+    lhDate: form.lhDate || undefined,
+    dcNo: form.dcNo.trim(),
+    dcDate: form.dcDate || undefined,
+    paymentTerms: form.paymentTerms.trim(),
     placeOfSupply: form.placeOfSupply.trim(),
     isReverseCharge: form.isReverseCharge,
     notes: form.notes.trim(),
@@ -287,10 +366,20 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
         // pricing keys are withheld rather than sent and rejected.
         const body = isLocked
           ? {
+              billType: payload.billType,
               issueDate: payload.issueDate,
               dueDate: payload.dueDate,
               poNumber: payload.poNumber,
+              orderDate: payload.orderDate,
+              challanNo: payload.challanNo,
+              challanDate: payload.challanDate,
               reference: payload.reference,
+              modeOfDispatch: payload.modeOfDispatch,
+              lhNo: payload.lhNo,
+              lhDate: payload.lhDate,
+              dcNo: payload.dcNo,
+              dcDate: payload.dcDate,
+              paymentTerms: payload.paymentTerms,
               notes: payload.notes,
               terms: payload.terms,
               internalNotes: payload.internalNotes
@@ -341,7 +430,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
         e.preventDefault();
         submit(isEdit ? 'DRAFT' : 'DRAFT');
       }}
-      className="space-y-5"
+      className="space-y-6"
     >
       {isLocked && (
         <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200">
@@ -358,12 +447,62 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Customer + document meta */}
-        <div className="lg:col-span-2 bg-warm-surface border border-warm-border/60 shadow-warm p-5 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* 1. Header & General Document Settings */}
+      <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-5 space-y-4">
+        <div className="flex items-center justify-between border-b border-warm-border/40 pb-3">
+          <h2 className="text-sm font-bold text-warm-text uppercase tracking-wider">
+            1. Document &amp; Customer Information
+          </h2>
+          <span className="text-[11px] font-semibold text-warm-accent px-2 py-0.5 bg-warm-accentLight">
+            {form.billType.replace(/_/g, ' ')}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Select
+            label="Bill Type"
+            value={form.billType}
+            options={BILL_TYPES}
+            onChange={(e) => setForm((prev) => ({ ...prev, billType: e.target.value }))}
+            helperText="Document classification"
+          />
+
+          <Input
+            label="Bill No. (Auto Generated)"
+            value={isEdit ? invoice?.invoiceNumber ?? '' : defaults?.invoiceNumber ?? ''}
+            readOnly
+            disabled
+            helperText={
+              isEdit
+                ? 'An issued number never changes.'
+                : 'Generated automatically upon save.'
+            }
+          />
+
+          <Input
+            label="Bill Date"
+            type="date"
+            required
+            value={form.issueDate}
+            onChange={(e) => handleIssueDateChange(e.target.value)}
+            error={fieldErrors.issueDate}
+          />
+
+          <Input
+            label="Due Date"
+            type="date"
+            required
+            value={form.dueDate}
+            min={form.issueDate || undefined}
+            onChange={(e) => setForm((prev) => ({ ...prev, dueDate: e.target.value }))}
+            error={fieldErrors.dueDate}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-2">
+          <div className="lg:col-span-2">
             <CustomerSelect
-              label="Customer"
+              label="Customer Name / Party"
               required
               value={form.customerId}
               initialLabel={form.customerName}
@@ -371,184 +510,340 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
               disabled={isLocked}
               error={fieldErrors.customerId}
             />
-
-            <Input
-              label="Invoice Number"
-              value={isEdit ? invoice?.invoiceNumber ?? '' : defaults?.invoiceNumber ?? ''}
-              readOnly
-              disabled
-              helperText={
-                isEdit
-                  ? 'An issued number never changes.'
-                  : 'Generated automatically when you save.'
-              }
-            />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Issue Date"
-              type="date"
-              required
-              value={form.issueDate}
-              onChange={(e) => handleIssueDateChange(e.target.value)}
-              error={fieldErrors.issueDate}
-            />
+          <Select
+            label="Place of Supply (State)"
+            options={stateOptions}
+            value={form.placeOfSupply}
+            disabled={isLocked}
+            onChange={(e) => setForm((prev) => ({ ...prev, placeOfSupply: e.target.value }))}
+            helperText="Overrides destination state for GST calculation."
+          />
 
-            <Input
-              label="Due Date"
-              type="date"
-              required
-              value={form.dueDate}
-              min={form.issueDate || undefined}
-              onChange={(e) => setForm((prev) => ({ ...prev, dueDate: e.target.value }))}
-              error={fieldErrors.dueDate}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="PO Number"
-              value={form.poNumber}
-              onChange={(e) => setForm((prev) => ({ ...prev, poNumber: e.target.value }))}
-              placeholder="Customer purchase order"
-            />
-
-            <Input
-              label="Reference"
-              value={form.reference}
-              onChange={(e) => setForm((prev) => ({ ...prev, reference: e.target.value }))}
-              placeholder="Quote or project reference"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select
-              label="Place of Supply"
-              options={stateOptions}
-              value={form.placeOfSupply}
-              disabled={isLocked}
-              onChange={(e) => setForm((prev) => ({ ...prev, placeOfSupply: e.target.value }))}
-              helperText="Overrides the customer's state for GST."
-            />
-
-            <div className="flex items-end pb-1">
-              <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={form.isReverseCharge}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, isReverseCharge: e.target.checked }))
-                  }
-                  className="w-4 h-4 accent-warm-accent cursor-pointer"
-                />
-                <span className="text-xs font-medium text-warm-text">
-                  Reverse charge applicable
+          {(selectedCustomer || invoice) && (
+            <div className="lg:col-span-3 p-3 bg-warm-input/40 border border-warm-border/60 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 text-warm-text font-medium">
+                <MapPin className="w-3.5 h-3.5 text-warm-accent shrink-0" />
+                <span>
+                  <strong>{selectedCustomer?.city || invoice?.billingCity || 'City not set'}</strong>
+                  {(selectedCustomer?.state || invoice?.billingState) && (
+                    <span className="text-warm-textMuted">, {normalizeStateName(selectedCustomer?.state || invoice?.billingState || '')}</span>
+                  )}
                 </span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        {/* Supply context - explains the tax split before the user scrolls to it. */}
-        <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-5 space-y-4">
-          <h3 className="text-sm font-semibold text-warm-text tracking-tight">Tax Treatment</h3>
-
-          <div
-            className={cn(
-              'p-3 border',
-              isIgst ? 'bg-blue-50 border-blue-200' : 'bg-warm-accentLight/50 border-warm-border'
-            )}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <MapPin className={cn('w-3.5 h-3.5', isIgst ? 'text-blue-600' : 'text-warm-accent')} />
-              <span
-                className={cn(
-                  'text-[11px] font-bold uppercase tracking-wider',
-                  isIgst ? 'text-blue-700' : 'text-warm-accent'
+                {(selectedCustomer?.postalCode || invoice?.billingPostalCode) && (
+                  <span className="text-warm-textSubtle text-[11px]">
+                    (PIN: {selectedCustomer?.postalCode || invoice?.billingPostalCode})
+                  </span>
                 )}
-              >
-                {isIgst ? 'Inter-State' : 'Intra-State'}
-              </span>
-            </div>
-            <p className="text-[11px] text-warm-textMuted leading-relaxed">
-              {isIgst
-                ? 'IGST is charged at the full rate on every line.'
-                : 'GST is split equally into CGST and SGST on every line.'}
-            </p>
-          </div>
+              </div>
 
-          <dl className="space-y-2 text-[11px]">
-            <div className="flex items-start justify-between gap-3">
-              <dt className="text-warm-textMuted">Your State</dt>
-              <dd className="font-semibold text-warm-text text-right">
-                {sellerState || <span className="text-amber-700">Not set</span>}
-              </dd>
-            </div>
-            <div className="flex items-start justify-between gap-3">
-              <dt className="text-warm-textMuted">Place of Supply</dt>
-              <dd className="font-semibold text-warm-text text-right">
-                {buyerState ? stripStateCode(buyerState) : '—'}
-              </dd>
-            </div>
-            <div className="flex items-start justify-between gap-3">
-              <dt className="text-warm-textMuted">Customer GSTIN</dt>
-              <dd className="font-semibold text-warm-text text-right font-mono">
-                {selectedCustomer?.gstin || invoice?.billingGstin || '—'}
-              </dd>
-            </div>
-          </dl>
+              <div className="flex items-center gap-3 text-[11px]">
+                {selectedCustomer?.gstin || invoice?.billingGstin ? (
+                  <span className="bg-warm-surface px-2 py-0.5 border border-warm-border text-warm-text font-semibold">
+                    GSTIN: {selectedCustomer?.gstin || invoice?.billingGstin}
+                  </span>
+                ) : (
+                  <span className="text-warm-textSubtle">Unregistered Buyer</span>
+                )}
 
-          {!sellerState && (
-            <div className="flex items-start gap-2 p-2.5 bg-amber-50 border border-amber-200">
-              <Info className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-px" />
-              <p className="text-[10px] text-amber-800 leading-relaxed">
-                Set your business state in Company Profile so GST can be split correctly.
-              </p>
+                {(selectedCustomer?.address || invoice?.billingAddress) && (
+                  <span className="text-warm-textMuted truncate max-w-sm">
+                    {selectedCustomer?.address || invoice?.billingAddress}
+                  </span>
+                )}
+              </div>
             </div>
           )}
+
+          {/* GST Determination & Seller State Rule */}
+          <div className="lg:col-span-3">
+            {!sellerState ? (
+              <div className="p-3 bg-amber-50 border border-amber-300 flex flex-wrap items-center justify-between gap-3 text-xs text-amber-950">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>
+                    <strong>Business State Not Set:</strong> Please configure your home state in Company Settings so the system can determine whether CGST+SGST or IGST applies.
+                  </span>
+                </div>
+                <Link
+                  href="/company"
+                  className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-[11px] transition-colors shrink-0 shadow-xs"
+                >
+                  Set Business State
+                </Link>
+              </div>
+            ) : (
+              <div className="p-2.5 bg-warm-input/60 border border-warm-border/50 flex flex-wrap items-center justify-between gap-2 text-[11px] text-warm-textMuted">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold text-warm-text">Seller State:</span>
+                  <span className="px-1.5 py-0.5 bg-warm-surface border border-warm-border text-warm-accent font-medium text-[10px]">
+                    {normalizeStateName(sellerState)}
+                  </span>
+                  <span className="text-warm-textSubtle">➔</span>
+                  <span className="font-semibold text-warm-text">Place of Supply:</span>
+                  <span className="px-1.5 py-0.5 bg-warm-surface border border-warm-border text-warm-text font-medium text-[10px]">
+                    {normalizeStateName(buyerState || sellerState)}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold text-warm-textSubtle uppercase text-[10px]">Tax Mode:</span>
+                  <span
+                    className={`font-semibold px-2 py-0.5 border text-[10px] ${
+                      isIgst
+                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    }`}
+                  >
+                    {isIgst ? 'Inter-State (IGST 100%)' : 'Intra-State (CGST 50% + SGST 50%)'}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      <InvoiceItemsEditor
-        items={items}
-        onChange={setItems}
-        isIgst={isIgst}
-        customerId={form.customerId}
-        defaultTaxRate={defaults?.defaultTaxRate ?? 18}
-        gstRates={reference?.gstRates ?? [0, 5, 12, 18, 28]}
-        units={reference?.units ?? ['PCS']}
-        showHsn={defaults?.showHsnColumn ?? true}
-        showDiscount={defaults?.showDiscount ?? true}
-        disabled={isLocked}
-        errors={itemErrors}
-      />
+      {/* 2. Order, Challan & Dispatch Details */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Order & Delivery Challan */}
+        <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-5 space-y-4">
+          <h2 className="text-sm font-bold text-warm-text uppercase tracking-wider border-b border-warm-border/40 pb-2">
+            2. Order &amp; Delivery Challan
+          </h2>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2 bg-warm-surface border border-warm-border/60 shadow-warm p-5 space-y-4">
-          <Textarea
-            label="Notes"
-            value={form.notes}
-            onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
-            placeholder="Visible to the customer on the invoice"
-            className="min-h-[70px]"
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Order No. / PO Number"
+              value={form.poNumber}
+              onChange={(e) => setForm((prev) => ({ ...prev, poNumber: e.target.value }))}
+              placeholder="Enter PO number"
+            />
+
+            <Input
+              label="Order Date"
+              type="date"
+              value={form.orderDate}
+              onChange={(e) => setForm((prev) => ({ ...prev, orderDate: e.target.value }))}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Challan No."
+              value={form.challanNo}
+              onChange={(e) => setForm((prev) => ({ ...prev, challanNo: e.target.value }))}
+              placeholder="Enter Challan number"
+            />
+
+            <Input
+              label="Challan Date"
+              type="date"
+              value={form.challanDate}
+              onChange={(e) => setForm((prev) => ({ ...prev, challanDate: e.target.value }))}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Your D.C. No."
+              value={form.dcNo}
+              onChange={(e) => setForm((prev) => ({ ...prev, dcNo: e.target.value }))}
+              placeholder="Enter delivery challan number"
+            />
+
+            <Input
+              label="Your D.C. Date"
+              type="date"
+              value={form.dcDate}
+              onChange={(e) => setForm((prev) => ({ ...prev, dcDate: e.target.value }))}
+            />
+          </div>
+
+          <Input
+            label="Internal / Quote Reference"
+            value={form.reference}
+            onChange={(e) => setForm((prev) => ({ ...prev, reference: e.target.value }))}
+            placeholder="Enter quote or internal reference"
           />
+        </div>
+
+        {/* Dispatch & Logistics */}
+        <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-5 space-y-4">
+          <h2 className="text-sm font-bold text-warm-text uppercase tracking-wider border-b border-warm-border/40 pb-2">
+            3. Dispatch &amp; Logistics
+          </h2>
+
+          <div>
+            <label className="block text-xs font-semibold text-warm-text mb-1.5 uppercase tracking-wide">
+              Mode of Dispatch
+            </label>
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={form.modeOfDispatch}
+                onChange={(e) => setForm((prev) => ({ ...prev, modeOfDispatch: e.target.value }))}
+                placeholder="Enter mode of dispatch"
+                className="w-full px-3 py-2 bg-warm-input border border-warm-border text-warm-text text-sm rounded-none focus:outline-none focus:border-warm-accent"
+              />
+              <div className="flex flex-wrap gap-1.5">
+                {DISPATCH_MODES.map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, modeOfDispatch: mode }))}
+                    className={cn(
+                      'px-2 py-0.5 text-[11px] border transition-colors',
+                      form.modeOfDispatch === mode
+                        ? 'bg-warm-accent text-white border-warm-accent font-medium'
+                        : 'bg-warm-surface text-warm-textMuted border-warm-border hover:border-warm-accent/50'
+                    )}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="L.H. / L.R. No."
+              value={form.lhNo}
+              onChange={(e) => setForm((prev) => ({ ...prev, lhNo: e.target.value }))}
+              placeholder="Enter LR or transporter receipt number"
+            />
+
+            <Input
+              label="L.H. Date"
+              type="date"
+              value={form.lhDate}
+              onChange={(e) => setForm((prev) => ({ ...prev, lhDate: e.target.value }))}
+            />
+          </div>
+
+          <div className="pt-2 border-t border-warm-border/40">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={form.isReverseCharge}
+                onChange={(e) => setForm((prev) => ({ ...prev, isReverseCharge: e.target.checked }))}
+                className="w-4 h-4 rounded-none border-warm-border text-warm-accent focus:ring-warm-accent"
+              />
+              <span className="text-xs font-medium text-warm-text">
+                Tax Payable on Reverse Charge (RCM)
+              </span>
+            </label>
+            <p className="text-[11px] text-warm-textSubtle ml-6 mt-0.5">
+              Check if the recipient is liable to pay tax under GST reverse charge mechanism.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Material & Service Items */}
+      <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-warm-border/40 pb-3">
+          <div>
+            <h2 className="text-sm font-bold text-warm-text uppercase tracking-wider">
+              4. Material Description &amp; Line Items
+            </h2>
+            <p className="text-xs text-warm-textMuted mt-0.5">
+              Material description, HSN / SAC code, quantity, units, rate, discount and GST %
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                'px-2 py-0.5 text-xs font-semibold uppercase border tracking-wider',
+                isIgst
+                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              )}
+            >
+              {isIgst ? 'IGST Applicable (Inter-State)' : 'CGST + SGST (Intra-State)'}
+            </span>
+          </div>
+        </div>
+
+        <InvoiceItemsEditor
+          items={items}
+          onChange={setItems}
+          isIgst={isIgst}
+          defaultTaxRate={defaults?.defaultTaxRate ?? 18}
+          gstRates={reference?.gstRates ?? [0, 5, 12, 18, 28]}
+          units={reference?.units ?? ['PCS', 'BOX', 'KGS', 'MTR', 'NOS', 'SET', 'UNIT', 'BAG']}
+          showHsn={defaults?.showHsnColumn ?? true}
+          showDiscount={defaults?.showDiscount ?? true}
+          disabled={isLocked}
+          errors={itemErrors}
+        />
+      </div>
+
+      {/* 5. Payment Terms, Notes & Summary */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+        <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-5 space-y-4">
+          <h2 className="text-sm font-bold text-warm-text uppercase tracking-wider border-b border-warm-border/40 pb-2">
+            5. Payment Terms &amp; Notes
+          </h2>
+
+          <div>
+            <label className="block text-xs font-semibold text-warm-text mb-1.5 uppercase tracking-wide">
+              Payment Terms
+            </label>
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={form.paymentTerms}
+                onChange={(e) => setForm((prev) => ({ ...prev, paymentTerms: e.target.value }))}
+                placeholder="Enter payment terms"
+                className="w-full px-3 py-2 bg-warm-input border border-warm-border text-warm-text text-sm rounded-none focus:outline-none focus:border-warm-accent"
+              />
+              <div className="flex flex-wrap gap-1.5">
+                {PAYMENT_TERMS_PRESETS.map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, paymentTerms: preset }))}
+                    className={cn(
+                      'px-2 py-0.5 text-[11px] border transition-colors',
+                      form.paymentTerms === preset
+                        ? 'bg-warm-accent text-white border-warm-accent font-medium'
+                        : 'bg-warm-surface text-warm-textMuted border-warm-border hover:border-warm-accent/50'
+                    )}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
 
           <Textarea
             label="Terms & Conditions"
             value={form.terms}
             onChange={(e) => setForm((prev) => ({ ...prev, terms: e.target.value }))}
-            placeholder="Payment terms, late fees, warranty..."
+            placeholder="Enter terms and conditions"
             className="min-h-[70px]"
           />
 
           <Textarea
-            label="Internal Notes"
+            label="Notes"
+            value={form.notes}
+            onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
+            placeholder="Enter invoice notes for customer"
+            className="min-h-[60px]"
+          />
+
+          <Textarea
+            label="Internal Notes (Private)"
             value={form.internalNotes}
             onChange={(e) => setForm((prev) => ({ ...prev, internalNotes: e.target.value }))}
-            placeholder="Private — never shown to the customer or printed"
-            className="min-h-[60px]"
-            helperText="Only your team can see this."
+            placeholder="Enter private internal notes"
+            className="min-h-[50px]"
+            helperText="Will not be printed on invoice or seen by customer."
           />
         </div>
 

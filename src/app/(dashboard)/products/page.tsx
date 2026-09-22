@@ -213,7 +213,7 @@ export default function ProductsPage() {
                   {/* Product Code */}
                   <TableCell>
                     {code ? (
-                      <span className="font-mono text-xs font-semibold text-warm-text px-2 py-0.5 bg-warm-input border border-warm-border/60">
+                      <span className="text-xs font-semibold text-warm-text px-2 py-0.5 bg-warm-input border border-warm-border/60">
                         {code}
                       </span>
                     ) : (
@@ -234,7 +234,7 @@ export default function ProductsPage() {
                   {/* HSN Code */}
                   <TableCell>
                     {product.hsnSacCode ? (
-                      <span className="font-mono text-xs font-semibold text-warm-text">
+                      <span className="text-xs font-semibold text-warm-text">
                         {product.hsnSacCode}
                       </span>
                     ) : (

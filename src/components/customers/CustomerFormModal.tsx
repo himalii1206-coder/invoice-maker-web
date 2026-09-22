@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Button } from '@/components/ui/Button';
 import { customersApi, apiErrorMessage } from '@/lib/customers';
 import { Customer } from '@/types/index';
+import { StateCityFields } from '@/components/common/StateCityFields';
 import {
   Building2,
   Mail,
@@ -142,11 +143,17 @@ export function CustomerFormModal({ isOpen, onClose, customer, onSaved }: Custom
     handleSubmit,
     reset,
     setError,
+    setValue,
+    watch,
     formState: { errors, isSubmitting }
   } = useForm<CustomerFormData>({
     resolver: zodResolver(customerSchema),
     defaultValues: EMPTY_FORM
   });
+
+  const stateVal = watch('state');
+  const cityVal = watch('city');
+  const pinVal = watch('postalCode');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -250,7 +257,7 @@ export function CustomerFormModal({ isOpen, onClose, customer, onSaved }: Custom
               <Input
                 label="Account Head"
                 required
-                placeholder="Enter account head"
+                placeholder="Enter customer or client business name"
                 leftIcon={<Building2 className="w-4 h-4" />}
                 error={errors.name?.message}
                 {...register('name')}
@@ -322,7 +329,7 @@ export function CustomerFormModal({ isOpen, onClose, customer, onSaved }: Custom
             <Input
               label="Email ID"
               type="email"
-              placeholder="Enter email ID"
+              placeholder="Enter email address"
               leftIcon={<Mail className="w-4 h-4" />}
               error={errors.email?.message}
               {...register('email')}
@@ -338,7 +345,7 @@ export function CustomerFormModal({ isOpen, onClose, customer, onSaved }: Custom
 
             <Input
               label="Office No."
-              placeholder="Enter office number"
+              placeholder="Enter office or landline number"
               leftIcon={<PhoneCall className="w-4 h-4" />}
               error={errors.officeNo?.message}
               {...register('officeNo')}
@@ -358,7 +365,7 @@ export function CustomerFormModal({ isOpen, onClose, customer, onSaved }: Custom
               <Textarea
                 label="Billing Address"
                 required
-                placeholder="Enter billing address"
+                placeholder="Enter street address, building, and area"
                 className="min-h-[65px]"
                 error={errors.address?.message}
                 {...register('address')}
@@ -369,36 +376,29 @@ export function CustomerFormModal({ isOpen, onClose, customer, onSaved }: Custom
               <Textarea
                 label="Factory Address"
                 required
-                placeholder="Enter factory address"
+                placeholder="Enter factory or warehouse delivery address"
                 className="min-h-[65px]"
                 error={errors.factoryAddress?.message}
                 {...register('factoryAddress')}
               />
             </div>
 
-            <Input
-              label="City"
-              required
-              placeholder="Enter city"
-              leftIcon={<MapPin className="w-4 h-4" />}
-              error={errors.city?.message}
-              {...register('city')}
-            />
-
-            <Input
-              label="State"
-              required
-              placeholder="Enter state"
-              error={errors.state?.message}
-              {...register('state')}
-            />
-
-            <Input
-              label="Pincode"
-              placeholder="Enter pincode"
-              leftIcon={<Hash className="w-4 h-4" />}
-              error={errors.postalCode?.message}
-              {...register('postalCode')}
+            <StateCityFields
+              stateValue={stateVal || ''}
+              cityValue={cityVal || ''}
+              pincodeValue={pinVal || ''}
+              stateError={errors.state?.message}
+              cityError={errors.city?.message}
+              pincodeError={errors.postalCode?.message}
+              onStateChange={(val) => {
+                setValue('state', val, { shouldValidate: true, shouldDirty: true });
+              }}
+              onCityChange={(val) => {
+                setValue('city', val, { shouldValidate: true, shouldDirty: true });
+              }}
+              onPincodeChange={(val) => {
+                setValue('postalCode', val, { shouldValidate: true, shouldDirty: true });
+              }}
             />
 
             <Input
@@ -422,7 +422,7 @@ export function CustomerFormModal({ isOpen, onClose, customer, onSaved }: Custom
               label="Opening Balance"
               type="number"
               step="0.01"
-              placeholder="Enter opening balance"
+              placeholder="Enter opening balance amount"
               leftIcon={<BadgePercent className="w-4 h-4" />}
               error={errors.openingBalance?.message}
               {...register('openingBalance')}
@@ -449,7 +449,7 @@ export function CustomerFormModal({ isOpen, onClose, customer, onSaved }: Custom
             <div className="sm:col-span-3">
               <Input
                 label="Narration 1"
-                placeholder="Enter narration 1"
+                placeholder="Enter ledger note or transaction remark 1"
                 leftIcon={<FileText className="w-4 h-4" />}
                 error={errors.narration1?.message}
                 {...register('narration1')}
@@ -459,7 +459,7 @@ export function CustomerFormModal({ isOpen, onClose, customer, onSaved }: Custom
             <div className="sm:col-span-3">
               <Input
                 label="Narration 2"
-                placeholder="Enter narration 2"
+                placeholder="Enter additional ledger note or credit remark 2"
                 leftIcon={<FileText className="w-4 h-4" />}
                 error={errors.narration2?.message}
                 {...register('narration2')}
@@ -479,8 +479,8 @@ export function CustomerFormModal({ isOpen, onClose, customer, onSaved }: Custom
             <div className="sm:col-span-2">
               <Input
                 label="GSTIN No"
-                placeholder="Enter GSTIN number"
-                className="uppercase font-mono"
+                placeholder="Enter 15-digit GSTIN"
+                className="uppercase"
                 leftIcon={<Receipt className="w-4 h-4" />}
                 error={errors.gstin?.message}
                 helperText="Optional, 15-digit GSTIN for registered clients"
@@ -498,7 +498,7 @@ export function CustomerFormModal({ isOpen, onClose, customer, onSaved }: Custom
 
             <Input
               label="Acc No"
-              placeholder="Enter account number"
+              placeholder="Enter bank account number"
               leftIcon={<CreditCard className="w-4 h-4" />}
               error={errors.accountNumber?.message}
               {...register('accountNumber')}
@@ -507,7 +507,7 @@ export function CustomerFormModal({ isOpen, onClose, customer, onSaved }: Custom
             <Input
               label="IFSC Code"
               placeholder="Enter IFSC code"
-              className="uppercase font-mono"
+              className="uppercase"
               error={errors.ifscCode?.message}
               {...register('ifscCode')}
             />

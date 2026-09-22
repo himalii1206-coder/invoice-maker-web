@@ -28,6 +28,7 @@ import { invoicesApi, invoiceSettingsApi, toNumber, openPdfBlob } from '@/lib/in
 import { apiErrorMessage } from '@/lib/customers';
 import { useDebounce } from '@/hooks/useDebounce';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { normalizeStateName } from '@/lib/geo';
 import { PaginationMeta } from '@/types/index';
 import {
   InvoiceDashboard,
@@ -51,6 +52,7 @@ import {
   AlertTriangle,
   Clock,
   SlidersHorizontal,
+  MapPin,
   X
 } from 'lucide-react';
 
@@ -102,6 +104,7 @@ export default function InvoicesPage() {
 
   // Filters
   const [search, setSearch] = useState('');
+  const [billType, setBillType] = useState('');
   const [status, setStatus] = useState<InvoiceStatus | ''>('');
   const [customerId, setCustomerId] = useState('');
   const [financialYear, setFinancialYear] = useState('');
@@ -138,6 +141,7 @@ export default function InvoicesPage() {
         page,
         limit: PAGE_SIZE,
         search: debouncedSearch,
+        billType: billType || undefined,
         status: status || undefined,
         customerId,
         financialYear,
@@ -164,6 +168,7 @@ export default function InvoicesPage() {
   }, [
     page,
     debouncedSearch,
+    billType,
     status,
     customerId,
     financialYear,
@@ -208,6 +213,7 @@ export default function InvoicesPage() {
     setPage(1);
   }, [
     debouncedSearch,
+    billType,
     status,
     customerId,
     financialYear,
@@ -221,6 +227,7 @@ export default function InvoicesPage() {
 
   const hasFilters = Boolean(
     search ||
+      billType ||
       status ||
       customerId ||
       financialYear ||
@@ -233,6 +240,7 @@ export default function InvoicesPage() {
 
   const resetFilters = () => {
     setSearch('');
+    setBillType('');
     setStatus('');
     setCustomerId('');
     setFinancialYear('');
@@ -358,9 +366,11 @@ export default function InvoicesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Invoice</TableHead>
-              <TableHead className="hidden md:table-cell">Customer</TableHead>
-              <TableHead className="hidden lg:table-cell">Dates</TableHead>
+              <TableHead>Bill No &amp; Type</TableHead>
+              <TableHead>Customer Name</TableHead>
+              <TableHead className="hidden md:table-cell">Bill &amp; Order Date</TableHead>
+              <TableHead className="hidden lg:table-cell">Order &amp; D.C. No</TableHead>
+              <TableHead className="hidden xl:table-cell">Dispatch / LH No</TableHead>
               <TableHead className="text-right">Amount</TableHead>
               <TableHead className="hidden sm:table-cell text-right">Balance</TableHead>
               <TableHead>Status</TableHead>
@@ -372,54 +382,87 @@ export default function InvoicesPage() {
             {invoices.map((invoice) => {
               const balance = toNumber(invoice.balanceDue);
               const isBusy = busyId === invoice.id;
+              const formattedBillType = (invoice.billType || 'TAX_INVOICE').replace(/_/g, ' ');
 
               return (
                 <TableRow key={invoice.id}>
                   <TableCell>
-                    <Link
-                      href={`/invoices/${invoice.id}`}
-                      className="font-semibold text-warm-text hover:text-warm-accent transition-colors"
-                    >
-                      {invoice.invoiceNumber}
-                    </Link>
-                    <span className="block text-[11px] text-warm-textMuted md:hidden mt-0.5 truncate max-w-[160px]">
+                    <div className="flex flex-col items-start gap-1">
+                      <Link
+                        href={`/invoices/${invoice.id}`}
+                        className="font-bold text-warm-text hover:text-warm-accent transition-colors"
+                      >
+                        {invoice.invoiceNumber}
+                      </Link>
+                      <span className="inline-block text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.2 bg-warm-accentLight/80 text-warm-accent border border-warm-accent/20">
+                        {formattedBillType}
+                      </span>
+                    </div>
+                    <span className="block text-[11px] text-warm-textMuted md:hidden mt-1 truncate max-w-[160px]">
                       {invoice.billingName}
                     </span>
-                    <span className="block text-[11px] text-warm-textSubtle lg:hidden mt-0.5">
-                      {formatDate(invoice.issueDate)}
-                    </span>
+                  </TableCell>
+
+                  <TableCell>
+                    <p className="text-xs font-semibold text-warm-text truncate max-w-[190px]">
+                      {invoice.billingName}
+                    </p>
+                    <p className="text-[11px] text-warm-textSubtle truncate max-w-[190px]">
+                      {(invoice.customer?.city || invoice.billingState) ? (
+                        <span className="inline-flex items-center gap-1 text-warm-textMuted">
+                          <MapPin className="w-3 h-3 text-warm-accent shrink-0" />
+                          {[invoice.customer?.city, normalizeStateName(invoice.billingState || invoice.customer?.state || '')].filter(Boolean).join(', ')}
+                        </span>
+                      ) : invoice.billingGstin ? (
+                        `GST: ${invoice.billingGstin}`
+                      ) : (
+                        invoice.customer?.email || '—'
+                      )}
+                    </p>
                   </TableCell>
 
                   <TableCell className="hidden md:table-cell">
-                    <p className="text-xs font-medium text-warm-text truncate max-w-[180px]">
-                      {invoice.billingName}
+                    <p className="text-[11px] font-medium text-warm-text">
+                      Bill: {formatDate(invoice.issueDate)}
                     </p>
-                    <p className="text-[11px] text-warm-textSubtle truncate max-w-[180px]">
-                      {invoice.billingGstin || invoice.customer?.email || '—'}
-                    </p>
+                    {invoice.orderDate ? (
+                      <p className="text-[10px] text-warm-textMuted">
+                        Order: {formatDate(invoice.orderDate)}
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-warm-textSubtle">
+                        Due: {formatDate(invoice.dueDate)}
+                      </p>
+                    )}
                   </TableCell>
 
                   <TableCell className="hidden lg:table-cell">
-                    <p className="text-[11px] text-warm-textMuted">
-                      Issued {formatDate(invoice.issueDate)}
+                    <p className="text-xs font-medium text-warm-text truncate max-w-[150px]">
+                      {invoice.poNumber ? `PO: ${invoice.poNumber}` : '—'}
                     </p>
-                    <p
-                      className={cn(
-                        'text-[11px]',
-                        invoice.status === 'OVERDUE'
-                          ? 'text-red-600 font-semibold'
-                          : 'text-warm-textSubtle'
-                      )}
-                    >
-                      Due {formatDate(invoice.dueDate)}
+                    {invoice.dcNo && (
+                      <p className="text-[11px] text-warm-textMuted truncate max-w-[150px]">
+                        DC: {invoice.dcNo}
+                      </p>
+                    )}
+                  </TableCell>
+
+                  <TableCell className="hidden xl:table-cell">
+                    <p className="text-xs text-warm-text truncate max-w-[150px]">
+                      {invoice.modeOfDispatch || '—'}
                     </p>
+                    {invoice.lhNo && (
+                      <p className="text-[11px] text-warm-textMuted truncate max-w-[150px]">
+                        LH: {invoice.lhNo}
+                      </p>
+                    )}
                   </TableCell>
 
                   <TableCell className="text-right">
                     <span className="font-semibold text-warm-text tabular-nums">
                       {formatCurrency(toNumber(invoice.grandTotal))}
                     </span>
-                    <span className="block text-[11px] text-warm-textSubtle">
+                    <span className="block text-[10px] text-warm-textSubtle uppercase">
                       {invoice.isIgst ? 'IGST' : 'CGST+SGST'}
                     </span>
                   </TableCell>
@@ -518,34 +561,37 @@ export default function InvoicesPage() {
             <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
               <span className="text-xs text-warm-textMuted">
                 Invoiced{' '}
-                <span className="font-bold text-warm-text tabular-nums">
+                <strong className="text-warm-text tabular-nums">
                   {formatCurrency(summary.totalAmount)}
-                </span>
+                </strong>
               </span>
               <span className="text-xs text-warm-textMuted">
-                Received{' '}
-                <span className="font-bold text-emerald-700 tabular-nums">
+                Collected{' '}
+                <strong className="text-emerald-700 tabular-nums">
                   {formatCurrency(summary.paidAmount)}
-                </span>
+                </strong>
               </span>
               <span className="text-xs text-warm-textMuted">
-                Outstanding{' '}
-                <span className="font-bold text-red-700 tabular-nums">
+                Receivable{' '}
+                <strong
+                  className={cn(
+                    'tabular-nums',
+                    summary.outstandingAmount > 0 ? 'text-red-700 font-bold' : 'text-warm-text'
+                  )}
+                >
                   {formatCurrency(summary.outstandingAmount)}
-                </span>
+                </strong>
               </span>
             </div>
           </div>
 
-          {meta.totalPages > 1 && (
-            <Pagination
-              currentPage={meta.page}
-              totalPages={meta.totalPages}
-              totalItems={meta.total}
-              pageSize={meta.limit}
-              onPageChange={setPage}
-            />
-          )}
+          <Pagination
+            currentPage={meta.page}
+            totalPages={meta.totalPages}
+            totalItems={meta.total}
+            pageSize={meta.limit}
+            onPageChange={(next) => setPage(next)}
+          />
         </div>
       </div>
     );
@@ -554,12 +600,12 @@ export default function InvoicesPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        title="Invoices"
-        description="Create, track and collect on GST compliant invoices."
-        breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Invoices' }]}
+        title="Tax Invoices"
+        description="Create, track and collect on GST compliant tax invoices, delivery challans, and bills."
+        breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Tax Invoices' }]}
         actions={
           <Link href="/invoices/new">
-            <Button leftIcon={<Plus className="w-4 h-4" />}>Create Invoice</Button>
+            <Button leftIcon={<Plus className="w-4 h-4" />}>Create Tax Invoice</Button>
           </Link>
         }
       />
@@ -609,43 +655,134 @@ export default function InvoicesPage() {
       </div>
 
       {/* Filter bar */}
-      <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-4 mb-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="lg:col-span-2">
+      <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-4 mb-5 space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
+          <div className="lg:col-span-4">
             <Input
-              placeholder="Search number, customer, GSTIN, PO or reference..."
+              placeholder="Search Bill No, customer, Order No, LH No, DC No..."
               leftIcon={<Search className="w-4 h-4" />}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
 
-          <Select
-            options={[
-              { value: '', label: 'All Statuses' },
-              { value: 'DRAFT', label: 'Draft' },
-              { value: 'SENT', label: 'Sent' },
-              { value: 'PARTIALLY_PAID', label: 'Partially Paid' },
-              { value: 'PAID', label: 'Paid' },
-              { value: 'OVERDUE', label: 'Overdue' },
-              { value: 'CANCELLED', label: 'Cancelled' }
-            ]}
-            value={status}
-            onChange={(e) => setStatus(e.target.value as InvoiceStatus | '')}
-          />
+          <div className="lg:col-span-2">
+            <Select
+              options={[
+                { value: '', label: 'All Bill Types' },
+                { value: 'TAX_INVOICE', label: 'Tax Invoice' },
+                { value: 'BILL_OF_SUPPLY', label: 'Bill of Supply' },
+                { value: 'DELIVERY_CHALLAN', label: 'Delivery Challan' },
+                { value: 'PROFORMA_INVOICE', label: 'Proforma Invoice' }
+              ]}
+              value={billType}
+              onChange={(e) => setBillType(e.target.value)}
+            />
+          </div>
 
-          <CustomerSelect
-            value={customerId}
-            onChange={(id) => setCustomerId(id)}
-            allowClear
-            clearLabel="All customers"
-            placeholder="All customers"
-          />
+          <div className="lg:col-span-2">
+            <Input
+              type="date"
+              placeholder="Start Date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              helperText="Start Date"
+            />
+          </div>
+
+          <div className="lg:col-span-2">
+            <Input
+              type="date"
+              placeholder="End Date"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={(e) => setDateTo(e.target.value)}
+              helperText="End Date"
+            />
+          </div>
+
+          <div className="lg:col-span-2">
+            <Select
+              options={[
+                { value: '', label: 'All Statuses' },
+                { value: 'DRAFT', label: 'Draft' },
+                { value: 'SENT', label: 'Sent' },
+                { value: 'PARTIALLY_PAID', label: 'Partially Paid' },
+                { value: 'PAID', label: 'Paid' },
+                { value: 'OVERDUE', label: 'Overdue' },
+                { value: 'CANCELLED', label: 'Cancelled' }
+              ]}
+              value={status}
+              onChange={(e) => setStatus(e.target.value as InvoiceStatus | '')}
+            />
+          </div>
         </div>
 
-        {/* Date and year filters, hidden until asked for so the bar stays calm. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 pt-2 border-t border-warm-border/30">
+          <div className="lg:col-span-6">
+            <CustomerSelect
+              value={customerId}
+              onChange={(id) => setCustomerId(id)}
+              allowClear
+              clearLabel="All customers"
+              placeholder="Filter by customer"
+            />
+          </div>
+
+          <div className="lg:col-span-6 flex flex-wrap items-center justify-end gap-3">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={onlyOutstanding}
+                onChange={(e) => setOnlyOutstanding(e.target.checked)}
+                className="w-3.5 h-3.5 accent-warm-accent cursor-pointer"
+              />
+              <span className="text-xs font-medium text-warm-textMuted">Unpaid only</span>
+            </label>
+
+            <Select
+              className="h-9 text-xs w-[160px]"
+              options={[
+                { value: 'issueDate:desc', label: 'Newest first' },
+                { value: 'issueDate:asc', label: 'Oldest first' },
+                { value: 'dueDate:asc', label: 'Due date (soonest)' },
+                { value: 'grandTotal:desc', label: 'Amount (high to low)' },
+                { value: 'grandTotal:asc', label: 'Amount (low to high)' },
+                { value: 'balanceDue:desc', label: 'Balance (high to low)' },
+                { value: 'invoiceNumber:desc', label: 'Bill number' },
+                { value: 'billingName:asc', label: 'Customer (A–Z)' }
+              ]}
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortValue)}
+            />
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAdvanced((open) => !open)}
+              leftIcon={<SlidersHorizontal className="w-3.5 h-3.5" />}
+            >
+              {showAdvanced ? 'Less Filters' : 'More Dates'}
+            </Button>
+
+            {hasFilters && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={resetFilters}
+                leftIcon={<X className="w-3.5 h-3.5" />}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Extended year/month filters */}
         {showAdvanced && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mt-3 pt-3 border-t border-warm-border/50">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-warm-border/50">
             <Select
               label="Financial Year"
               options={[
@@ -675,86 +812,8 @@ export default function InvoicesPage() {
               value={month === '' ? '' : String(month)}
               onChange={(e) => setMonth(e.target.value ? Number(e.target.value) : '')}
             />
-
-            <Input
-              label="From Date"
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-            />
-
-            <Input
-              label="To Date"
-              type="date"
-              value={dateTo}
-              min={dateFrom || undefined}
-              onChange={(e) => setDateTo(e.target.value)}
-            />
           </div>
         )}
-
-        <div className="flex flex-wrap items-center justify-between gap-3 mt-3 pt-3 border-t border-warm-border/50">
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="text-xs text-warm-textMuted">
-              {isLoading ? (
-                'Loading...'
-              ) : (
-                <>
-                  <span className="font-semibold text-warm-text">{meta.total}</span> invoice
-                  {meta.total === 1 ? '' : 's'} found
-                </>
-              )}
-            </p>
-
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={onlyOutstanding}
-                onChange={(e) => setOnlyOutstanding(e.target.checked)}
-                className="w-3.5 h-3.5 accent-warm-accent cursor-pointer"
-              />
-              <span className="text-xs font-medium text-warm-textMuted">Unpaid only</span>
-            </label>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowAdvanced((open) => !open)}
-              leftIcon={<SlidersHorizontal className="w-3.5 h-3.5" />}
-            >
-              {showAdvanced ? 'Less' : 'Date Filters'}
-            </Button>
-
-            <Select
-              className="h-9 text-xs"
-              options={[
-                { value: 'issueDate:desc', label: 'Newest first' },
-                { value: 'issueDate:asc', label: 'Oldest first' },
-                { value: 'dueDate:asc', label: 'Due date (soonest)' },
-                { value: 'grandTotal:desc', label: 'Amount (high to low)' },
-                { value: 'grandTotal:asc', label: 'Amount (low to high)' },
-                { value: 'balanceDue:desc', label: 'Balance (high to low)' },
-                { value: 'invoiceNumber:desc', label: 'Invoice number' },
-                { value: 'billingName:asc', label: 'Customer (A–Z)' }
-              ]}
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortValue)}
-            />
-
-            {hasFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={resetFilters}
-                leftIcon={<X className="w-3.5 h-3.5" />}
-              >
-                Clear
-              </Button>
-            )}
-          </div>
-        </div>
       </div>
 
       {renderTable()}

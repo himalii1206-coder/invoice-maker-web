@@ -14,7 +14,9 @@ import {
   Building2,
   BarChart3,
   Settings,
-  X
+  X,
+  Receipt,
+  Truck
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -36,9 +38,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     {
       label: 'Sales',
       items: [
-        { name: 'Invoices', href: '/invoices', icon: FileText },
+        { name: 'Tax Invoices', href: '/invoices', icon: FileText },
         { name: 'Customers', href: '/customers', icon: Users },
         { name: 'Products & Services', href: '/products', icon: Package }
+      ]
+    },
+    {
+      label: 'Purchases',
+      items: [
+        { name: 'Purchase Bills', href: '/purchases', icon: Receipt },
+        { name: 'Vendors / Suppliers', href: '/vendors', icon: Truck }
       ]
     },
     {

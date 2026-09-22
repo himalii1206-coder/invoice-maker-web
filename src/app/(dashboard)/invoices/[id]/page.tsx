@@ -380,14 +380,14 @@ export default function InvoiceDetailPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
-          {/* Parties + supply */}
+          {/* Parties + supply + dispatch */}
           <div className="bg-warm-surface border border-warm-border/60 shadow-warm">
             <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-warm-border/50">
               <div className="p-5">
                 <div className="flex items-center gap-1.5 mb-2">
                   <Building2 className="w-3.5 h-3.5 text-warm-accent" />
                   <span className="text-[10px] font-bold uppercase tracking-wider text-warm-accent">
-                    Bill To
+                    Bill To (Customer)
                   </span>
                 </div>
 
@@ -405,9 +405,8 @@ export default function InvoiceDetailPage() {
                     </p>
                   ))}
                 </div>
-
-                {invoice.billingGstin && (
-                  <p className="text-[11px] font-semibold text-warm-text mt-2 font-mono">
+                {invoice.billingGstin && (
+                  <p className="text-[11px] font-semibold text-warm-text mt-2">
                     GSTIN: {invoice.billingGstin}
                   </p>
                 )}
@@ -417,13 +416,14 @@ export default function InvoiceDetailPage() {
                 <div className="flex items-center gap-1.5 mb-2">
                   <Receipt className="w-3.5 h-3.5 text-warm-accent" />
                   <span className="text-[10px] font-bold uppercase tracking-wider text-warm-accent">
-                    Invoice Details
+                    Document &amp; Tax Details
                   </span>
                 </div>
 
                 <dl className="space-y-1.5">
                   {[
-                    ['Issue Date', formatDate(invoice.issueDate)],
+                    ['Bill Type', (invoice.billType || 'TAX_INVOICE').replace(/_/g, ' ')],
+                    ['Bill Date', formatDate(invoice.issueDate)],
                     ['Due Date', formatDate(invoice.dueDate)],
                     ['Place of Supply', invoice.placeOfSupply || '—'],
                     [
@@ -431,8 +431,6 @@ export default function InvoiceDetailPage() {
                       invoice.isIgst ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'
                     ],
                     ['Financial Year', invoice.financialYear || '—'],
-                    ...(invoice.poNumber ? [['PO Number', invoice.poNumber]] : []),
-                    ...(invoice.reference ? [['Reference', invoice.reference]] : []),
                     ...(invoice.isReverseCharge ? [['Reverse Charge', 'Applicable']] : [])
                   ].map(([label, value]) => (
                     <div key={label as string} className="flex items-start justify-between gap-3">
@@ -445,6 +443,114 @@ export default function InvoiceDetailPage() {
                 </dl>
               </div>
             </div>
+
+            {/* Additional Order, DC & Dispatch details row */}
+            {(invoice.poNumber ||
+              invoice.orderDate ||
+              invoice.challanNo ||
+              invoice.challanDate ||
+              invoice.dcNo ||
+              invoice.dcDate ||
+              invoice.modeOfDispatch ||
+              invoice.lhNo ||
+              invoice.lhDate ||
+              invoice.paymentTerms) && (
+              <div className="border-t border-warm-border/50 grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-warm-border/50 bg-warm-input/30">
+                <div className="p-4 space-y-1.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle mb-2">
+                    Order &amp; Delivery Challan
+                  </p>
+                  <div className="space-y-1">
+                    {invoice.poNumber && (
+                      <div className="flex items-start justify-between gap-2 text-[11px]">
+                        <span className="text-warm-textMuted">Order / PO No:</span>
+                        <span className="font-semibold text-warm-text">{invoice.poNumber}</span>
+                      </div>
+                    )}
+                    {invoice.orderDate && (
+                      <div className="flex items-start justify-between gap-2 text-[11px]">
+                        <span className="text-warm-textMuted">Order Date:</span>
+                        <span className="font-semibold text-warm-text">
+                          {formatDate(invoice.orderDate)}
+                        </span>
+                      </div>
+                    )}
+                    {invoice.challanNo && (
+                      <div className="flex items-start justify-between gap-2 text-[11px]">
+                        <span className="text-warm-textMuted">Challan No:</span>
+                        <span className="font-semibold text-warm-text">{invoice.challanNo}</span>
+                      </div>
+                    )}
+                    {invoice.challanDate && (
+                      <div className="flex items-start justify-between gap-2 text-[11px]">
+                        <span className="text-warm-textMuted">Challan Date:</span>
+                        <span className="font-semibold text-warm-text">
+                          {formatDate(invoice.challanDate)}
+                        </span>
+                      </div>
+                    )}
+                    {invoice.dcNo && (
+                      <div className="flex items-start justify-between gap-2 text-[11px]">
+                        <span className="text-warm-textMuted">Your D.C. No:</span>
+                        <span className="font-semibold text-warm-text">{invoice.dcNo}</span>
+                      </div>
+                    )}
+                    {invoice.dcDate && (
+                      <div className="flex items-start justify-between gap-2 text-[11px]">
+                        <span className="text-warm-textMuted">Your D.C. Date:</span>
+                        <span className="font-semibold text-warm-text">
+                          {formatDate(invoice.dcDate)}
+                        </span>
+                      </div>
+                    )}
+                    {invoice.reference && (
+                      <div className="flex items-start justify-between gap-2 text-[11px]">
+                        <span className="text-warm-textMuted">Reference:</span>
+                        <span className="text-warm-text">{invoice.reference}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-4 space-y-1.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle mb-2">
+                    Dispatch &amp; Payment Terms
+                  </p>
+                  <div className="space-y-1">
+                    {invoice.modeOfDispatch && (
+                      <div className="flex items-start justify-between gap-2 text-[11px]">
+                        <span className="text-warm-textMuted">Mode of Dispatch:</span>
+                        <span className="font-semibold text-warm-text">
+                          {invoice.modeOfDispatch}
+                        </span>
+                      </div>
+                    )}
+                    {invoice.lhNo && (
+                      <div className="flex items-start justify-between gap-2 text-[11px]">
+                        <span className="text-warm-textMuted">LH No (LR No):</span>
+                        <span className="font-semibold text-warm-text">{invoice.lhNo}</span>
+                      </div>
+                    )}
+                    {invoice.lhDate && (
+                      <div className="flex items-start justify-between gap-2 text-[11px]">
+                        <span className="text-warm-textMuted">LH Date:</span>
+                        <span className="font-semibold text-warm-text">
+                          {formatDate(invoice.lhDate)}
+                        </span>
+                      </div>
+                    )}
+                    {invoice.paymentTerms && (
+                      <div className="flex items-start justify-between gap-2 text-[11px]">
+                        <span className="text-warm-textMuted">Payment Terms:</span>
+                        <span className="font-semibold text-warm-accent">
+                          {invoice.paymentTerms}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Line items */}
@@ -484,7 +590,7 @@ export default function InvoiceDetailPage() {
                         )}
                       </td>
                       <td className="py-3 px-3">
-                        <span className="text-[11px] font-mono text-warm-textMuted">
+                        <span className="text-[11px] text-warm-textMuted">
                           {item.hsnSacCode || '—'}
                         </span>
                       </td>

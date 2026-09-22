@@ -139,14 +139,14 @@ export function SendInvoiceModal({
               setError('');
             }}
             error={error}
-            placeholder="customer@example.com"
+            placeholder="Enter recipient email address"
           />
 
           <Input
             label="CC"
             value={cc}
             onChange={(e) => setCc(e.target.value)}
-            placeholder="accounts@example.com, manager@example.com"
+            placeholder="Enter CC email addresses"
             helperText="Separate multiple addresses with commas."
           />
 
@@ -166,7 +166,7 @@ export function SendInvoiceModal({
             label="Message"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Leave blank to use the standard template."
+            placeholder="Enter custom email message (or leave blank to use the standard template)..."
             className="min-h-[90px]"
           />
 

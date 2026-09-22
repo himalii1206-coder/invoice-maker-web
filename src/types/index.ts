@@ -187,3 +187,6 @@ export interface ProductListParams {
   sortBy?: 'name' | 'price' | 'taxRate' | 'sku' | 'productCode' | 'category' | 'createdAt' | 'updatedAt';
   sortOrder?: 'asc' | 'desc';
 }
+
+export * from './purchase';
+

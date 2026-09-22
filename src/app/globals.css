@@ -63,3 +63,7 @@ body {
   color: #2b180d !important;
   border-left: 4px solid #7c4a27 !important;
 }
+
+.notification-badge {
+  border-radius: 50% !important;
+}

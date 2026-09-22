@@ -75,31 +75,50 @@ export function InvoiceTotals({
 
         <Row label="Taxable Value" value={totals.taxableAmount} />
 
-        <div className="my-2 border-t border-dashed border-warm-border/70" />
+        {(() => {
+          const singleRate = rateRows.length === 1 ? rateRows[0].taxRate : null;
+          const halfRate = singleRate !== null ? (singleRate / 2) : null;
 
-        {isIgst ? (
-          <Row label="IGST" value={totals.igstAmount} />
-        ) : (
-          <>
-            <Row label="CGST" value={totals.cgstAmount} />
-            <Row label="SGST" value={totals.sgstAmount} />
-          </>
-        )}
+          if (isIgst) {
+            const igstLabel = singleRate !== null ? `IGST (${singleRate}%)` : 'IGST';
+            return <Row label={igstLabel} value={totals.igstAmount} />;
+          }
 
-        {/* Rate-wise detail, so a mixed-rate invoice can be checked at a glance. */}
+          const cgstLabel = halfRate !== null ? `CGST (${halfRate}%)` : 'CGST';
+          const sgstLabel = halfRate !== null ? `SGST (${halfRate}%)` : 'SGST';
+
+          return (
+            <>
+              <Row label={cgstLabel} value={totals.cgstAmount} />
+              <Row label={sgstLabel} value={totals.sgstAmount} />
+            </>
+          );
+        })()}
+
+        {/* Rate-wise detail for mixed-rate invoices */}
         {rateRows.length > 1 && (
-          <div className="mt-2 pt-2 border-t border-dashed border-warm-border/70 space-y-1">
-            {rateRows.map((row) => (
-              <div
-                key={row.taxRate}
-                className="flex items-center justify-between gap-3 text-[11px] text-warm-textSubtle"
-              >
-                <span>
-                  GST {row.taxRate}% on {formatCurrency(row.taxableAmount)}
-                </span>
-                <span className="tabular-nums">{formatCurrency(row.taxAmount)}</span>
-              </div>
-            ))}
+          <div className="mt-2 pt-2 border-t border-dashed border-warm-border/70 space-y-1.5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle">
+              Tax Rate Breakdown
+            </p>
+            {rateRows.map((row) => {
+              const rowHalf = row.taxRate / 2;
+              return (
+                <div
+                  key={row.taxRate}
+                  className="flex items-center justify-between gap-3 text-[11px] text-warm-textSubtle"
+                >
+                  <span>
+                    {isIgst
+                      ? `IGST (${row.taxRate}%) on ${formatCurrency(row.taxableAmount)}`
+                      : `CGST (${rowHalf}%) + SGST (${rowHalf}%) on ${formatCurrency(row.taxableAmount)}`}
+                  </span>
+                  <span className="tabular-nums font-medium text-warm-text">
+                    {formatCurrency(row.taxAmount)}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
 
