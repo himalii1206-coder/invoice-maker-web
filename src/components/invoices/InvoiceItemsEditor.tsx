@@ -42,6 +42,8 @@ export interface InvoiceItemsEditorProps {
   units: string[];
   showHsn?: boolean;
   showDiscount?: boolean;
+  /** True when entered unit prices already contain GST. */
+  pricesIncludeTax?: boolean;
   currency?: string;
   disabled?: boolean;
   /** Row index -> message, surfaced under the offending field. */
@@ -49,7 +51,7 @@ export interface InvoiceItemsEditorProps {
 }
 
 let keyCounter = 0;
-export const createEmptyItem = (taxRate: number): EditorItem => {
+export const createEmptyItem = (taxRate: number, unit = 'PCS'): EditorItem => {
   keyCounter += 1;
   return {
     key: `item-${Date.now()}-${keyCounter}`,
@@ -57,7 +59,7 @@ export const createEmptyItem = (taxRate: number): EditorItem => {
     name: '',
     description: '',
     hsnSacCode: '',
-    unit: 'PCS',
+    unit,
     quantity: '1',
     unitPrice: '',
     discountPercent: '',
@@ -108,6 +110,7 @@ export function InvoiceItemsEditor({
   units,
   showHsn = true,
   showDiscount = true,
+  pricesIncludeTax = false,
   currency = 'INR',
   disabled = false,
   errors = {}
@@ -116,12 +119,14 @@ export function InvoiceItemsEditor({
     onChange(items.map((item, i) => (i === index ? { ...item, ...changes } : item)));
   };
 
-  const addRow = () => onChange([...items, createEmptyItem(defaultTaxRate)]);
+  const defaultUnit = units[0] ?? 'PCS';
+
+  const addRow = () => onChange([...items, createEmptyItem(defaultTaxRate, defaultUnit)]);
 
   const removeRow = (index: number) => {
     // Always leave one row so the table never collapses to nothing.
     if (items.length === 1) {
-      onChange([createEmptyItem(defaultTaxRate)]);
+      onChange([createEmptyItem(defaultTaxRate, defaultUnit)]);
       return;
     }
     onChange(items.filter((_, i) => i !== index));
@@ -188,7 +193,14 @@ export function InvoiceItemsEditor({
               {showHsn && <th className="py-2.5 px-2 w-[90px]">HSN/SAC</th>}
               <th className="py-2.5 px-2 w-[80px] text-right">Qty</th>
               <th className="py-2.5 px-2 w-[90px]">Unit</th>
-              <th className="py-2.5 px-2 w-[110px] text-right">Rate</th>
+              <th className="py-2.5 px-2 w-[110px] text-right">
+                <span>Rate</span>
+                {/* The entered figure means something different in each mode,
+                    so the column says which. */}
+                <span className="block text-[9px] font-semibold text-warm-accent uppercase tracking-normal">
+                  {pricesIncludeTax ? 'Incl. GST' : 'Excl. GST'}
+                </span>
+              </th>
               {showDiscount && <th className="py-2.5 px-2 w-[80px] text-right">Disc %</th>}
               <th className="py-2.5 px-2 w-[125px] text-right">
                 <span>GST %</span>

@@ -63,6 +63,8 @@ export default function PurchaseBillDetailPage() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
+  const [isDeletingPayment, setIsDeletingPayment] = useState(false);
 
   const fetchBill = async () => {
     if (!id) return;
@@ -95,14 +97,18 @@ export default function PurchaseBillDetailPage() {
     }
   };
 
-  const handleDeletePayment = async (paymentId: string) => {
-    if (!bill) return;
+  const handleConfirmDeletePayment = async () => {
+    if (!bill || !deletingPaymentId) return;
+    setIsDeletingPayment(true);
     try {
-      const updated = await purchaseBillsApi.deletePayment(bill.id, paymentId);
+      const updated = await purchaseBillsApi.deletePayment(bill.id, deletingPaymentId);
       setBill(updated);
       toast.success('Payment removed successfully');
+      setDeletingPaymentId(null);
     } catch (err: any) {
       toast.error(err.response?.data?.message || err.message || 'Failed to remove payment');
+    } finally {
+      setIsDeletingPayment(false);
     }
   };
 
@@ -491,7 +497,7 @@ export default function PurchaseBillDetailPage() {
                     variant="ghost"
                     size="sm"
                     className="text-red-600 hover:bg-red-50 text-xs"
-                    onClick={() => handleDeletePayment(p.id)}
+                    onClick={() => setDeletingPaymentId(p.id)}
                     title="Delete payment"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -523,6 +529,18 @@ export default function PurchaseBillDetailPage() {
         isLoading={isDeleting}
         onConfirm={handleDelete}
         onClose={() => setDeleteModalOpen(false)}
+      />
+
+      {/* Delete Payment Modal */}
+      <ConfirmDialog
+        isOpen={Boolean(deletingPaymentId)}
+        title="Remove this payment?"
+        message="The purchase bill balance and status will be recalculated without this payment."
+        confirmLabel="Remove Payment"
+        isDanger
+        isLoading={isDeletingPayment}
+        onConfirm={handleConfirmDeletePayment}
+        onClose={() => setDeletingPaymentId(null)}
       />
     </DashboardLayout>
   );

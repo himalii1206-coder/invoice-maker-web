@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/context/AuthContext';
 import { productsApi, toNumber } from '@/lib/products';
 import { apiErrorMessage } from '@/lib/customers';
 import { Product } from '@/types/index';
@@ -89,6 +90,24 @@ export interface ProductFormModalProps {
 
 export function ProductFormModal({ isOpen, onClose, product, onSaved }: ProductFormModalProps) {
   const isEdit = Boolean(product);
+  const { invoiceSettings } = useAuth();
+
+  // Catalogue defaults come from Settings → Customer & Products, so a new
+  // product starts where the business wants it to.
+  const defaultUnit = invoiceSettings?.defaultUnit ?? 'PCS';
+  const hsnRequired = Boolean(
+    (invoiceSettings?.gstEnabled ?? true) && (invoiceSettings?.hsnRequiredOnProduct ?? false)
+  );
+  const codePrefix = invoiceSettings?.productCodePrefix ?? 'PRD';
+
+  // The server enforces this too; checking here turns a 400 into an inline
+  // message on the field that caused it.
+  const schema = hsnRequired
+    ? productSchema.refine((values) => Boolean(values.hsnSacCode), {
+        message: 'An HSN / SAC code is required by your GST settings',
+        path: ['hsnSacCode']
+      })
+    : productSchema;
 
   const {
     register,
@@ -97,8 +116,8 @@ export function ProductFormModal({ isOpen, onClose, product, onSaved }: ProductF
     setError,
     formState: { errors, isSubmitting }
   } = useForm<ProductFormData>({
-    resolver: zodResolver(productSchema),
-    defaultValues: EMPTY_FORM
+    resolver: zodResolver(schema),
+    defaultValues: { ...EMPTY_FORM, unit: defaultUnit }
   });
 
   useEffect(() => {
@@ -110,13 +129,13 @@ export function ProductFormModal({ isOpen, onClose, product, onSaved }: ProductF
             category: product.category ?? '',
             productCode: product.productCode ?? product.sku ?? '',
             name: product.name ?? '',
-            unit: product.unit ?? 'PCS',
+            unit: product.unit ?? defaultUnit,
             hsnSacCode: product.hsnSacCode ?? '',
             price: toNumber(product.price)
           }
-        : EMPTY_FORM
+        : { ...EMPTY_FORM, unit: defaultUnit }
     );
-  }, [isOpen, product, reset]);
+  }, [isOpen, product, reset, defaultUnit]);
 
   const onSubmit = async (values: ProductFormData) => {
     const payload = {
@@ -179,9 +198,10 @@ export function ProductFormModal({ isOpen, onClose, product, onSaved }: ProductF
           <div className="sm:col-span-1">
             <Input
               label="Product Code"
-              placeholder="Enter product code"
+              placeholder={isEdit ? 'Enter product code' : `Auto: ${codePrefix}-0001`}
               leftIcon={<Barcode className="w-4 h-4" />}
               error={errors.productCode?.message}
+              helperText={isEdit ? undefined : 'Leave blank to generate one from your settings'}
               {...register('productCode')}
             />
           </div>
@@ -213,9 +233,11 @@ export function ProductFormModal({ isOpen, onClose, product, onSaved }: ProductF
           <div>
             <Input
               label="HSN Code"
+              required={hsnRequired}
               placeholder="Enter HSN / SAC code"
               leftIcon={<Hash className="w-4 h-4" />}
               error={errors.hsnSacCode?.message}
+              helperText={hsnRequired ? 'Required by your GST settings' : undefined}
               {...register('hsnSacCode')}
             />
           </div>

@@ -109,3 +109,16 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export function getApiErrorMessage(error: any, fallback: string = 'An unexpected error occurred'): string {
+  if (error?.response?.data) {
+    const data = error.response.data;
+    if (Array.isArray(data.errors) && data.errors.length > 0) {
+      return data.errors.map((e: any) => e.message).filter(Boolean).join(', ') || data.message || fallback;
+    }
+    if (data.message) {
+      return data.message;
+    }
+  }
+  return error?.message || fallback;
+}

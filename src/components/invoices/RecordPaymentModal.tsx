@@ -11,6 +11,7 @@ import { formatCurrency } from '@/lib/utils';
 import { invoicesApi, toNumber, PAYMENT_METHOD_LABELS } from '@/lib/invoices';
 import { apiErrorMessage } from '@/lib/customers';
 import { Invoice, PaymentMethod } from '@/types/invoice';
+import { companyApi, PaymentMethodCode } from '@/lib/company';
 import { IndianRupee } from 'lucide-react';
 
 /**
@@ -41,6 +42,48 @@ export function RecordPaymentModal({
   const [amount, setAmount] = useState('');
   const [paymentDate, setPaymentDate] = useState(todayInput());
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('BANK_TRANSFER');
+
+  /**
+   * The methods this business says it accepts, from Settings → Payment. Empty
+   * until loaded, and an empty list falls back to offering everything rather
+   * than leaving the field unusable.
+   */
+  const [acceptedMethods, setAcceptedMethods] = useState<PaymentMethodCode[]>([]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let cancelled = false;
+    companyApi
+      .get()
+      .then((company) => {
+        if (cancelled) return;
+
+        const methods = company.acceptedPaymentMethods ?? [];
+        setAcceptedMethods(methods);
+
+        // Never leave the select showing a method the business does not accept.
+        if (methods.length > 0 && !methods.includes(paymentMethod as PaymentMethodCode)) {
+          setPaymentMethod(methods[0] as PaymentMethod);
+        }
+      })
+      .catch(() => {
+        // Non-fatal: the full list stays available.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // Re-reading on every method change would fight the user's own selection.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  const methodOptions = Object.entries(PAYMENT_METHOD_LABELS)
+    .filter(
+      ([value]) =>
+        acceptedMethods.length === 0 || acceptedMethods.includes(value as PaymentMethodCode)
+    )
+    .map(([value, label]) => ({ value, label }));
   const [referenceNumber, setReferenceNumber] = useState('');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
@@ -161,7 +204,7 @@ export function RecordPaymentModal({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Select
             label="Payment Method"
-            options={Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => ({
+            options={methodOptions.map(({ value, label }) => ({
               value,
               label
             }))}

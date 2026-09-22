@@ -4,15 +4,9 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { getInitials } from '@/lib/utils';
-import {
-  Menu,
-  Plus,
-  Search,
-  Bell,
-  User as UserIcon,
-  LogOut,
-  ChevronDown
-} from 'lucide-react';
+import { NotificationBell } from './NotificationBell';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Menu, Search, User as UserIcon, Settings, LogOut, ChevronDown } from 'lucide-react';
 
 interface HeaderProps {
   onOpenMobileSidebar: () => void;
@@ -21,6 +15,12 @@ interface HeaderProps {
 export function Header({ onOpenMobileSidebar }: HeaderProps) {
   const { user, company, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  const handleConfirmLogout = () => {
+    setShowLogoutConfirm(false);
+    logout();
+  };
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-warm-surface border-b border-warm-border/70 px-4 sm:px-8 flex items-center justify-between shadow-warm rounded-none">
@@ -47,14 +47,7 @@ export function Header({ onOpenMobileSidebar }: HeaderProps) {
 
       {/* Right section: Quick actions & User menu */}
       <div className="flex items-center gap-3">
-        {/* Notifications Icon */}
-        <button
-          className="relative p-2 text-warm-textMuted hover:text-warm-text hover:bg-warm-input/80 transition-colors rounded-full focus:outline-none"
-          title="Notifications"
-        >
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-warm-accent ring-2 ring-warm-surface animate-pulse notification-badge" />
-        </button>
+        <NotificationBell />
 
         {/* Vertical Divider */}
         <div className="h-6 w-px bg-warm-border/60 mx-1" />
@@ -71,9 +64,6 @@ export function Header({ onOpenMobileSidebar }: HeaderProps) {
             <div className="text-left hidden md:block">
               <p className="text-xs font-bold text-warm-text leading-tight">
                 {user?.firstName} {user?.lastName}
-              </p>
-              <p className="text-[10px] text-warm-textMuted leading-tight truncate max-w-[120px]">
-                {company?.name || user?.email}
               </p>
             </div>
             <ChevronDown className="w-4 h-4 text-warm-textMuted hidden md:block" />
@@ -101,15 +91,27 @@ export function Header({ onOpenMobileSidebar }: HeaderProps) {
                     className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-warm-textMuted hover:text-warm-text hover:bg-warm-input transition-colors"
                   >
                     <UserIcon className="w-4 h-4" />
-                    <span>Company Settings</span>
+                    <span>Company Profile</span>
+                  </Link>
+
+                  <Link
+                    href="/settings"
+                    onClick={() => setIsDropdownOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-warm-textMuted hover:text-warm-text hover:bg-warm-input transition-colors"
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span>Settings</span>
                   </Link>
                 </div>
 
                 <div className="border-t border-warm-border/50 py-1">
                   <button
-                    onClick={() => {
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       setIsDropdownOpen(false);
-                      logout();
+                      setShowLogoutConfirm(true);
                     }}
                     className="w-full flex items-center gap-2 px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
                   >
@@ -122,6 +124,17 @@ export function Header({ onOpenMobileSidebar }: HeaderProps) {
           )}
         </div>
       </div>
+
+      {/* Logout Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={handleConfirmLogout}
+        title="Are you sure you want to log out?"
+        confirmLabel="Yes, Logout"
+        cancelLabel="Cancel"
+        isDanger={true}
+      />
     </header>
   );
 }

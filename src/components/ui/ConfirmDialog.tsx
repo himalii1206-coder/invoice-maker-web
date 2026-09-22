@@ -10,7 +10,7 @@ export interface ConfirmDialogProps {
   onClose: () => void;
   onConfirm: () => void;
   title: string;
-  message: string;
+  message?: string;
   confirmLabel?: string;
   cancelLabel?: string;
   isDanger?: boolean;
@@ -32,7 +32,7 @@ export function ConfirmDialog({
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="sm">
       <div className="flex items-start gap-4">
         <div
-          className={`p-2.5 rounded-full ${
+          className={`p-2.5 rounded-full shrink-0 ${
             isDanger ? 'bg-red-100 text-red-600' : 'bg-warm-accentLight text-warm-accent'
           }`}
         >
@@ -40,7 +40,7 @@ export function ConfirmDialog({
         </div>
         <div className="space-y-1">
           <h4 className="text-base font-semibold text-warm-text">{title}</h4>
-          <p className="text-xs text-warm-textMuted leading-relaxed">{message}</p>
+          {message && <p className="text-xs text-warm-textMuted leading-relaxed">{message}</p>}
         </div>
       </div>
 
@@ -60,3 +60,4 @@ export function ConfirmDialog({
     </Modal>
   );
 }
+

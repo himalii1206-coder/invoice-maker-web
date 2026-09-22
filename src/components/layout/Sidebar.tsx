@@ -26,8 +26,10 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const { company } = useAuth();
+  const { company, can } = useAuth();
 
+  // `requires` mirrors the permission the API checks for that area, so a role
+  // is never shown a link to a page whose data it cannot load.
   const navigationGroup = [
     {
       label: 'Main',
@@ -46,8 +48,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     {
       label: 'Purchases',
       items: [
-        { name: 'Purchase Bills', href: '/purchases', icon: Receipt },
-        { name: 'Vendors / Suppliers', href: '/vendors', icon: Truck }
+        { name: 'Purchase Bills', href: '/purchases', icon: Receipt, requires: 'purchase:write' },
+        { name: 'Vendors / Suppliers', href: '/vendors', icon: Truck, requires: 'purchase:write' }
       ]
     },
     {
@@ -59,7 +61,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     {
       label: 'Reports',
       items: [
-        { name: 'Analytics', href: '/analytics', icon: BarChart3 }
+        { name: 'Analytics', href: '/analytics', icon: BarChart3, requires: 'report:read' }
       ]
     },
     {
@@ -69,6 +71,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       ]
     }
   ];
+
+  const visibleGroups = navigationGroup
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !('requires' in item) || can(item.requires as any))
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <>
@@ -117,7 +126,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Company Quick Badge */}
-        {company && (
+        {/* {company && (
           <div className="px-5 py-3 border-b border-warm-border/40 bg-warm-accentLight/40 rounded-none">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-warm-textSubtle">
               Active Organization
@@ -126,11 +135,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               {company.name}
             </p>
           </div>
-        )}
+        )} */}
 
         {/* Navigation List */}
         <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
-          {navigationGroup.map((group, idx) => (
+          {visibleGroups.map((group, idx) => (
             <div key={idx} className="space-y-1">
               <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-warm-textSubtle mb-2">
                 {group.label}

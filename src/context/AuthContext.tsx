@@ -1,25 +1,38 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Company } from '../types/index';
+import { User, Company, Permission } from '../types/index';
 import { api } from '../lib/api';
 import { toast } from 'react-toastify';
 import { useRouter, usePathname } from 'next/navigation';
 
+/**
+ * A login that stopped at the second factor. The challenge token stands in for
+ * the password having already been accepted; it is short lived and useless
+ * against any other endpoint.
+ */
+export interface TwoFactorChallenge {
+  challengeToken: string;
+}
+
 interface AuthContextType {
   user: User | null;
   company: Company | null;
+  invoiceSettings: any | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (data: any) => Promise<void>;
+  login: (data: any) => Promise<TwoFactorChallenge | void>;
+  verifyTwoFactor: (challengeToken: string, code: string) => Promise<void>;
   register: (data: any) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  /** Mirrors the server's permission matrix; the API still enforces it. */
+  can: (permission: Permission) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password'];
+const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password', '/accept-invite'];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -66,25 +79,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, isLoading, pathname, router]);
 
-  const login = async (credentials: any) => {
+  /** Stores tokens and user state after any successful authentication. */
+  const completeSignIn = (payload: any, greeting: string) => {
+    const { user: userData, company: companyData, accessToken, refreshToken } = payload;
+
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('refreshToken', refreshToken);
+
+    setUser(userData);
+    setCompany(companyData);
+
+    toast.success(greeting);
+    router.push('/dashboard');
+  };
+
+  const login = async (credentials: any): Promise<TwoFactorChallenge | void> => {
     try {
       setIsLoading(true);
       const { data } = await api.post('/auth/login', credentials);
 
-      if (data.success) {
-        const { user: userData, company: companyData, accessToken, refreshToken } = data.data;
+      if (!data.success) return;
 
-        localStorage.setItem('accessToken', accessToken);
-        localStorage.setItem('refreshToken', refreshToken);
-
-        setUser(userData);
-        setCompany(companyData);
-
-        toast.success(`Welcome back, ${userData.firstName}!`);
-        router.push('/dashboard');
+      // The password was right but the account has 2FA on: hand the challenge
+      // back so the login screen can ask for the code.
+      if (data.data?.requiresTwoFactor) {
+        return { challengeToken: data.data.challengeToken };
       }
+
+      completeSignIn(data.data, `Welcome back, ${data.data.user.firstName}!`);
     } catch (error: any) {
       const message = error.response?.data?.message || 'Login failed. Please check credentials.';
+      toast.error(message);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const verifyTwoFactor = async (challengeToken: string, code: string) => {
+    try {
+      setIsLoading(true);
+      const { data } = await api.post('/auth/login/2fa', { challengeToken, code });
+
+      if (data.success) {
+        completeSignIn(data.data, `Welcome back, ${data.data.user.firstName}!`);
+      }
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'That code was not accepted.';
       toast.error(message);
       throw error;
     } finally {
@@ -143,12 +184,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         company,
+        invoiceSettings: company?.invoiceSettings || null,
         isAuthenticated: !!user,
         isLoading,
         login,
+        verifyTwoFactor,
         register,
         logout,
-        refreshUser
+        refreshUser,
+        // Default to allowed for a user whose payload predates the permission
+        // map, so an older session never loses access it should still have.
+        can: (permission: Permission) => user?.permissions?.[permission] ?? true
       }}
     >
       {children}

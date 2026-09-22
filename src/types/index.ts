@@ -1,9 +1,32 @@
+/** Every capability the API gates, as returned by `/auth/me`. */
+export type Permission =
+  | 'invoice:read'
+  | 'invoice:write'
+  | 'invoice:delete'
+  | 'payment:write'
+  | 'customer:write'
+  | 'product:write'
+  | 'purchase:write'
+  | 'report:read'
+  | 'settings:read'
+  | 'settings:write'
+  | 'company:write'
+  | 'team:read'
+  | 'team:write';
+
 export interface User {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
-  role: 'OWNER' | 'ADMIN' | 'MEMBER';
+  role: 'OWNER' | 'ADMIN' | 'ACCOUNTANT' | 'STAFF' | 'MEMBER';
+  /**
+   * Role within the business currently being worked in. An invited
+   * collaborator's membership role, which can differ from `role`.
+   */
+  companyRole?: string;
+  permissions?: Record<Permission, boolean>;
+  twoFactorEnabled?: boolean;
 }
 
 export interface Company {
@@ -26,6 +49,7 @@ export interface Company {
   accountNumber?: string;
   ifscCode?: string;
   branch?: string;
+  invoiceSettings?: any;
 }
 
 export interface AuthState {

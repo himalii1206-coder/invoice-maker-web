@@ -656,7 +656,7 @@ export default function InvoicesPage() {
 
       {/* Filter bar */}
       <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-4 mb-5 space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
           <div className="lg:col-span-4">
             <Input
               placeholder="Search Bill No, customer, Order No, LH No, DC No..."
@@ -686,7 +686,6 @@ export default function InvoicesPage() {
               placeholder="Start Date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              helperText="Start Date"
             />
           </div>
 
@@ -697,7 +696,6 @@ export default function InvoicesPage() {
               value={dateTo}
               min={dateFrom || undefined}
               onChange={(e) => setDateTo(e.target.value)}
-              helperText="End Date"
             />
           </div>
 
@@ -718,8 +716,8 @@ export default function InvoicesPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 pt-2 border-t border-warm-border/30">
-          <div className="lg:col-span-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 pt-2 border-t border-warm-border/30 items-center">
+          <div className="lg:col-span-5">
             <CustomerSelect
               value={customerId}
               onChange={(id) => setCustomerId(id)}
@@ -729,19 +727,9 @@ export default function InvoicesPage() {
             />
           </div>
 
-          <div className="lg:col-span-6 flex flex-wrap items-center justify-end gap-3">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={onlyOutstanding}
-                onChange={(e) => setOnlyOutstanding(e.target.checked)}
-                className="w-3.5 h-3.5 accent-warm-accent cursor-pointer"
-              />
-              <span className="text-xs font-medium text-warm-textMuted">Unpaid only</span>
-            </label>
-
+          <div className="lg:col-span-3">
             <Select
-              className="h-9 text-xs w-[160px]"
+              containerClassName="w-full"
               options={[
                 { value: 'issueDate:desc', label: 'Newest first' },
                 { value: 'issueDate:asc', label: 'Oldest first' },
@@ -755,10 +743,22 @@ export default function InvoicesPage() {
               value={sort}
               onChange={(e) => setSort(e.target.value as SortValue)}
             />
+          </div>
+
+          <div className="lg:col-span-4 flex items-center justify-end gap-2.5">
+            <label className="flex items-center gap-2 cursor-pointer select-none px-3 py-2 bg-warm-input/60 border border-warm-border/60 hover:bg-warm-input transition-colors">
+              <input
+                type="checkbox"
+                checked={onlyOutstanding}
+                onChange={(e) => setOnlyOutstanding(e.target.checked)}
+                className="w-3.5 h-3.5 accent-warm-accent cursor-pointer"
+              />
+              <span className="text-xs font-semibold text-warm-text">Unpaid only</span>
+            </label>
 
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => setShowAdvanced((open) => !open)}
               leftIcon={<SlidersHorizontal className="w-3.5 h-3.5" />}
@@ -772,7 +772,8 @@ export default function InvoicesPage() {
                 variant="ghost"
                 size="sm"
                 onClick={resetFilters}
-                leftIcon={<X className="w-3.5 h-3.5" />}
+                leftIcon={<X className="w-3.5 h-3.5 text-red-600" />}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
               >
                 Clear
               </Button>

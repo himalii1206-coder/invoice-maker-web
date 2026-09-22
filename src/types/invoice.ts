@@ -340,6 +340,11 @@ export interface InvoiceDefaults {
   enableRoundOff: boolean;
   showHsnColumn: boolean;
   showDiscount: boolean;
+  gstEnabled: boolean;
+  pricesIncludeTax: boolean;
+  enableReverseCharge: boolean;
+  defaultUnit: string;
+  defaultDiscountMode: DiscountMode;
   sellerState?: string | null;
   sellerGstin?: string | null;
 }
@@ -390,6 +395,16 @@ export interface InvoiceReferenceData {
   email: { configured: boolean; appUrl: string };
 }
 
+export type DiscountMode = 'PERCENT' | 'FIXED';
+
+export type NotificationEvent =
+  | 'INVOICE_CREATED'
+  | 'INVOICE_PAID'
+  | 'INVOICE_OVERDUE'
+  | 'PAYMENT_RECEIVED'
+  | 'CUSTOMER_ADDED'
+  | 'NOTE_ISSUED';
+
 export interface InvoiceSettings {
   id: string;
   companyId: string;
@@ -409,12 +424,31 @@ export interface InvoiceSettings {
   defaultNotes?: string | null;
   themeColor: string;
   template: string;
+  fontFamily: string;
+  tableStyle: string;
+  signaturePosition: string;
   showHsnColumn: boolean;
   showDiscount: boolean;
   showBankDetails: boolean;
   showSignature: boolean;
   signatureUrl?: string | null;
   footerNote?: string | null;
+  gstEnabled: boolean;
+  pricesIncludeTax: boolean;
+  enableReverseCharge: boolean;
+  hsnRequiredOnProduct: boolean;
+  customerCodePrefix: string;
+  customerCreditDays: number;
+  customerRequirePhone: boolean;
+  customerRequireState: boolean;
+  customerRequireGstin: boolean;
+  productCodePrefix: string;
+  defaultUnit: string;
+  defaultDiscountMode: DiscountMode;
+  notifyEvents: NotificationEvent[];
+  notifyEmail: boolean;
+  notifyInApp: boolean;
+  notifyBrowser: boolean;
   enableRoundOff: boolean;
   autoMarkOverdue: boolean;
   remindersEnabled: boolean;

@@ -1,6 +1,14 @@
 import { api } from './api';
 import { ApiResponse } from '@/types/index';
 
+export type PaymentMethodCode =
+  | 'CASH'
+  | 'BANK_TRANSFER'
+  | 'UPI'
+  | 'CHEQUE'
+  | 'CARD'
+  | 'OTHER';
+
 export interface CompanyProfile {
   id: string;
   name: string;
@@ -18,6 +26,10 @@ export interface CompanyProfile {
   accountNumber?: string | null;
   ifscCode?: string | null;
   branch?: string | null;
+  accountHolder?: string | null;
+  upiId?: string | null;
+  paymentInstructions?: string | null;
+  acceptedPaymentMethods: PaymentMethodCode[];
   createdAt: string;
   updatedAt: string;
 }

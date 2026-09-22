@@ -73,13 +73,41 @@ const clampPercent = (value: number, max: number): number => {
   return Math.min(value, max);
 };
 
-export const computeLine = (input: PreviewLineInput, isIgst: boolean): PreviewLine => {
-  const quantity = round3(Math.max(0, num(input.quantity)));
-  const unitPrice = round2(Math.max(0, num(input.unitPrice)));
-  const discountPercent = clampPercent(num(input.discountPercent), 100);
-  const taxRate = clampPercent(num(input.taxRate), 100);
+/**
+ * The tax mode from the business's settings. Mirrors `TaxMode` on the server so
+ * the preview and the saved document agree under every combination.
+ */
+export interface PreviewTaxMode {
+  gstEnabled?: boolean;
+  pricesIncludeTax?: boolean;
+}
 
-  const grossPaise = Math.round(toPaise(unitPrice) * quantity);
+export const computeLine = (
+  input: PreviewLineInput,
+  isIgst: boolean,
+  mode: PreviewTaxMode = {}
+): PreviewLine => {
+  const { gstEnabled = true, pricesIncludeTax = false } = mode;
+
+  const quantity = round3(Math.max(0, num(input.quantity)));
+  const enteredPrice = round2(Math.max(0, num(input.unitPrice)));
+  const discountPercent = clampPercent(num(input.discountPercent), 100);
+  const taxRate = gstEnabled ? clampPercent(num(input.taxRate), 100) : 0;
+
+  const enteredGrossPaise = Math.round(toPaise(enteredPrice) * quantity);
+
+  // Tax-inclusive mode backs the GST out of the entered figure first, exactly
+  // as the server does, so subtotal - discount = taxable still holds.
+  const grossPaise =
+    pricesIncludeTax && taxRate > 0
+      ? Math.round(enteredGrossPaise / (1 + taxRate / 100))
+      : enteredGrossPaise;
+
+  const unitPrice =
+    pricesIncludeTax && taxRate > 0 && quantity > 0
+      ? round2(fromPaise(grossPaise) / quantity)
+      : enteredPrice;
+
   const discountPaise = percentOfPaise(grossPaise, discountPercent);
   const taxablePaise = grossPaise - discountPaise;
   const taxPaise = percentOfPaise(taxablePaise, taxRate);
@@ -119,10 +147,10 @@ export const computeLine = (input: PreviewLineInput, isIgst: boolean): PreviewLi
 
 export const computeTotals = (
   lines: PreviewLineInput[],
-  options: { isIgst: boolean; enableRoundOff?: boolean }
+  options: { isIgst: boolean; enableRoundOff?: boolean } & PreviewTaxMode
 ): PreviewTotals => {
-  const { isIgst, enableRoundOff = true } = options;
-  const computed = lines.map((line) => computeLine(line, isIgst));
+  const { isIgst, enableRoundOff = true, gstEnabled, pricesIncludeTax } = options;
+  const computed = lines.map((line) => computeLine(line, isIgst, { gstEnabled, pricesIncludeTax }));
 
   // Totals sum the rounded line values, never the raw products.
   const acc = computed.reduce(

@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button';
 import { customersApi, apiErrorMessage } from '@/lib/customers';
 import { Customer } from '@/types/index';
 import { StateCityFields } from '@/components/common/StateCityFields';
+import { useAuth } from '@/context/AuthContext';
 import {
   Building2,
   Mail,
@@ -104,6 +105,45 @@ const customerSchema = z.object({
 
 type CustomerFormData = z.infer<typeof customerSchema>;
 
+/**
+ * Applies the mandatory-field rules from Settings → Customer & Products.
+ *
+ * The base schema is the strictest form. Turning a rule off relaxes the field
+ * rather than dropping validation: a phone number that *is* typed still has to
+ * be a valid one. The server enforces the same rules, so this only turns a 400
+ * into an inline message.
+ */
+const applyRequiredFieldRules = (
+  rules: { phone: boolean; state: boolean; gstin: boolean }
+) => {
+  let schema: z.ZodTypeAny = customerSchema;
+
+  if (!rules.phone) {
+    schema = (schema as typeof customerSchema).extend({
+      phone: z.union([
+        z.literal(''),
+        z.string().trim().regex(PHONE_REGEX, 'Invalid mobile number (must be a valid 10-digit number)')
+      ])
+    });
+  }
+
+  if (!rules.state) {
+    schema = (schema as typeof customerSchema).extend({
+      state: z.string().trim().max(100, 'State must be at most 100 characters')
+    });
+  }
+
+  if (rules.gstin) {
+    // Individuals are exempt, matching the server's own carve-out.
+    schema = (schema as z.ZodObject<any>).refine(
+      (values) => values.type !== 'BUSINESS' || Boolean(values.gstin),
+      { message: 'A GSTIN is required for business customers', path: ['gstin'] }
+    ) as unknown as typeof customerSchema;
+  }
+
+  return schema as typeof customerSchema;
+};
+
 const EMPTY_FORM: CustomerFormData = {
   name: '',
   email: '',
@@ -140,6 +180,21 @@ export interface CustomerFormProps {
 export function CustomerForm({ customer, isEdit: isEditProp = false, onSuccess }: CustomerFormProps) {
   const router = useRouter();
   const isEdit = isEditProp || Boolean(customer);
+  const { invoiceSettings } = useAuth();
+
+  const requirePhone = invoiceSettings?.customerRequirePhone ?? true;
+  const requireState = invoiceSettings?.customerRequireState ?? true;
+  const requireGstin = invoiceSettings?.customerRequireGstin ?? false;
+
+  const schema = React.useMemo(
+    () =>
+      applyRequiredFieldRules({
+        phone: requirePhone,
+        state: requireState,
+        gstin: requireGstin
+      }),
+    [requirePhone, requireState, requireGstin]
+  );
 
   const {
     register,
@@ -150,7 +205,7 @@ export function CustomerForm({ customer, isEdit: isEditProp = false, onSuccess }
     watch,
     formState: { errors, isSubmitting }
   } = useForm<CustomerFormData>({
-    resolver: zodResolver(customerSchema),
+    resolver: zodResolver(schema),
     defaultValues: EMPTY_FORM
   });
 
@@ -333,7 +388,7 @@ export function CustomerForm({ customer, isEdit: isEditProp = false, onSuccess }
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           <Input
             label="Mob No."
-            required
+            required={requirePhone}
             placeholder="Enter mobile number"
             leftIcon={<Phone className="w-4 h-4" />}
             error={errors.phone?.message}
@@ -493,11 +548,16 @@ export function CustomerForm({ customer, isEdit: isEditProp = false, onSuccess }
           <div className="md:col-span-2 lg:col-span-4">
             <Input
               label="GSTIN No"
+              required={requireGstin}
               placeholder="Enter 15-digit GSTIN"
               className="uppercase max-w-md"
               leftIcon={<Receipt className="w-4 h-4" />}
               error={errors.gstin?.message}
-              helperText="Optional, 15-digit GSTIN for registered clients"
+              helperText={
+                requireGstin
+                  ? 'Required for business customers by your settings'
+                  : 'Optional, 15-digit GSTIN for registered clients'
+              }
               {...register('gstin')}
             />
           </div>

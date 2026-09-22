@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight, ShieldCheck, ArrowLeft } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -19,8 +19,16 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const { login, isLoading } = useAuth();
+  const { login, verifyTwoFactor, isLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  /**
+   * Set once the password has been accepted but the account needs a second
+   * factor. Holding it here keeps the challenge in memory only - it is never
+   * written to storage.
+   */
+  const [challengeToken, setChallengeToken] = useState<string | null>(null);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
 
   const {
     register,
@@ -33,9 +41,26 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     try {
       setIsSubmitting(true);
-      await login(data);
+      const challenge = await login(data);
+      if (challenge) setChallengeToken(challenge.challengeToken);
     } catch {
       // Error handled by AuthContext toast
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const onVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!challengeToken) return;
+
+    try {
+      setIsSubmitting(true);
+      await verifyTwoFactor(challengeToken, twoFactorCode.trim());
+    } catch {
+      // A rejected code may also mean the 5 minute challenge expired; the toast
+      // from the context says which, and the user can step back to retry.
+      setTwoFactorCode('');
     } finally {
       setIsSubmitting(false);
     }
@@ -64,7 +89,59 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Login Form Card */}
+        {/* Two-Factor Challenge */}
+        {challengeToken ? (
+          <div className="bg-warm-surface border border-warm-border/80 shadow-warmLg p-6 sm:p-8 space-y-5 rounded-none">
+            <div className="flex items-start gap-2.5">
+              <div className="p-1.5 bg-warm-accentLight text-warm-accent shrink-0">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-warm-text uppercase tracking-wider">
+                  Two-Factor Verification
+                </h2>
+                <p className="text-xs text-warm-textMuted mt-0.5">
+                  Enter the 6-digit code from your authenticator app, or one of your recovery codes.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={onVerify} className="space-y-4">
+              <Input
+                label="Authentication Code"
+                value={twoFactorCode}
+                onChange={(e) => setTwoFactorCode(e.target.value)}
+                placeholder="000000"
+                autoComplete="one-time-code"
+                autoFocus
+                required
+              />
+
+              <Button
+                type="submit"
+                className="w-full h-11 text-sm font-semibold"
+                isLoading={isSubmitting || isLoading}
+                disabled={twoFactorCode.trim().length < 6}
+                rightIcon={<ArrowRight className="w-4 h-4" />}
+              >
+                Verify &amp; Continue
+              </Button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setChallengeToken(null);
+                  setTwoFactorCode('');
+                }}
+                className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-warm-textMuted hover:text-warm-accent"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Back to sign in
+              </button>
+            </form>
+          </div>
+        ) : (
+        /* Login Form Card */
         <div className="bg-warm-surface border border-warm-border/80 shadow-warmLg p-6 sm:p-8 space-y-5 rounded-none">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <Input
@@ -115,6 +192,7 @@ export default function LoginPage() {
             </p>
           </div>
         </div>
+        )}
 
         {/* Footer Link */}
         <p className="text-center text-xs text-warm-textMuted">

@@ -183,7 +183,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
             notes: defaultsData.notes ?? '',
             terms: defaultsData.terms ?? ''
           });
-          setItems([createEmptyItem(defaultsData.defaultTaxRate)]);
+          setItems([createEmptyItem(defaultsData.defaultTaxRate, defaultsData.defaultUnit)]);
         }
       } catch (error) {
         if (!cancelled) toast.error(apiErrorMessage(error, 'Could not load the invoice form'));
@@ -229,7 +229,12 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
           discountPercent: item.discountPercent,
           taxRate: item.taxRate
         })),
-        { isIgst, enableRoundOff: defaults?.enableRoundOff ?? true }
+        {
+          isIgst,
+          enableRoundOff: defaults?.enableRoundOff ?? true,
+          gstEnabled: defaults?.gstEnabled ?? true,
+          pricesIncludeTax: defaults?.pricesIncludeTax ?? false
+        }
       ),
     [items, isIgst, defaults]
   );
@@ -723,22 +728,26 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
             />
           </div>
 
-          <div className="pt-2 border-t border-warm-border/40">
-            <label className="flex items-center gap-2.5 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={form.isReverseCharge}
-                onChange={(e) => setForm((prev) => ({ ...prev, isReverseCharge: e.target.checked }))}
-                className="w-4 h-4 rounded-none border-warm-border text-warm-accent focus:ring-warm-accent"
-              />
-              <span className="text-xs font-medium text-warm-text">
-                Tax Payable on Reverse Charge (RCM)
-              </span>
-            </label>
-            <p className="text-[11px] text-warm-textSubtle ml-6 mt-0.5">
-              Check if the recipient is liable to pay tax under GST reverse charge mechanism.
-            </p>
-          </div>
+          {(defaults?.enableReverseCharge ?? true) && (defaults?.gstEnabled ?? true) && (
+            <div className="pt-2 border-t border-warm-border/40">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={form.isReverseCharge}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, isReverseCharge: e.target.checked }))
+                  }
+                  className="w-4 h-4 rounded-none border-warm-border text-warm-accent focus:ring-warm-accent"
+                />
+                <span className="text-xs font-medium text-warm-text">
+                  Tax Payable on Reverse Charge (RCM)
+                </span>
+              </label>
+              <p className="text-[11px] text-warm-textSubtle ml-6 mt-0.5">
+                Check if the recipient is liable to pay tax under GST reverse charge mechanism.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -777,6 +786,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
           units={reference?.units ?? ['PCS', 'BOX', 'KGS', 'MTR', 'NOS', 'SET', 'UNIT', 'BAG']}
           showHsn={defaults?.showHsnColumn ?? true}
           showDiscount={defaults?.showDiscount ?? true}
+          pricesIncludeTax={defaults?.pricesIncludeTax ?? false}
           disabled={isLocked}
           errors={itemErrors}
         />
