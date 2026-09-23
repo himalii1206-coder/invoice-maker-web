@@ -157,7 +157,7 @@ export function CustomerSelect({
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search customers..."
-                  className="w-full h-9 pl-8 pr-8 bg-warm-input text-warm-text placeholder:text-warm-textSubtle text-sm rounded-none border border-warm-border/60 focus:outline-none focus:ring-2 focus:ring-warm-accent/40 focus:border-warm-accent"
+                  className="w-full h-9 pl-8 pr-8 bg-warm-input text-warm-text placeholder:text-warm-placeholder text-sm rounded-none border border-warm-border/60 focus:outline-none focus:ring-2 focus:ring-warm-accent/40 focus:border-warm-accent"
                 />
                 {search && (
                   <button

@@ -6,16 +6,38 @@
 
 :root {
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --warm-bg: #f7f4ef;
+  --warm-surface: #ffffff;
+  --warm-input: #f0ebe1;
+  --warm-border: #e6dfd5;
+  --warm-border-light: #f3ede5;
+  --warm-text: #2b180d;
+  --warm-text-muted: #6b5a4e;
+  --warm-text-subtle: #8c7d72;
+  --warm-placeholder: #85776a;
+  --warm-accent: #7c4a27;
+  --warm-accent-hover: #5c3519;
+  --warm-accent-light: #f3ede4;
+  --warm-accent-subtle: #eae0d2;
 }
 
 * {
   border-radius: 0px !important;
 }
 
+/* Ensure all input & textarea placeholders are clear and slightly darker */
+::placeholder,
+input::placeholder,
+textarea::placeholder,
+select::placeholder {
+  color: var(--warm-placeholder, #85776a) !important;
+  opacity: 1 !important;
+}
+
 body {
   font-family: var(--font-sans);
-  background-color: #f7f4ef;
-  color: #2b180d;
+  background-color: var(--warm-bg);
+  color: var(--warm-text);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
@@ -27,41 +49,43 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f7f4ef;
+  background: var(--warm-bg);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #e6dfd5;
+  background: var(--warm-border);
   border-radius: 0px !important;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #6b5a4e;
+  background: var(--warm-text-muted);
 }
 
 /* Toastify custom warm sharp styles */
 .Toastify__toast {
   border-radius: 0px !important;
   font-family: var(--font-sans) !important;
-  box-shadow: 0 4px 12px rgba(43, 24, 13, 0.08) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+  background-color: var(--warm-surface) !important;
+  color: var(--warm-text) !important;
 }
 
 .Toastify__toast--success {
-  background-color: #ffffff !important;
-  color: #2b180d !important;
+  background-color: var(--warm-surface) !important;
+  color: var(--warm-text) !important;
   border-left: 4px solid #047857 !important;
 }
 
 .Toastify__toast--error {
-  background-color: #ffffff !important;
-  color: #2b180d !important;
+  background-color: var(--warm-surface) !important;
+  color: var(--warm-text) !important;
   border-left: 4px solid #b91c1c !important;
 }
 
 .Toastify__toast--info {
-  background-color: #ffffff !important;
-  color: #2b180d !important;
-  border-left: 4px solid #7c4a27 !important;
+  background-color: var(--warm-surface) !important;
+  color: var(--warm-text) !important;
+  border-left: 4px solid var(--warm-accent) !important;
 }
 
 .notification-badge {

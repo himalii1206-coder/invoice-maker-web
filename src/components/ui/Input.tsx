@@ -59,7 +59,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             type={computedType}
             disabled={disabled}
             className={cn(
-              'w-full h-10 px-3.5 bg-warm-input text-warm-text placeholder:text-warm-textSubtle text-sm rounded-none border border-warm-border/60 transition-colors focus:outline-none focus:ring-2 focus:ring-warm-accent/40 focus:border-warm-accent disabled:opacity-60 disabled:cursor-not-allowed',
+              'w-full h-10 px-3.5 bg-warm-input text-warm-text placeholder:text-warm-placeholder text-sm rounded-none border border-warm-border/60 transition-colors focus:outline-none focus:ring-2 focus:ring-warm-accent/40 focus:border-warm-accent disabled:opacity-60 disabled:cursor-not-allowed',
               leftIcon && 'pl-9',
               (rightIcon || isPasswordType) && 'pr-10',
               error && 'border-red-500 focus:ring-red-500/40 focus:border-red-500',

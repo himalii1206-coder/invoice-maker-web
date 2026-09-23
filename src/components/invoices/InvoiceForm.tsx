@@ -393,7 +393,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
 
         await invoicesApi.update(invoice.id, body);
         toast.success('Invoice updated successfully');
-        router.push(`/invoices/${invoice.id}`);
+        router.push(`/invoices/${invoice.id}?preview=true`);
         return;
       }
 
@@ -401,7 +401,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
       toast.success(
         status === 'SENT' ? 'Invoice created and marked as sent' : 'Invoice saved as draft'
       );
-      router.push(`/invoices/${created.id}`);
+      router.push(`/invoices/${created.id}?preview=true`);
     } catch (error) {
       toast.error(apiErrorMessage(error, 'Could not save the invoice'));
     } finally {

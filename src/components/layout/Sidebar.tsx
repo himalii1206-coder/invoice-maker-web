@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
+import { Logo } from '@/components/ui/Logo';
 import {
   LayoutDashboard,
   FileText,
@@ -98,15 +99,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* Brand Header with Logo */}
         <div className="h-16 px-6 border-b border-warm-border/50 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="relative w-9 h-9 flex items-center justify-center">
-              <Image
-                src="/images/logo.png"
-                alt="InvoiceMaker Logo"
-                width={36}
-                height={36}
-                className="object-contain"
-                priority
-              />
+            <div className="relative w-8 h-8 flex items-center justify-center shrink-0">
+              <Logo className="w-8 h-8" size={32} />
             </div>
             <div>
               <span className="font-bold text-base text-warm-text tracking-tight block leading-none">

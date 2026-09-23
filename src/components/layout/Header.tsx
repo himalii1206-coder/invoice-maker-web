@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { getInitials } from '@/lib/utils';
 import { NotificationBell } from './NotificationBell';
+import { ThemeSelector } from './ThemeSelector';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Menu, Search, User as UserIcon, Settings, LogOut, ChevronDown } from 'lucide-react';
 
@@ -40,13 +41,14 @@ export function Header({ onOpenMobileSidebar }: HeaderProps) {
           <input
             type="text"
             placeholder="Search invoices, customers, products..."
-            className="w-full h-9 pl-9 pr-4 bg-warm-input/70 text-xs text-warm-text placeholder:text-warm-textSubtle rounded-none border border-warm-border/50 focus:outline-none focus:ring-2 focus:ring-warm-accent/40 focus:bg-warm-input transition-all"
+            className="w-full h-9 pl-9 pr-4 bg-warm-input/70 text-xs text-warm-text placeholder:text-warm-placeholder rounded-none border border-warm-border/50 focus:outline-none focus:ring-2 focus:ring-warm-accent/40 focus:bg-warm-input transition-all"
           />
         </div>
       </div>
 
       {/* Right section: Quick actions & User menu */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5">
+        <ThemeSelector />
         <NotificationBell />
 
         {/* Vertical Divider */}

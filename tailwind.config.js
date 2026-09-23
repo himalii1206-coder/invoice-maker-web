@@ -19,18 +19,19 @@ module.exports = {
       },
       colors: {
         warm: {
-          bg: '#f7f4ef',
-          surface: '#ffffff',
-          input: '#f0ebe1',
-          border: '#e6dfd5',
-          borderLight: '#f3ede5',
-          text: '#2b180d',
-          textMuted: '#6b5a4e',
-          textSubtle: '#948375',
-          accent: '#7c4a27',
-          accentHover: '#5c3519',
-          accentLight: '#f3ede4',
-          accentSubtle: '#eae0d2'
+          bg: 'var(--warm-bg, #f7f4ef)',
+          surface: 'var(--warm-surface, #ffffff)',
+          input: 'var(--warm-input, #f0ebe1)',
+          border: 'var(--warm-border, #e6dfd5)',
+          borderLight: 'var(--warm-border-light, #f3ede5)',
+          text: 'var(--warm-text, #2b180d)',
+          textMuted: 'var(--warm-text-muted, #6b5a4e)',
+          textSubtle: 'var(--warm-text-subtle, #948375)',
+          placeholder: 'var(--warm-placeholder, #a89f91)',
+          accent: 'var(--warm-accent, #7c4a27)',
+          accentHover: 'var(--warm-accent-hover, #5c3519)',
+          accentLight: 'var(--warm-accent-light, #f3ede4)',
+          accentSubtle: 'var(--warm-accent-subtle, #eae0d2)'
         },
         status: {
           paidBg: '#ecfdf5',

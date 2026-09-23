@@ -98,7 +98,7 @@ export const itemsFromInvoice = (
   });
 
 const cellInput =
-  'w-full h-9 px-2 bg-warm-input text-warm-text placeholder:text-warm-textSubtle text-sm rounded-none border border-warm-border/60 transition-colors focus:outline-none focus:ring-2 focus:ring-warm-accent/40 focus:border-warm-accent disabled:opacity-60 tabular-nums';
+  'w-full h-9 px-2 bg-warm-input text-warm-text placeholder:text-warm-placeholder text-sm rounded-none border border-warm-border/60 transition-colors focus:outline-none focus:ring-2 focus:ring-warm-accent/40 focus:border-warm-accent disabled:opacity-60 tabular-nums';
 
 export function InvoiceItemsEditor({
   items,

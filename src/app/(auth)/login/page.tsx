@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { Logo } from '@/components/ui/Logo';
 import { Mail, Lock, ArrowRight, ShieldCheck, ArrowLeft } from 'lucide-react';
 
 const loginSchema = z.object({
@@ -72,14 +73,7 @@ export default function LoginPage() {
         {/* Brand Logo & Header */}
         <div className="text-center space-y-2">
           <div className="inline-flex items-center justify-center mb-2">
-            <Image
-              src="/images/logo.png"
-              alt="InvoiceMaker Logo"
-              width={52}
-              height={52}
-              className="object-contain"
-              priority
-            />
+            <Logo className="w-12 h-12" size={48} />
           </div>
           <h1 className="text-2xl font-bold text-warm-text tracking-tight">
             Sign in to InvoiceMaker
@@ -154,27 +148,15 @@ export default function LoginPage() {
               {...register('email')}
             />
 
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-semibold uppercase tracking-wider text-warm-textMuted">
-                  Password
-                </span>
-                <Link
-                  href="/forgot-password"
-                  className="text-xs font-semibold text-warm-accent hover:underline"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-              <Input
-                type="password"
-                placeholder="Enter your password"
-                leftIcon={<Lock className="w-4 h-4" />}
-                error={errors.password?.message}
-                required
-                {...register('password')}
-              />
-            </div>
+            <Input
+              label="Password"
+              type="password"
+              placeholder="Enter your password"
+              leftIcon={<Lock className="w-4 h-4" />}
+              error={errors.password?.message}
+              required
+              {...register('password')}
+            />
 
             <Button
               type="submit"
@@ -184,13 +166,16 @@ export default function LoginPage() {
             >
               Sign In to Account
             </Button>
-          </form>
 
-          <div className="p-3 bg-warm-accentLight/50 border border-warm-border/40 text-center rounded-none">
-            <p className="text-[11px] font-semibold text-warm-textMuted">
-              New to InvoiceMaker? Register your business in 30 seconds.
-            </p>
-          </div>
+            <div className="text-center pt-1">
+              <Link
+                href="/forgot-password"
+                className="text-xs font-semibold text-warm-accent hover:underline inline-block"
+              >
+                Forgot password?
+              </Link>
+            </div>
+          </form>
         </div>
         )}
 

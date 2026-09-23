@@ -474,3 +474,72 @@ export async function lookupPincode(pincode: string): Promise<PincodeLookupResul
     return null;
   }
 }
+
+/**
+ * Validates whether a 6-digit PIN code matches the selected State and optional City.
+ * If there is a mismatch, returns a clear error message specifically for the PIN code field.
+ */
+export async function verifyPincodeMatch(
+  pincode: string,
+  selectedState: string,
+  selectedCity?: string
+): Promise<{ isValid: boolean; error?: string; resolvedState?: string; resolvedCity?: string; resolvedDistrict?: string }> {
+  const cleanPin = (pincode || '').replace(/\D/g, '').slice(0, 6);
+  if (!cleanPin || cleanPin.length !== 6) {
+    return { isValid: false, error: 'PIN code must be a 6-digit number' };
+  }
+
+  const info = await lookupPincode(cleanPin);
+  if (!info) {
+    return { isValid: false, error: 'Invalid PIN code (not found in postal records)' };
+  }
+
+  const normSelectedState = normalizeStateName(selectedState).toLowerCase();
+  const normResolvedState = normalizeStateName(info.state).toLowerCase();
+
+  if (normSelectedState && normResolvedState && normSelectedState !== normResolvedState) {
+    return {
+      isValid: false,
+      error: `PIN code ${cleanPin} belongs to ${info.state}, not ${normalizeStateName(selectedState)}`,
+      resolvedState: info.state,
+      resolvedCity: info.city,
+      resolvedDistrict: info.district
+    };
+  }
+
+  if (selectedCity && selectedCity.trim()) {
+    const normCity = selectedCity.trim().toLowerCase();
+    const normResolvedCity = (info.city || '').toLowerCase();
+    const normDistrict = (info.district || '').toLowerCase();
+    const poMatches = (info.postOffices || []).some(
+      (po) => po.toLowerCase().includes(normCity) || normCity.includes(po.toLowerCase())
+    );
+
+    const isCityMatched =
+      normCity === normResolvedCity ||
+      normCity.includes(normResolvedCity) ||
+      normResolvedCity.includes(normCity) ||
+      normCity === normDistrict ||
+      normCity.includes(normDistrict) ||
+      normDistrict.includes(normCity) ||
+      poMatches;
+
+    if (!isCityMatched) {
+      const locationLabel = info.district || info.city || info.state;
+      return {
+        isValid: false,
+        error: `PIN code ${cleanPin} belongs to ${locationLabel}, not ${selectedCity.trim()}`,
+        resolvedState: info.state,
+        resolvedCity: info.city,
+        resolvedDistrict: info.district
+      };
+    }
+  }
+
+  return {
+    isValid: true,
+    resolvedState: info.state,
+    resolvedCity: info.city,
+    resolvedDistrict: info.district
+  };
+}

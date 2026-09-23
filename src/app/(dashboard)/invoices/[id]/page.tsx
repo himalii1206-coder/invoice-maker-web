@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'react-toastify';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -15,6 +15,7 @@ import { InvoiceTotals } from '@/components/invoices/InvoiceTotals';
 import { InvoiceActivityFeed } from '@/components/invoices/InvoiceActivityFeed';
 import { RecordPaymentModal } from '@/components/invoices/RecordPaymentModal';
 import { SendInvoiceModal } from '@/components/invoices/SendInvoiceModal';
+import { PdfPreviewModal } from '@/components/invoices/PdfPreviewModal';
 import {
   invoicesApi,
   toNumber,
@@ -31,6 +32,7 @@ import {
   Copy,
   Download,
   Printer,
+  Eye,
   Mail,
   BellRing,
   Ban,
@@ -46,6 +48,7 @@ import {
 export default function InvoiceDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const invoiceId = params?.id;
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -55,10 +58,17 @@ export default function InvoiceDetailPage() {
   const [activityKey, setActivityKey] = useState(0);
 
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [emailMode, setEmailMode] = useState<'invoice' | 'reminder' | null>(null);
   const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get('preview') === 'true') {
+      setIsPreviewOpen(true);
+    }
+  }, [searchParams]);
 
   // ---------------------------------------------------------------------------
   // Data
@@ -312,6 +322,16 @@ export default function InvoiceDetailPage() {
             Record Payment
           </Button>
         )}
+
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setIsPreviewOpen(true)}
+          leftIcon={<Eye className="w-3.5 h-3.5 text-blue-600" />}
+          className="bg-blue-50/70 hover:bg-blue-100/70 text-blue-900 border-blue-200/80 font-medium shadow-2xs"
+        >
+          Preview PDF
+        </Button>
 
         <Button
           variant="secondary"
@@ -760,6 +780,12 @@ export default function InvoiceDetailPage() {
       </div>
 
       {/* Modals */}
+      <PdfPreviewModal
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        invoice={invoice}
+      />
+
       <RecordPaymentModal
         isOpen={isPaymentOpen}
         onClose={() => setIsPaymentOpen(false)}

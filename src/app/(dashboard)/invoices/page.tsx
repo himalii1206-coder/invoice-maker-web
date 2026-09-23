@@ -42,6 +42,7 @@ import {
   Plus,
   Search,
   Eye,
+  MoreVertical,
   Pencil,
   Copy,
   Download,
@@ -120,10 +121,26 @@ export default function InvoicesPage() {
   const debouncedSearch = useDebounce(search, 400);
 
   // Row actions
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState<InvoiceListRow | null>(null);
   const [deleting, setDeleting] = useState<InvoiceListRow | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [isActionBusy, setIsActionBusy] = useState(false);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.row-action-menu')) {
+        setOpenMenuId(null);
+      }
+    };
+    if (openMenuId) {
+      document.addEventListener('click', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('click', handleOutsideClick);
+    };
+  }, [openMenuId]);
 
   // ---------------------------------------------------------------------------
   // Data
@@ -487,62 +504,104 @@ export default function InvoicesPage() {
                     <InvoiceStatusBadge status={invoice.status} />
                   </TableCell>
 
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-0.5">
+                  <TableCell className="text-right">
+                    <div className="relative inline-flex items-center justify-end gap-1.5 row-action-menu">
                       <Link
                         href={`/invoices/${invoice.id}`}
                         title="View invoice"
-                        className="p-1.5 text-warm-textMuted hover:text-warm-accent hover:bg-warm-accentLight transition-colors"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-warm-text bg-warm-input/50 hover:bg-warm-accent hover:text-white border border-warm-border/60 transition-colors"
                       >
-                        <Eye className="w-4 h-4" />
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>View</span>
                       </Link>
 
-                      {invoice.status !== 'CANCELLED' && (
-                        <Link
-                          href={`/invoices/${invoice.id}/edit`}
-                          title="Edit invoice"
-                          className="p-1.5 text-warm-textMuted hover:text-warm-accent hover:bg-warm-accentLight transition-colors"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Link>
-                      )}
-
                       <button
-                        title="Duplicate as draft"
-                        disabled={isBusy}
-                        onClick={() => handleDuplicate(invoice)}
-                        className="p-1.5 text-warm-textMuted hover:text-warm-accent hover:bg-warm-accentLight transition-colors disabled:opacity-40"
+                        type="button"
+                        title="More options"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(openMenuId === invoice.id ? null : invoice.id);
+                        }}
+                        className={cn(
+                          'p-1 text-warm-textMuted hover:text-warm-text hover:bg-warm-input border border-warm-border/60 transition-colors',
+                          openMenuId === invoice.id && 'bg-warm-input text-warm-text'
+                        )}
                       >
-                        <Copy className="w-4 h-4" />
+                        <MoreVertical className="w-4 h-4" />
                       </button>
 
-                      <button
-                        title="Download PDF"
-                        disabled={isBusy}
-                        onClick={() => handleDownload(invoice)}
-                        className="p-1.5 text-warm-textMuted hover:text-warm-accent hover:bg-warm-accentLight transition-colors disabled:opacity-40"
-                      >
-                        <Download className="w-4 h-4" />
-                      </button>
-
-                      {invoice.status === 'DRAFT' ? (
-                        <button
-                          title="Delete draft"
-                          onClick={() => setDeleting(invoice)}
-                          className="p-1.5 text-warm-textMuted hover:text-red-600 hover:bg-red-50 transition-colors"
+                      {openMenuId === invoice.id && (
+                        <div
+                          className="absolute right-0 top-full mt-1 w-44 bg-warm-surface border border-warm-border/80 shadow-warmLg z-50 py-1 text-left animate-in fade-in zoom-in-95 duration-150"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      ) : (
-                        invoice.status !== 'CANCELLED' && (
+                          {invoice.status !== 'CANCELLED' && (
+                            <Link
+                              href={`/invoices/${invoice.id}/edit`}
+                              onClick={() => setOpenMenuId(null)}
+                              className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-warm-text hover:bg-warm-input transition-colors"
+                            >
+                              <Pencil className="w-3.5 h-3.5 text-warm-textMuted" />
+                              <span>Edit Invoice</span>
+                            </Link>
+                          )}
+
                           <button
-                            title="Cancel invoice"
-                            onClick={() => setCancelling(invoice)}
-                            className="p-1.5 text-warm-textMuted hover:text-red-600 hover:bg-red-50 transition-colors"
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => {
+                              setOpenMenuId(null);
+                              handleDownload(invoice);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-warm-text hover:bg-warm-input transition-colors disabled:opacity-40"
                           >
-                            <Ban className="w-4 h-4" />
+                            <Download className="w-3.5 h-3.5 text-warm-textMuted" />
+                            <span>Download PDF</span>
                           </button>
-                        )
+
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => {
+                              setOpenMenuId(null);
+                              handleDuplicate(invoice);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-warm-text hover:bg-warm-input transition-colors disabled:opacity-40"
+                          >
+                            <Copy className="w-3.5 h-3.5 text-warm-textMuted" />
+                            <span>Duplicate as Draft</span>
+                          </button>
+
+                          <div className="h-px bg-warm-border/60 my-1" />
+
+                          {invoice.status === 'DRAFT' ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                setDeleting(invoice);
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                              <span>Delete Draft</span>
+                            </button>
+                          ) : (
+                            invoice.status !== 'CANCELLED' && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  setCancelling(invoice);
+                                }}
+                                className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 transition-colors"
+                              >
+                                <Ban className="w-3.5 h-3.5 text-red-500" />
+                                <span>Cancel Invoice</span>
+                              </button>
+                            )
+                          )}
+                        </div>
                       )}
                     </div>
                   </TableCell>

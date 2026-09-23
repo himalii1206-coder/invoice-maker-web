@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { Logo } from '@/components/ui/Logo';
 import { teamApi, InviteDetails, ROLE_LABELS } from '@/lib/team';
 import { getApiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -96,14 +97,7 @@ function AcceptInviteContent() {
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
           <div className="inline-flex items-center justify-center mb-2">
-            <Image
-              src="/images/logo.png"
-              alt="InvoiceMaker Logo"
-              width={52}
-              height={52}
-              className="object-contain"
-              priority
-            />
+            <Logo className="w-12 h-12" size={48} />
           </div>
           <h1 className="text-2xl font-bold text-warm-text tracking-tight">
             Team Invitation

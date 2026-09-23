@@ -59,7 +59,7 @@ export default function CompanyPage() {
         if (!isCurrent) return;
         setForm({
           name: data.name || '',
-          email: data.email || '',
+          email: data.email || user?.email || '',
           phone: data.phone || '',
           address: data.address || '',
           city: data.city || '',
@@ -85,6 +85,16 @@ export default function CompanyPage() {
       isCurrent = false;
     };
   }, []);
+
+  // Sync with registered user email if company email wasn't explicitly populated
+  useEffect(() => {
+    if (!form.email && user?.email) {
+      setForm((prev) => ({
+        ...prev,
+        email: prev.email || user.email
+      }));
+    }
+  }, [user?.email, form.email]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
