@@ -17,7 +17,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-warm-bg text-warm-text min-h-screen antialiased selection:bg-warm-accent/20 selection:text-warm-accent">
+      <body className="bg-warm-bg text-warm-text min-h-screen antialiased">
         <ThemeProvider>
           <AuthProvider>
             {children}

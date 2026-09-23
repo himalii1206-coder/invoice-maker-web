@@ -152,7 +152,6 @@ export interface InvoiceListRow {
   sentAt?: string | null;
   paidAt?: string | null;
   cancelledAt?: string | null;
-  recurringInvoiceId?: string | null;
   createdAt: string;
   updatedAt: string;
   customerId: string;
@@ -451,13 +450,6 @@ export interface InvoiceSettings {
   notifyBrowser: boolean;
   enableRoundOff: boolean;
   autoMarkOverdue: boolean;
-  remindersEnabled: boolean;
-  remindBeforeDays: number[];
-  remindOnDueDate: boolean;
-  remindAfterDays: number[];
-  reminderCcEmails?: string | null;
-  reminderSubject?: string | null;
-  reminderBody?: string | null;
   createdAt: string;
   updatedAt: string;
   /** Returned only by the update endpoint, so the UI can confirm the change. */

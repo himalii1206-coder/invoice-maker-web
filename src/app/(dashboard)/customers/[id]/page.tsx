@@ -34,10 +34,10 @@ import {
 function DetailItem({ label, value }: { label: string; value?: string | number | null }) {
   return (
     <div className="space-y-1">
-      <p className="text-xs font-semibold uppercase tracking-wider text-warm-textMuted">
+      <p className="text-[11px] font-medium uppercase tracking-wider text-warm-textSubtle">
         {label}
       </p>
-      <p className="text-sm font-medium text-warm-text break-words">
+      <p className="text-sm font-semibold text-warm-text break-words">
         {value !== null && value !== undefined && value !== '' ? String(value) : '—'}
       </p>
     </div>

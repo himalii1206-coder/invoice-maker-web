@@ -387,7 +387,7 @@ export function CustomerForm({ customer, isEdit: isEditProp = false, onSuccess }
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           <Input
-            label="Mob No."
+            label="Mobile Number"
             required={requirePhone}
             placeholder="Enter mobile number"
             leftIcon={<Phone className="w-4 h-4" />}
@@ -413,7 +413,7 @@ export function CustomerForm({ customer, isEdit: isEditProp = false, onSuccess }
           />
 
           <Input
-            label="Office No."
+            label="Office Phone"
             placeholder="Enter office or landline number"
             leftIcon={<PhoneCall className="w-4 h-4" />}
             error={errors.officeNo?.message}

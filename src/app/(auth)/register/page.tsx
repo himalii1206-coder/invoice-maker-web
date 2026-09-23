@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { toast } from 'react-toastify';
@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { Logo } from '@/components/ui/Logo';
-import { INDIAN_STATES, lookupPincode, verifyPincodeMatch, getCitiesForState } from '@/lib/geo';
+import { INDIAN_STATES, verifyPincodeMatch, getCitiesForState } from '@/lib/geo';
+import { cn } from '@/lib/utils';
 import {
   Mail,
   Lock,
@@ -20,12 +21,15 @@ import {
   ArrowLeft,
   CheckCircle2,
   Sparkles,
-  CreditCard,
   Hash,
   Landmark,
   ShieldCheck,
   Search,
-  Check
+  Check,
+  MapPin,
+  ChevronDown,
+  X,
+  Loader2
 } from 'lucide-react';
 
 const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
@@ -36,6 +40,10 @@ export default function RegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLookingUpIfsc, setIsLookingUpIfsc] = useState(false);
   const [cityList, setCityList] = useState<string[]>([]);
+  const [isLoadingCities, setIsLoadingCities] = useState(false);
+  const [isCityOpen, setIsCityOpen] = useState(false);
+  const [citySearchQuery, setCitySearchQuery] = useState('');
+  const cityDropdownRef = useRef<HTMLDivElement>(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -53,7 +61,7 @@ export default function RegisterPage() {
     phone: '',
     address: '',
     city: '',
-    state: 'Gujarat',
+    state: '',
     postalCode: '',
 
     // Step 3: Bank & Invoicing Defaults
@@ -77,18 +85,51 @@ export default function RegisterPage() {
   useEffect(() => {
     let isMounted = true;
     if (formData.state) {
-      getCitiesForState(formData.state).then((cities) => {
-        if (isMounted) {
-          setCityList(cities);
-        }
-      });
+      setIsLoadingCities(true);
+      getCitiesForState(formData.state)
+        .then((cities) => {
+          if (isMounted) {
+            setCityList(cities);
+          }
+        })
+        .finally(() => {
+          if (isMounted) setIsLoadingCities(false);
+        });
     } else {
       setCityList([]);
+      setIsLoadingCities(false);
     }
     return () => {
       isMounted = false;
     };
   }, [formData.state]);
+
+  // Close city dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (cityDropdownRef.current && !cityDropdownRef.current.contains(event.target as Node)) {
+        setIsCityOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Filter cities based on live search query
+  const filteredCities = useMemo(() => {
+    if (!citySearchQuery.trim()) return cityList;
+    return cityList.filter((c) =>
+      c.toLowerCase().includes(citySearchQuery.toLowerCase().trim())
+    );
+  }, [cityList, citySearchQuery]);
+
+  const handleSelectCity = (cityName: string) => {
+    handleCityChange(cityName);
+    setCitySearchQuery(cityName);
+    setIsCityOpen(false);
+  };
 
   const clearError = (field: string) => {
     setErrors((prev) => {
@@ -113,6 +154,7 @@ export default function RegisterPage() {
       const matchedState = INDIAN_STATES.find((s) => s.code === stateCode);
       if (matchedState) {
         extractedState = matchedState.name;
+        clearError('state');
       }
     }
 
@@ -164,6 +206,8 @@ export default function RegisterPage() {
   const handleStateChange = async (newState: string) => {
     clearError('state');
     setFormData((prev) => ({ ...prev, state: newState, city: '' }));
+    setCitySearchQuery('');
+    setIsCityOpen(false);
 
     if (formData.postalCode && formData.postalCode.length === 6) {
       const check = await verifyPincodeMatch(formData.postalCode, newState, '');
@@ -203,9 +247,7 @@ export default function RegisterPage() {
         setFormData((prev) => ({
           ...prev,
           bankName: data.BANK || prev.bankName,
-          branch: data.BRANCH || prev.branch,
-          city: data.CITY || prev.city,
-          state: data.STATE || prev.state
+          branch: data.BRANCH || prev.branch
         }));
         clearError('ifscCode');
         clearError('bankName');
@@ -646,10 +688,13 @@ export default function RegisterPage() {
 
                 <Select
                   label="Registered State"
-                  options={INDIAN_STATES.map((s) => ({
-                    value: s.name,
-                    label: `${s.code} — ${s.name}`
-                  }))}
+                  options={[
+                    { value: '', label: 'Select Registered State' },
+                    ...INDIAN_STATES.map((s) => ({
+                      value: s.name,
+                      label: `${s.code} — ${s.name}`
+                    }))
+                  ]}
                   value={formData.state}
                   error={errors.state}
                   onChange={(e) => handleStateChange(e.target.value)}
@@ -671,31 +716,170 @@ export default function RegisterPage() {
               />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {formData.state ? (
-                  <Select
-                    label="City"
-                    value={formData.city}
-                    error={errors.city}
-                    options={[
-                      { value: '', label: cityList.length > 0 ? 'Select City' : 'Select City' },
-                      ...cityList.map((c) => ({ value: c, label: c })),
-                      ...(formData.city && !cityList.includes(formData.city)
-                        ? [{ value: formData.city, label: formData.city }]
-                        : [])
-                    ]}
-                    onChange={(e) => handleCityChange(e.target.value)}
-                    required
-                  />
-                ) : (
-                  <Input
-                    label="City"
-                    placeholder="Select State first"
-                    value={formData.city}
-                    error={errors.city}
-                    disabled
-                    required
-                  />
-                )}
+                {/* Searchable City Selection */}
+                <div className="relative space-y-1.5" ref={cityDropdownRef}>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-warm-textMuted">
+                    City / Town <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-warm-textMuted">
+                      {isLoadingCities ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-warm-accent" />
+                      ) : (
+                        <MapPin className="w-4 h-4" />
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      placeholder={
+                        !formData.state
+                          ? 'Select State first'
+                          : isLoadingCities
+                            ? 'Loading cities...'
+                            : 'Search or type city (e.g. Surat)...'
+                      }
+                      value={isCityOpen ? citySearchQuery : formData.city}
+                      disabled={!formData.state}
+                      onFocus={() => {
+                        if (formData.state) {
+                          setCitySearchQuery(formData.city || '');
+                          setIsCityOpen(true);
+                        }
+                      }}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setCitySearchQuery(val);
+                        setIsCityOpen(true);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (filteredCities.length > 0) {
+                            handleSelectCity(filteredCities[0]);
+                          } else if (citySearchQuery.trim()) {
+                            handleSelectCity(citySearchQuery.trim());
+                          }
+                        } else if (e.key === 'Escape') {
+                          setIsCityOpen(false);
+                        }
+                      }}
+                      className={cn(
+                        'w-full h-10 pl-9 pr-14 bg-warm-input text-warm-text text-sm rounded-none border border-warm-border/60 transition-colors placeholder:text-warm-textSubtle focus:outline-none focus:ring-2 focus:ring-warm-accent/40 focus:border-warm-accent disabled:opacity-60 disabled:cursor-not-allowed',
+                        errors.city && 'border-red-500 focus:ring-red-500/40 focus:border-red-500'
+                      )}
+                      required
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center gap-1">
+                      {formData.city && !isCityOpen && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCityChange('');
+                            setCitySearchQuery('');
+                          }}
+                          className="text-warm-textMuted hover:text-warm-text p-1 rounded-xs transition-colors"
+                          title="Clear city"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        disabled={!formData.state}
+                        onClick={() => {
+                          if (formData.state) {
+                            if (!isCityOpen) setCitySearchQuery(formData.city || '');
+                            setIsCityOpen(!isCityOpen);
+                          }
+                        }}
+                        className="text-warm-textMuted hover:text-warm-text p-1 transition-colors"
+                      >
+                        <ChevronDown
+                          className={cn(
+                            'w-4 h-4 transition-transform duration-200',
+                            isCityOpen && 'rotate-180'
+                          )}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Searchable Dropdown Popup */}
+                  {isCityOpen && formData.state && (
+                    <div className="absolute z-50 left-0 right-0 mt-1 bg-warm-surface border border-warm-border shadow-lg max-h-56 overflow-y-auto divide-y divide-warm-border/40 animate-in fade-in zoom-in-95 duration-150">
+                      {/* Header with City Count & Quick Info */}
+                      <div className="px-3 py-1.5 bg-warm-bg/90 text-[11px] font-medium text-warm-textMuted flex items-center justify-between sticky top-0 backdrop-blur-xs border-b border-warm-border/60">
+                        <span className="flex items-center gap-1">
+                          <Search className="w-3 h-3 text-warm-accent" />
+                          {citySearchQuery.trim() ? (
+                            <span>
+                              {filteredCities.length} match{filteredCities.length === 1 ? '' : 'es'} in {formData.state}
+                            </span>
+                          ) : (
+                            <span>{cityList.length} cities in {formData.state}</span>
+                          )}
+                        </span>
+                        {citySearchQuery.trim() && (
+                          <span className="text-[10px] text-warm-accent">Press Enter to select</span>
+                        )}
+                      </div>
+
+                      {/* List of Filtered Cities */}
+                      <div className="py-1">
+                        {filteredCities.length > 0 ? (
+                          filteredCities.map((cityName) => {
+                            const isSelected = formData.city.toLowerCase() === cityName.toLowerCase();
+                            return (
+                              <button
+                                key={cityName}
+                                type="button"
+                                onClick={() => handleSelectCity(cityName)}
+                                className={cn(
+                                  'w-full text-left px-3 py-2 text-xs flex items-center justify-between transition-colors hover:bg-warm-accent/10 cursor-pointer',
+                                  isSelected && 'bg-warm-accent/15 font-semibold text-warm-accent'
+                                )}
+                              >
+                                <span className="flex items-center gap-2">
+                                  <MapPin className={cn('w-3.5 h-3.5', isSelected ? 'text-warm-accent' : 'text-warm-textMuted')} />
+                                  <span>{cityName}</span>
+                                </span>
+                                {isSelected && <Check className="w-3.5 h-3.5 text-warm-accent" />}
+                              </button>
+                            );
+                          })
+                        ) : (
+                          <div className="px-3 py-2.5 text-center text-xs text-warm-textMuted">
+                            <p>No predefined cities found matching &quot;{citySearchQuery}&quot;</p>
+                          </div>
+                        )}
+
+                        {/* Option to use custom typed city name if not found in list */}
+                        {citySearchQuery.trim() &&
+                          !cityList.some((c) => c.toLowerCase() === citySearchQuery.trim().toLowerCase()) && (
+                            <button
+                              type="button"
+                              onClick={() => handleSelectCity(citySearchQuery.trim())}
+                              className="w-full text-left px-3 py-2 text-xs text-warm-accent bg-warm-accent/5 hover:bg-warm-accent/15 font-medium border-t border-warm-border/60 flex items-center gap-2 cursor-pointer"
+                            >
+                              <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                              <span>Use <strong>&quot;{citySearchQuery.trim()}&quot;</strong> as custom city</span>
+                            </button>
+                          )}
+                      </div>
+                    </div>
+                  )}
+
+                  {errors.city ? (
+                    <p className="text-xs text-red-600 mt-1 font-medium">{errors.city}</p>
+                  ) : (
+                    <p className="text-[10px] text-warm-textSubtle">
+                      {cityList.length > 0
+                        ? `Type to search ${cityList.length} cities or enter your custom city`
+                        : 'Select a state to load cities'}
+                    </p>
+                  )}
+                </div>
                 <Input
                   label="PIN Code"
                   placeholder="Enter 6-digit PIN code"

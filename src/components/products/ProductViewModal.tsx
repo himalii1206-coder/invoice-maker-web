@@ -21,8 +21,8 @@ export interface ProductViewModalProps {
 function Field({ label, value }: { label: string; value?: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <p className="text-xs font-semibold uppercase tracking-wider text-warm-textMuted">{label}</p>
-      <div className="text-sm text-warm-text break-words font-medium">{value || '—'}</div>
+      <p className="text-[11px] font-medium uppercase tracking-wider text-warm-textSubtle">{label}</p>
+      <div className="text-sm text-warm-text break-words font-semibold">{value || '—'}</div>
     </div>
   );
 }
@@ -74,7 +74,7 @@ export function ProductViewModal({
       onClose={onClose}
       maxWidth="md"
       title="Product Details"
-      description="View product details."
+      // description="View product details."
     >
       {isLoading || !product ? (
         <LoadingState message="Loading product..." />

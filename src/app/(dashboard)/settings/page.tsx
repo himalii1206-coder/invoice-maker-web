@@ -107,8 +107,8 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       {
         id: 'email',
-        label: 'Email & Reminders',
-        description: 'Sender identity & automated payment reminders',
+        label: 'Email Dispatch',
+        description: 'Sender identity & outgoing SMTP status',
         icon: <Mail className="w-4 h-4" />
       },
       {
