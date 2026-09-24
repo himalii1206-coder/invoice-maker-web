@@ -10,6 +10,7 @@ import { Logo } from '@/components/ui/Logo';
 import {
   LayoutDashboard,
   FileText,
+  FileSpreadsheet,
   Users,
   Package,
   Building2,
@@ -42,6 +43,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       label: 'Sales',
       items: [
         { name: 'Tax Invoices', href: '/invoices', icon: FileText },
+        { name: 'Quotations', href: '/quotations', icon: FileSpreadsheet },
         { name: 'Customers', href: '/customers', icon: Users },
         { name: 'Products & Services', href: '/products', icon: Package }
       ]

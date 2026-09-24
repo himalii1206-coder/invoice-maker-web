@@ -143,6 +143,7 @@ export interface InvoiceListRow {
   cgstAmount: Decimalish;
   sgstAmount: Decimalish;
   igstAmount: Decimalish;
+  extraCharges?: Decimalish;
   roundOff: Decimalish;
   grandTotal: Decimalish;
   amountPaid: Decimalish;
@@ -156,6 +157,15 @@ export interface InvoiceListRow {
   updatedAt: string;
   customerId: string;
   customer: InvoiceCustomerRef;
+  quotations?: Array<{
+    id: string;
+    quotationNumber: string;
+    quotationDate?: string;
+    status: string;
+    subject?: string | null;
+    inquiryNumber?: string | null;
+    grandTotal?: Decimalish;
+  }>;
   _count?: { payments: number };
 }
 
@@ -205,6 +215,7 @@ export interface InvoiceItemPayload {
 
 export interface InvoicePayload {
   customerId: string;
+  quotationId?: string | null;
   invoiceNumber?: string;
   billType?: string;
   issueDate?: string;
@@ -223,6 +234,7 @@ export interface InvoicePayload {
   currency?: string;
   placeOfSupply?: string;
   isReverseCharge?: boolean;
+  extraCharges?: number;
   notes?: string;
   terms?: string;
   internalNotes?: string;

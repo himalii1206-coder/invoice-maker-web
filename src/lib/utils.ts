@@ -31,3 +31,12 @@ export function getInitials(firstName?: string, lastName?: string): string {
   const l = lastName?.[0] || '';
   return (f + l).toUpperCase() || 'U';
 }
+
+export function formatGstin(val?: string | null): string {
+  if (!val) return '';
+  const str = String(val).trim();
+  if (str.startsWith('enc:v1:')) {
+    return '';
+  }
+  return str;
+}

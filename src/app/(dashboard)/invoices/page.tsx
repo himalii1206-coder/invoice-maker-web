@@ -409,9 +409,21 @@ export default function InvoicesPage() {
                       >
                         {invoice.invoiceNumber}
                       </Link>
-                      <span className="inline-block text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.2 bg-warm-accentLight/80 text-warm-accent border border-warm-accent/20">
-                        {formattedBillType}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <span className="inline-block text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.2 bg-warm-accentLight/80 text-warm-accent border border-warm-accent/20">
+                          {formattedBillType}
+                        </span>
+                        {invoice.quotations && invoice.quotations.length > 0 && (
+                          <Link
+                            href={`/quotations/${invoice.quotations[0].id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-0.5 text-[10px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 px-1.5 py-0.2 border border-purple-200 transition-colors"
+                            title={`Converted from Quotation ${invoice.quotations[0].quotationNumber}`}
+                          >
+                            <span>From {invoice.quotations[0].quotationNumber}</span>
+                          </Link>
+                        )}
+                      </div>
                     </div>
                     <span className="block text-[11px] text-warm-textMuted md:hidden mt-1 truncate max-w-[160px]">
                       {invoice.billingName}
@@ -455,18 +467,26 @@ export default function InvoicesPage() {
                   </TableCell>
 
                   <TableCell className="hidden sm:table-cell text-right">
-                    <span
-                      className={cn(
-                        'font-semibold tabular-nums text-sm',
-                        balance > 0 ? 'text-red-700' : 'text-emerald-700'
-                      )}
-                    >
-                      {formatCurrency(balance)}
-                    </span>
-                    {toNumber(invoice.amountPaid) > 0 && (
-                      <span className="block text-[11px] text-warm-textSubtle">
-                        paid {formatCurrency(toNumber(invoice.amountPaid))}
+                    {invoice.status === 'CANCELLED' ? (
+                      <span className="text-warm-textSubtle text-sm font-normal">
+                        —
                       </span>
+                    ) : (
+                      <>
+                        <span
+                          className={cn(
+                            'font-semibold tabular-nums text-sm',
+                            balance > 0 ? 'text-red-700' : 'text-emerald-700'
+                          )}
+                        >
+                          {formatCurrency(balance)}
+                        </span>
+                        {toNumber(invoice.amountPaid) > 0 && (
+                          <span className="block text-[11px] text-warm-textSubtle">
+                            paid {formatCurrency(toNumber(invoice.amountPaid))}
+                          </span>
+                        )}
+                      </>
                     )}
                   </TableCell>
 

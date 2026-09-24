@@ -105,6 +105,7 @@ export interface Customer {
   updatedAt: string;
   /** Only returned by the single-customer endpoint. */
   invoiceCount?: number;
+  quotationCount?: number;
 }
 
 export interface CustomerPayload {
@@ -213,4 +214,5 @@ export interface ProductListParams {
 }
 
 export * from './purchase';
+export * from './quotation';
 

@@ -13,6 +13,7 @@ export interface InvoiceTotalsProps {
   totals: PreviewTotals;
   isIgst: boolean;
   currency?: string;
+  extraCharges?: number;
   /** Settlement rows, shown only on a saved invoice. */
   amountPaid?: number;
   creditNoteTotal?: number;
@@ -24,6 +25,8 @@ export interface InvoiceTotalsProps {
 export function InvoiceTotals({
   totals,
   isIgst,
+  currency,
+  extraCharges,
   amountPaid,
   creditNoteTotal,
   debitNoteTotal,
@@ -31,6 +34,7 @@ export function InvoiceTotals({
   className
 }: InvoiceTotalsProps) {
   const rateRows = buildRateBreakdown(totals.lines);
+  const effectiveExtraCharges = extraCharges ?? totals.extraCharges ?? 0;
   const hasSettlement = amountPaid !== undefined || balanceDue !== undefined;
 
   const Row = ({
@@ -120,6 +124,10 @@ export function InvoiceTotals({
               );
             })}
           </div>
+        )}
+
+        {effectiveExtraCharges > 0 && (
+          <Row label="Extra Charges" value={effectiveExtraCharges} />
         )}
 
         {totals.roundOff !== 0 && (

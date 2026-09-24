@@ -44,6 +44,7 @@ export interface PreviewTotals {
   sgstAmount: number;
   igstAmount: number;
   taxAmount: number;
+  extraCharges?: number;
   roundOff: number;
   grandTotal: number;
   lines: PreviewLine[];
@@ -147,9 +148,10 @@ export const computeLine = (
 
 export const computeTotals = (
   lines: PreviewLineInput[],
-  options: { isIgst: boolean; enableRoundOff?: boolean } & PreviewTaxMode
+  options: { isIgst: boolean; enableRoundOff?: boolean; extraCharges?: number } & PreviewTaxMode
 ): PreviewTotals => {
-  const { isIgst, enableRoundOff = true, gstEnabled, pricesIncludeTax } = options;
+  const { isIgst, enableRoundOff = true, gstEnabled, pricesIncludeTax, extraCharges = 0 } = options;
+  const extraPaise = toPaise(Math.max(0, extraCharges));
   const computed = lines.map((line) => computeLine(line, isIgst, { gstEnabled, pricesIncludeTax }));
 
   // Totals sum the rounded line values, never the raw products.
@@ -174,7 +176,7 @@ export const computeTotals = (
     }
   );
 
-  const beforeRoundOff = acc.taxableAmount + acc.taxAmount;
+  const beforeRoundOff = acc.taxableAmount + acc.taxAmount + extraPaise;
   const rounded = enableRoundOff ? Math.round(beforeRoundOff / 100) * 100 : beforeRoundOff;
 
   return {
@@ -186,6 +188,7 @@ export const computeTotals = (
     sgstAmount: fromPaise(acc.sgstAmount),
     igstAmount: fromPaise(acc.igstAmount),
     taxAmount: fromPaise(acc.taxAmount),
+    extraCharges: fromPaise(extraPaise),
     roundOff: fromPaise(rounded - beforeRoundOff),
     grandTotal: fromPaise(rounded)
   };

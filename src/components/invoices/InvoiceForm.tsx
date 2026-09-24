@@ -10,16 +10,20 @@ import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { CustomerSelect } from '@/components/customers/CustomerSelect';
+import { QuotationSelect } from '@/components/quotations/QuotationSelect';
 import { InvoiceItemsEditor, EditorItem, createEmptyItem, itemsFromInvoice } from './InvoiceItemsEditor';
 import { InvoiceTotals } from './InvoiceTotals';
 import { computeTotals, isInterState, stripStateCode } from '@/lib/gst';
 import { invoicesApi, invoiceSettingsApi, toDateInput } from '@/lib/invoices';
-import { customersApi, apiErrorMessage } from '@/lib/customers';
+import { quotationsApi } from '@/lib/quotations';
+import { toNumber } from '@/lib/products';
+import { apiErrorMessage, customersApi } from '@/lib/customers';
 import { Customer } from '@/types/index';
-import { Invoice, InvoiceCustomerRef, InvoiceDefaults, InvoiceReferenceData } from '@/types/invoice';
-import { cn } from '@/lib/utils';
+import { Invoice, InvoiceDefaults, InvoiceReferenceData } from '@/types/invoice';
+import { Quotation } from '@/types/quotation';
+import { cn, formatCurrency, formatGstin } from '@/lib/utils';
 import { INDIAN_STATES, normalizeStateName } from '@/lib/geo';
-import { Save, Send, X, AlertTriangle, MapPin } from 'lucide-react';
+import { Save, Send, X, AlertTriangle, MapPin, FileSpreadsheet } from 'lucide-react';
 
 /**
  * Create / edit form for an invoice.
@@ -53,6 +57,7 @@ interface FormState {
   paymentTerms: string;
   placeOfSupply: string;
   isReverseCharge: boolean;
+  extraCharges: string;
   notes: string;
   terms: string;
   internalNotes: string;
@@ -77,6 +82,7 @@ const EMPTY_FORM: FormState = {
   paymentTerms: '',
   placeOfSupply: '',
   isReverseCharge: false,
+  extraCharges: '0',
   notes: '',
   terms: '',
   internalNotes: ''
@@ -111,12 +117,13 @@ const PAYMENT_TERMS_PRESETS = [
 export function InvoiceForm({ invoice }: InvoiceFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const customerIdParam = searchParams?.get('customerId') || undefined;
   const isEdit = Boolean(invoice);
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [items, setItems] = useState<EditorItem[]>([]);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | InvoiceCustomerRef | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedQuotationId, setSelectedQuotationId] = useState<string>('');
+  const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
 
   const [defaults, setDefaults] = useState<InvoiceDefaults | null>(null);
   const [reference, setReference] = useState<InvoiceReferenceData | null>(null);
@@ -172,35 +179,15 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
             paymentTerms: invoice.paymentTerms ?? '',
             placeOfSupply: invoice.placeOfSupply ?? '',
             isReverseCharge: invoice.isReverseCharge,
+            extraCharges: invoice.extraCharges ? String(invoice.extraCharges) : '0',
             notes: invoice.notes ?? '',
             terms: invoice.terms ?? '',
             internalNotes: invoice.internalNotes ?? ''
           });
-          if (invoice.customer) {
-            setSelectedCustomer(invoice.customer);
-          }
           setItems(itemsFromInvoice(invoice.items));
         } else {
-          let preloadedCustomer: Customer | null = null;
-          if (customerIdParam) {
-            try {
-              preloadedCustomer = await customersApi.getById(customerIdParam);
-            } catch {
-              preloadedCustomer = null;
-            }
-          }
-
-          if (cancelled) return;
-
-          if (preloadedCustomer) {
-            setSelectedCustomer(preloadedCustomer);
-          }
-
           setForm({
             ...EMPTY_FORM,
-            customerId: preloadedCustomer?.id ?? '',
-            customerName: preloadedCustomer?.name ?? '',
-            placeOfSupply: preloadedCustomer?.state ? `${preloadedCustomer.state}` : '',
             issueDate: toDateInput(defaultsData.issueDate),
             dueDate: toDateInput(defaultsData.dueDate),
             notes: defaultsData.notes ?? '',
@@ -219,7 +206,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
     return () => {
       cancelled = true;
     };
-  }, [invoice, customerIdParam]);
+  }, [invoice]);
 
   // ---------------------------------------------------------------------------
   // Derived state
@@ -256,15 +243,132 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
           isIgst,
           enableRoundOff: defaults?.enableRoundOff ?? true,
           gstEnabled: defaults?.gstEnabled ?? true,
-          pricesIncludeTax: defaults?.pricesIncludeTax ?? false
+          pricesIncludeTax: defaults?.pricesIncludeTax ?? false,
+          extraCharges: parseFloat(form.extraCharges) || 0
         }
       ),
-    [items, isIgst, defaults]
+    [items, isIgst, defaults, form.extraCharges]
   );
 
-  // ---------------------------------------------------------------------------
-  // Handlers
-  // ---------------------------------------------------------------------------
+  // Handle auto-load from URL query (?quotationId=...)
+  useEffect(() => {
+    const qId = searchParams.get('quotationId');
+    if (qId && !isEdit && !selectedQuotationId) {
+      handleQuotationChange(qId, null);
+    }
+  }, [searchParams, isEdit]);
+
+  const handleQuotationChange = async (quotationId: string, quotation: Quotation | null) => {
+    setSelectedQuotationId(quotationId);
+
+    if (!quotationId) {
+      setSelectedQuotation(null);
+      return;
+    }
+
+    let targetQuotation: Quotation = quotation!;
+
+    // If quotation object was not provided or lacks items, fetch full details
+    if (!targetQuotation || !targetQuotation.items || targetQuotation.items.length === 0) {
+      try {
+        targetQuotation = await quotationsApi.getById(quotationId);
+      } catch (err) {
+        toast.error('Failed to load full quotation details');
+        return;
+      }
+    }
+
+    setSelectedQuotation(targetQuotation);
+
+    // Populate customer
+    let customerObj: Customer | null = targetQuotation.customer ?? null;
+    if (!customerObj && targetQuotation.customerId) {
+      try {
+        customerObj = await customersApi.getById(targetQuotation.customerId);
+      } catch {
+        // Fallback snapshot object
+        customerObj = {
+          id: targetQuotation.customerId,
+          name: targetQuotation.billingName,
+          type: 'BUSINESS',
+          gstin: targetQuotation.billingGstin,
+          address: targetQuotation.billingAddress,
+          city: targetQuotation.billingCity,
+          state: targetQuotation.billingState,
+          country: targetQuotation.billingCountry,
+          postalCode: targetQuotation.billingPostalCode,
+          phone: targetQuotation.billingPhone,
+          email: targetQuotation.billingEmail,
+          isActive: true,
+          createdAt: '',
+          updatedAt: ''
+        } as Customer;
+      }
+    } else if (!customerObj && targetQuotation.billingName) {
+      customerObj = {
+        id: '',
+        name: targetQuotation.billingName,
+        type: 'BUSINESS',
+        gstin: targetQuotation.billingGstin,
+        address: targetQuotation.billingAddress,
+        city: targetQuotation.billingCity,
+        state: targetQuotation.billingState,
+        country: targetQuotation.billingCountry,
+        postalCode: targetQuotation.billingPostalCode,
+        phone: targetQuotation.billingPhone,
+        email: targetQuotation.billingEmail,
+        isActive: true,
+        createdAt: '',
+        updatedAt: ''
+      } as Customer;
+    }
+
+    setSelectedCustomer(customerObj);
+
+    setForm((prev) => ({
+      ...prev,
+      customerId: targetQuotation.customerId || '',
+      customerName: targetQuotation.billingName || targetQuotation.customer?.name || '',
+      placeOfSupply: targetQuotation.placeOfSupply || targetQuotation.billingState || customerObj?.state || prev.placeOfSupply,
+      reference: targetQuotation.quotationNumber
+        ? `Quotation: ${targetQuotation.quotationNumber}${targetQuotation.subject ? ` — ${targetQuotation.subject}` : ''}`
+        : prev.reference,
+      poNumber: targetQuotation.inquiryNumber || targetQuotation.referenceNumber || prev.poNumber,
+      orderDate: targetQuotation.inquiryDate ? toDateInput(targetQuotation.inquiryDate) : prev.orderDate,
+      paymentTerms: targetQuotation.paymentTerms || prev.paymentTerms,
+      extraCharges: targetQuotation.forwardingPackagingAmount ? String(targetQuotation.forwardingPackagingAmount) : prev.extraCharges,
+      notes: prev.notes || targetQuotation.notes || '',
+      terms: prev.terms || targetQuotation.termsAndConditions || ''
+    }));
+
+    if (targetQuotation.customerId) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next.customerId;
+        return next;
+      });
+    }
+
+    // Populate line items with product snapshots from quotation
+    if (targetQuotation.items && targetQuotation.items.length > 0) {
+      setItems(
+        targetQuotation.items.map((it, idx) => ({
+          key: `quote-item-${idx}-${Date.now()}`,
+          productId: it.productId ?? null,
+          name: it.name,
+          description: it.description || '',
+          hsnSacCode: it.hsnSacCode || '',
+          unit: it.unit || 'PCS',
+          quantity: String(toNumber(it.quantity) || 1),
+          unitPrice: String(toNumber(it.rate)),
+          discountPercent: toNumber(it.discountPercent) ? String(toNumber(it.discountPercent)) : '',
+          taxRate: String(toNumber(it.taxRate ?? defaults?.defaultTaxRate ?? 18))
+        }))
+      );
+    }
+
+    toast.success(`Loaded ${targetQuotation.items?.length ?? 0} items from Quotation ${targetQuotation.quotationNumber}`);
+  };
 
   const handleCustomerChange = (customerIdOrCustomer: string | Customer | null, maybeCustomer?: Customer | null) => {
     const customer = typeof customerIdOrCustomer === 'string' ? maybeCustomer : customerIdOrCustomer;
@@ -350,6 +454,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
 
   const buildPayload = () => ({
     customerId: form.customerId,
+    quotationId: selectedQuotationId || undefined,
     billType: form.billType,
     issueDate: form.issueDate,
     dueDate: form.dueDate,
@@ -366,6 +471,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
     paymentTerms: form.paymentTerms.trim(),
     placeOfSupply: form.placeOfSupply.trim(),
     isReverseCharge: form.isReverseCharge,
+    extraCharges: parseFloat(form.extraCharges) || 0,
     notes: form.notes.trim(),
     terms: form.terms.trim(),
     internalNotes: form.internalNotes.trim(),
@@ -486,6 +592,44 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
           </span>
         </div>
 
+        {/* Quotation Selection Menu */}
+        {!isEdit && (
+          <div className="p-3.5 bg-warm-accent-light/30 border border-warm-accent/20 space-y-2">
+            <QuotationSelect
+              value={selectedQuotationId}
+              initialLabel={
+                selectedQuotation
+                  ? `${selectedQuotation.quotationNumber} — ${selectedQuotation.billingName} (${formatCurrency(Number(selectedQuotation.grandTotal))})`
+                  : ''
+              }
+              onChange={handleQuotationChange}
+              label="Import from Quotation / Estimate"
+              placeholder="Search and select an existing quotation to auto-fill customer, line items & terms..."
+            />
+            {selectedQuotation && (
+              <div className="p-2.5 bg-purple-50 border border-purple-200 text-xs text-purple-950 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <FileSpreadsheet className="w-4 h-4 text-purple-700 shrink-0" />
+                  <span>
+                    Loaded <strong>{selectedQuotation.quotationNumber}</strong> for{' '}
+                    <strong>{selectedQuotation.billingName}</strong>
+                  </span>
+                  <span className="font-semibold text-purple-700 font-mono text-[11px]">
+                    (Total: {formatCurrency(Number(selectedQuotation.grandTotal))})
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleQuotationChange('', null)}
+                  className="text-purple-700 hover:text-purple-900 underline text-[11px] font-medium cursor-pointer"
+                >
+                  Clear Selection
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Select
             label="Bill Type"
@@ -567,9 +711,9 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
               </div>
 
               <div className="flex items-center gap-3 text-[11px]">
-                {selectedCustomer?.gstin || invoice?.billingGstin ? (
+                {formatGstin(selectedCustomer?.gstin || invoice?.billingGstin) ? (
                   <span className="bg-warm-surface px-2 py-0.5 border border-warm-border text-warm-text font-semibold">
-                    GSTIN: {selectedCustomer?.gstin || invoice?.billingGstin}
+                    GSTIN: {formatGstin(selectedCustomer?.gstin || invoice?.billingGstin)}
                   </span>
                 ) : (
                   <span className="text-warm-textSubtle">Unregistered Buyer</span>
@@ -852,6 +996,21 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                 ))}
               </div>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-warm-text mb-1.5 uppercase tracking-wide">
+              Extra Charges (₹)
+            </label>
+            <Input
+              type="number"
+              min="0"
+              step="any"
+              value={form.extraCharges}
+              onChange={(e) => setForm((prev) => ({ ...prev, extraCharges: e.target.value }))}
+              placeholder="0.00"
+              helperText="Additional freight, delivery, packaging or handling charges"
+            />
           </div>
 
           <Textarea

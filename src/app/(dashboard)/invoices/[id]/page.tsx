@@ -42,7 +42,8 @@ import {
   Building2,
   Receipt,
   AlertTriangle,
-  ArrowLeft
+  ArrowLeft,
+  ArrowRightLeft
 } from 'lucide-react';
 
 export default function InvoiceDetailPage() {
@@ -116,7 +117,11 @@ export default function InvoiceDetailPage() {
         discountPercent: toNumber(item.discountPercent),
         taxRate: toNumber(item.taxRate)
       })),
-      { isIgst: invoice.isIgst, enableRoundOff: toNumber(invoice.roundOff) !== 0 }
+      {
+        isIgst: invoice.isIgst,
+        enableRoundOff: toNumber(invoice.roundOff) !== 0,
+        extraCharges: toNumber(invoice.extraCharges)
+      }
     );
   }, [invoice]);
 
@@ -263,6 +268,36 @@ export default function InvoiceDetailPage() {
           </div>
         }
       />
+
+      {invoice.quotations && invoice.quotations.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 mb-5 bg-purple-50/80 border border-purple-200">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+              <ArrowRightLeft className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-purple-950">
+                Generated from Quotation {invoice.quotations[0].quotationNumber}
+              </p>
+              <p className="text-[11px] text-purple-800">
+                Converted from sales quotation
+                {invoice.quotations[0].quotationDate ? ` dated ${formatDate(invoice.quotations[0].quotationDate)}` : ''}
+                {invoice.quotations[0].subject ? ` • ${invoice.quotations[0].subject}` : ''}
+              </p>
+            </div>
+          </div>
+          <Link href={`/quotations/${invoice.quotations[0].id}`}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="bg-white text-purple-700 border-purple-300 hover:bg-purple-100/60 text-xs font-semibold"
+              rightIcon={<Eye className="w-3.5 h-3.5" />}
+            >
+              View Quotation
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {isCancelled && (
         <div className="flex items-start gap-3 p-4 mb-5 bg-red-50 border border-red-200">
@@ -481,6 +516,18 @@ export default function InvoiceDetailPage() {
                     Order &amp; Delivery Challan
                   </p>
                   <div className="space-y-1">
+                    {invoice.quotations && invoice.quotations.length > 0 && (
+                      <div className="flex items-start justify-between gap-2 text-[11px]">
+                        <span className="text-warm-textMuted">Quotation Ref:</span>
+                        <Link
+                          href={`/quotations/${invoice.quotations[0].id}`}
+                          className="font-bold text-purple-700 hover:text-purple-900 hover:underline inline-flex items-center gap-1"
+                        >
+                          <span>{invoice.quotations[0].quotationNumber}</span>
+                          <span className="text-[10px] text-purple-600">↗</span>
+                        </Link>
+                      </div>
+                    )}
                     {invoice.poNumber && (
                       <div className="flex items-start justify-between gap-2 text-[11px]">
                         <span className="text-warm-textMuted">Order / PO No:</span>
