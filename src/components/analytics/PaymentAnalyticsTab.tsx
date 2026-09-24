@@ -6,21 +6,14 @@ import { Button } from '@/components/ui/Button';
 import { formatCurrency } from '@/lib/utils';
 import { PaymentAnalyticsData, exportToCsv } from '@/lib/reports';
 import { DonutChart, DonutSegment } from './charts/DonutChart';
-import { HorizontalBarChart, HorizontalBarItem } from './charts/HorizontalBarChart';
 import { BarChart } from './charts/BarChart';
 import {
-  CreditCard,
   CheckCircle2,
   Clock,
   AlertCircle,
   Download,
-  Landmark,
-  Smartphone,
-  Banknote,
-  Receipt,
   PieChart,
   BarChart3,
-  Layers
 } from 'lucide-react';
 
 interface PaymentAnalyticsTabProps {
@@ -44,17 +37,6 @@ export function PaymentAnalyticsTab({ data }: PaymentAnalyticsTabProps) {
         label: m.label,
         value: m.amount,
         color: METHOD_COLORS[m.method] || '#8d6e63'
-      }));
-  }, [data.byMethod]);
-
-  const methodBarData: HorizontalBarItem[] = useMemo(() => {
-    return data.byMethod
-      .filter((m) => m.amount > 0)
-      .map((m) => ({
-        label: m.label,
-        subLabel: `${m.count} ${m.count === 1 ? 'transaction' : 'transactions'}`,
-        value: m.amount,
-        percentage: m.percentage
       }));
   }, [data.byMethod]);
 
@@ -161,61 +143,40 @@ export function PaymentAnalyticsTab({ data }: PaymentAnalyticsTabProps) {
         </CardContent>
       </Card>
 
-      {/* Payment Method Distribution Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        {/* Payment Method Donut Chart */}
-        <Card className="border-warm-border/70">
-          <div className="p-5 border-b border-warm-border/50 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="p-1.5 bg-warm-accentLight text-warm-accent">
-                <PieChart className="w-4 h-4" />
-              </div>
+      {/* Payment Method Distribution Card */}
+      <Card className="border-warm-border/70">
+        <div className="p-5 border-b border-warm-border/50 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-warm-accentLight text-warm-accent">
+              <PieChart className="w-4 h-4" />
+            </div>
+            <div>
               <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
-                Payment Method Share Graph
+                Payment Method Share
               </h3>
-            </div>
-
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleExportPayments}
-              leftIcon={<Download className="w-3.5 h-3.5" />}
-            >
-              Export
-            </Button>
-          </div>
-
-          <CardContent className="p-5">
-            <DonutChart
-              data={methodDonutSegments}
-              centerLabel="Total Inflow"
-              centerValue={formatCurrency(data.totalReceived)}
-              size={180}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Method Volume Comparison Horizontal Bar Chart */}
-        <Card className="border-warm-border/70">
-          <div className="p-5 border-b border-warm-border/50 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="p-1.5 bg-warm-accentLight text-warm-accent">
-                <CreditCard className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
-                  Payment Channels Ranking
-                </h3>
-                <p className="text-xs text-warm-textMuted">Volume comparison by payment instrument</p>
-              </div>
+              <p className="text-xs text-warm-textMuted">Proportional volume and transaction breakdown by payment instrument</p>
             </div>
           </div>
 
-          <CardContent className="p-5">
-            <HorizontalBarChart data={methodBarData} />
-          </CardContent>
-        </Card>
-      </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleExportPayments}
+            leftIcon={<Download className="w-3.5 h-3.5" />}
+          >
+            Export CSV
+          </Button>
+        </div>
+
+        <CardContent className="p-6">
+          <DonutChart
+            data={methodDonutSegments}
+            centerLabel="Total Inflow"
+            centerValue={formatCurrency(data.totalReceived)}
+            size={180}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

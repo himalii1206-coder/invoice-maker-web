@@ -129,8 +129,8 @@ export function SecuritySettingsSection() {
           ? `Password changed. ${result.revokedSessions} other session(s) were signed out.`
           : 'Password changed successfully'
       );
-      // Those other devices are gone now, so the list must not still show them.
-      await loadSessions();
+      // Keep only the current active session in state
+      setSessions((prev) => prev.filter((s) => s.isCurrent));
     } catch (err: any) {
       toast.error(getApiErrorMessage(err, 'Could not change your password'));
     } finally {
@@ -144,12 +144,13 @@ export function SecuritySettingsSection() {
 
   const handleRevokeSession = async () => {
     if (!confirmRevokeId) return;
-    setRevokingId(confirmRevokeId);
+    const targetId = confirmRevokeId;
+    setRevokingId(targetId);
     try {
-      await accountApi.revokeSession(confirmRevokeId);
+      await accountApi.revokeSession(targetId);
       toast.success('That device has been signed out');
+      setSessions((prev) => prev.filter((s) => s.id !== targetId));
       setConfirmRevokeId(null);
-      await loadSessions();
     } catch (err: any) {
       toast.error(getApiErrorMessage(err, 'Could not sign that device out'));
     } finally {
@@ -166,8 +167,8 @@ export function SecuritySettingsSection() {
           ? `${result.revokedSessions} other session(s) signed out`
           : 'There were no other active sessions'
       );
+      setSessions((prev) => prev.filter((s) => s.isCurrent));
       setConfirmRevokeOthers(false);
-      await loadSessions();
     } catch (err: any) {
       toast.error(getApiErrorMessage(err, 'Could not sign the other devices out'));
     } finally {

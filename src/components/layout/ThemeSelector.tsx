@@ -195,7 +195,7 @@ export function ThemeSelector() {
                         setIsOpen(false);
                       }
                     }}
-                    className="w-full h-9 px-3 bg-warm-input text-xs font-mono font-bold text-warm-text border border-warm-border/80 focus:outline-none focus:ring-2 focus:ring-warm-accent/40 uppercase"
+                    className="w-full h-9 px-3 bg-warm-input text-xs font-bold text-warm-text border border-warm-border/80 focus:outline-none focus:ring-2 focus:ring-warm-accent/40 uppercase"
                   />
                 </div>
               </div>

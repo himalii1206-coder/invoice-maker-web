@@ -436,13 +436,19 @@ export default function PurchaseBillDetailPage() {
               </div>
 
               <div className="flex justify-between items-center pt-2 text-xs">
-                <span className="text-emerald-700 font-semibold">Total Paid to Vendor:</span>
-                <span className="text-emerald-700 font-bold">{formatCurrency(amountPaid)}</span>
+                <span className="text-warm-textMuted font-medium">Total Paid to Vendor:</span>
+                <span className="text-emerald-700 font-semibold">{formatCurrency(amountPaid)}</span>
               </div>
 
               <div className="flex justify-between items-center text-xs">
-                <span className="text-amber-800 font-semibold">Outstanding Balance:</span>
-                <span className="text-amber-800 font-bold text-sm">{formatCurrency(balanceDue)}</span>
+                <span className="text-warm-text font-semibold">Outstanding Balance:</span>
+                <span
+                  className={`font-bold text-sm ${
+                    balanceDue > 0 ? 'text-amber-800' : 'text-warm-text'
+                  }`}
+                >
+                  {formatCurrency(balanceDue)}
+                </span>
               </div>
             </div>
           </div>

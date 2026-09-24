@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'react-toastify';
 import { Button } from '@/components/ui/Button';
@@ -14,9 +14,9 @@ import { InvoiceItemsEditor, EditorItem, createEmptyItem, itemsFromInvoice } fro
 import { InvoiceTotals } from './InvoiceTotals';
 import { computeTotals, isInterState, stripStateCode } from '@/lib/gst';
 import { invoicesApi, invoiceSettingsApi, toDateInput } from '@/lib/invoices';
-import { apiErrorMessage } from '@/lib/customers';
+import { customersApi, apiErrorMessage } from '@/lib/customers';
 import { Customer } from '@/types/index';
-import { Invoice, InvoiceDefaults, InvoiceReferenceData } from '@/types/invoice';
+import { Invoice, InvoiceCustomerRef, InvoiceDefaults, InvoiceReferenceData } from '@/types/invoice';
 import { cn } from '@/lib/utils';
 import { INDIAN_STATES, normalizeStateName } from '@/lib/geo';
 import { Save, Send, X, AlertTriangle, MapPin } from 'lucide-react';
@@ -110,11 +110,13 @@ const PAYMENT_TERMS_PRESETS = [
 
 export function InvoiceForm({ invoice }: InvoiceFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const customerIdParam = searchParams?.get('customerId') || undefined;
   const isEdit = Boolean(invoice);
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [items, setItems] = useState<EditorItem[]>([]);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | InvoiceCustomerRef | null>(null);
 
   const [defaults, setDefaults] = useState<InvoiceDefaults | null>(null);
   const [reference, setReference] = useState<InvoiceReferenceData | null>(null);
@@ -174,10 +176,31 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
             terms: invoice.terms ?? '',
             internalNotes: invoice.internalNotes ?? ''
           });
+          if (invoice.customer) {
+            setSelectedCustomer(invoice.customer);
+          }
           setItems(itemsFromInvoice(invoice.items));
         } else {
+          let preloadedCustomer: Customer | null = null;
+          if (customerIdParam) {
+            try {
+              preloadedCustomer = await customersApi.getById(customerIdParam);
+            } catch {
+              preloadedCustomer = null;
+            }
+          }
+
+          if (cancelled) return;
+
+          if (preloadedCustomer) {
+            setSelectedCustomer(preloadedCustomer);
+          }
+
           setForm({
             ...EMPTY_FORM,
+            customerId: preloadedCustomer?.id ?? '',
+            customerName: preloadedCustomer?.name ?? '',
+            placeOfSupply: preloadedCustomer?.state ? `${preloadedCustomer.state}` : '',
             issueDate: toDateInput(defaultsData.issueDate),
             dueDate: toDateInput(defaultsData.dueDate),
             notes: defaultsData.notes ?? '',
@@ -196,7 +219,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
     return () => {
       cancelled = true;
     };
-  }, [invoice]);
+  }, [invoice, customerIdParam]);
 
   // ---------------------------------------------------------------------------
   // Derived state

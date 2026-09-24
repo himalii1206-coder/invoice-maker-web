@@ -10,11 +10,11 @@ import { Select } from '@/components/ui/Select';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { InvoiceStatusBadge } from '@/components/invoices/InvoiceStatusBadge';
+import { DonutChart, DonutSegment } from '@/components/analytics/charts/DonutChart';
 import { useAuth } from '@/context/AuthContext';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { invoicesApi } from '@/lib/invoices';
 import { InvoiceDashboard, InvoiceStatus } from '@/types/invoice';
-import { normalizeStateName } from '@/lib/geo';
 import {
   TrendingUp,
   Clock,
@@ -26,17 +26,14 @@ import {
   RefreshCw,
   FileText,
   Users,
-  Building2,
-  MapPin,
-  ShieldCheck,
-  Receipt,
-  Percent,
-  Layers
+  Receipt
 } from 'lucide-react';
 
 export default function DashboardPage() {
   const { user, company } = useAuth();
-  const [financialYear, setFinancialYear] = useState<string>('');
+  const currentYear = new Date().getFullYear();
+  const currentFY = `${currentYear}-${String(currentYear + 1).slice(2)}`;
+  const [financialYear, setFinancialYear] = useState<string>(currentFY);
   const [dashboardData, setDashboardData] = useState<InvoiceDashboard | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -64,12 +61,12 @@ export default function DashboardPage() {
 
   // Financial Year Options
   const financialYearOptions = useMemo(() => {
-    const currentYear = new Date().getFullYear();
+    const year = new Date().getFullYear();
     return [
-      { value: '', label: 'All Financial Years' },
-      { value: `${currentYear}-${String(currentYear + 1).slice(2)}`, label: `FY ${currentYear}-${String(currentYear + 1).slice(2)} (Current)` },
-      { value: `${currentYear - 1}-${String(currentYear).slice(2)}`, label: `FY ${currentYear - 1}-${String(currentYear).slice(2)}` },
-      { value: `${currentYear - 2}-${String(currentYear - 1).slice(2)}`, label: `FY ${currentYear - 2}-${String(currentYear - 1).slice(2)}` }
+      { value: `${year}-${String(year + 1).slice(2)}`, label: `FY ${year}-${String(year + 1).slice(2)} (Current)` },
+      { value: `${year - 1}-${String(year + 1).slice(2)}`, label: `FY ${year - 1}-${String(year).slice(2)}` },
+      { value: `${year - 2}-${String(year - 1).slice(2)}`, label: `FY ${year - 2}-${String(year - 1).slice(2)}` },
+      { value: '', label: 'All Financial Years' }
     ];
   }, []);
 
@@ -88,11 +85,40 @@ export default function DashboardPage() {
     return maxVal > 0 ? maxVal : 1;
   }, [dashboardData]);
 
+  // Invoice status percentage segments for Donut chart
+  const statusSegments: DonutSegment[] = useMemo(() => {
+    if (!dashboardData?.byStatus || dashboardData.byStatus.length === 0) return [];
+
+    const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+      PAID: { label: 'Paid', color: '#16a34a' },
+      PARTIALLY_PAID: { label: 'Partially Paid', color: '#d97706' },
+      SENT: { label: 'Sent', color: '#2563eb' },
+      OVERDUE: { label: 'Overdue', color: '#dc2626' },
+      DRAFT: { label: 'Draft', color: '#64748b' },
+      CANCELLED: { label: 'Cancelled', color: '#9ca3af' }
+    };
+
+    return dashboardData.byStatus
+      .filter((st) => st.count > 0)
+      .map((st) => {
+        const config = STATUS_CONFIG[st.status] || {
+          label: st.status.replace(/_/g, ' '),
+          color: '#8d6e63'
+        };
+        return {
+          label: config.label,
+          value: st.count,
+          color: config.color,
+          subText: formatCurrency(st.amount)
+        };
+      });
+  }, [dashboardData?.byStatus]);
+
   return (
     <DashboardLayout>
       <PageHeader
         title={`Welcome back, ${user?.firstName || 'Business Owner'}!`}
-        description={`Operations overview, live revenue metrics, and GST analytics for ${company?.name || 'your business'}.`}
+        description={`Operations overview, live sales metrics, and invoice performance for ${company?.name || 'your business'}.`}
         actions={
           <div className="flex items-center gap-2">
             <div className="w-48">
@@ -218,7 +244,7 @@ export default function DashboardPage() {
 
           {/* Analytics Visualizations Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* 6-Month Invoiced vs Collected Bar Graph */}
+            {/* Sales Overview Bar Graph */}
             <Card className="lg:col-span-2">
               <div className="p-5 border-b border-warm-border/50 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
@@ -227,9 +253,9 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
-                      Revenue &amp; Collection Trend
+                      Sales Overview
                     </h3>
-                    <p className="text-xs text-warm-textMuted">Last 6 months billing volume vs money collected</p>
+                    <p className="text-xs text-warm-textMuted">Last 6 months sales volume vs money collected</p>
                   </div>
                 </div>
 
@@ -288,7 +314,7 @@ export default function DashboardPage() {
                     <div className="grid grid-cols-3 gap-3 text-center pt-2">
                       <div className="p-3 bg-warm-input/40 border border-warm-border/50">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle block">
-                          Avg. Monthly Invoicing
+                          Avg. Monthly Sales
                         </span>
                         <span className="text-base font-bold text-warm-text">
                           {formatCurrency(
@@ -320,89 +346,67 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div className="py-8 text-center text-warm-textMuted text-xs">
-                    No monthly trend data available for this financial period.
+                    No sales trend data available for this financial period.
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* GST Tax Summary & Breakdown */}
+            {/* Invoice Status Distribution (% Graph) */}
             <Card>
               <div className="p-5 border-b border-warm-border/50 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="p-1.5 bg-warm-accentLight text-warm-accent">
-                    <Percent className="w-4 h-4" />
+                    <PieChart className="w-4 h-4" />
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
-                      GST &amp; Tax Summary
+                      Invoice Status
                     </h3>
-                    <p className="text-xs text-warm-textMuted">Tax liability and output break-up</p>
+                    <p className="text-xs text-warm-textMuted">Status breakdown &amp; percentage share</p>
                   </div>
                 </div>
               </div>
 
               <CardContent className="p-5 space-y-4">
-                <div className="p-4 bg-warm-input/50 border border-warm-border/60 space-y-3">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-warm-textMuted font-medium">Taxable Turnover:</span>
-                    <span className="font-bold text-warm-text">
-                      {formatCurrency(dashboardData?.gstSummary?.taxableAmount ?? 0)}
-                    </span>
-                  </div>
-
-                  <div className="pt-2 border-t border-warm-border/40 space-y-2">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-warm-textMuted flex items-center gap-1.5">
-                        <span className="w-2 h-2 bg-blue-600 inline-block" />
-                        CGST (Central Tax):
-                      </span>
-                      <span className="font-semibold text-warm-text">
-                        {formatCurrency(dashboardData?.gstSummary?.cgst ?? 0)}
-                      </span>
+                {statusSegments.length > 0 ? (
+                  <>
+                    {/* Multi-color percentage progress bar */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-[11px] font-semibold text-warm-textMuted">
+                        <span>Status Split</span>
+                        <span>{dashboardData?.totalInvoices ?? 0} total invoices</span>
+                      </div>
+                      <div className="w-full h-2 bg-warm-input flex overflow-hidden">
+                        {statusSegments.map((seg, idx) => {
+                          const total = statusSegments.reduce((acc, s) => acc + s.value, 0);
+                          const pct = total > 0 ? (seg.value / total) * 100 : 0;
+                          return (
+                            <div
+                              key={idx}
+                              style={{ width: `${pct}%`, backgroundColor: seg.color }}
+                              title={`${seg.label}: ${seg.value} (${Math.round(pct)}%)`}
+                              className="h-full transition-all duration-500"
+                            />
+                          );
+                        })}
+                      </div>
                     </div>
 
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-warm-textMuted flex items-center gap-1.5">
-                        <span className="w-2 h-2 bg-emerald-600 inline-block" />
-                        SGST (State Tax):
-                      </span>
-                      <span className="font-semibold text-warm-text">
-                        {formatCurrency(dashboardData?.gstSummary?.sgst ?? 0)}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-warm-textMuted flex items-center gap-1.5">
-                        <span className="w-2 h-2 bg-purple-600 inline-block" />
-                        IGST (Integrated Tax):
-                      </span>
-                      <span className="font-semibold text-warm-text">
-                        {formatCurrency(dashboardData?.gstSummary?.igst ?? 0)}
-                      </span>
-                    </div>
+                    {/* Donut Chart with percentage */}
+                    <DonutChart
+                      data={statusSegments}
+                      centerLabel="Invoices"
+                      centerValue={dashboardData?.totalInvoices ?? 0}
+                      currencyFormat={false}
+                      size={150}
+                    />
+                  </>
+                ) : (
+                  <div className="py-12 text-center text-warm-textMuted text-xs">
+                    No invoice status data available for this period.
                   </div>
-
-                  <div className="pt-2.5 border-t border-warm-border flex justify-between items-center">
-                    <span className="text-xs font-bold uppercase tracking-wider text-warm-text">
-                      Total Output GST:
-                    </span>
-                    <span className="text-sm font-bold text-warm-accent">
-                      {formatCurrency(dashboardData?.gstSummary?.totalTax ?? 0)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Seller State Jurisdiction Info */}
-                <div className="p-3 bg-warm-surface border border-warm-border/50 text-[11px] text-warm-textMuted space-y-1.5">
-                  <div className="flex items-center gap-1.5 text-warm-text font-semibold">
-                    <Building2 className="w-3.5 h-3.5 text-warm-accent" />
-                    <span>Seller Jurisdiction: {normalizeStateName(company?.state || '') || 'Not configured'}</span>
-                  </div>
-                  <p className="text-warm-textSubtle leading-relaxed">
-                    Same-state sales incur CGST + SGST (50/50 split); interstate sales incur IGST (100%).
-                  </p>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>

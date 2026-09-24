@@ -269,7 +269,7 @@ export default function SettingsPage() {
 
                   return (
                     <div key={gIdx} className="space-y-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle px-2 block">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-warm-textSubtle px-2 block">
                         {group.title}
                       </span>
 
@@ -300,7 +300,7 @@ export default function SettingsPage() {
                                 <span className="text-xs font-semibold block truncate">
                                   {item.label}
                                 </span>
-                                <span className="text-[10px] text-warm-textMuted block truncate font-normal">
+                                <span className="text-[11px] text-warm-textMuted block truncate font-normal">
                                   {item.description}
                                 </span>
                               </div>

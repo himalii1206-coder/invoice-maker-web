@@ -7,14 +7,12 @@ import { Button } from '@/components/ui/Button';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ReceivablesAnalyticsData, exportToCsv } from '@/lib/reports';
 import { DonutChart, DonutSegment } from './charts/DonutChart';
-import { HorizontalBarChart, HorizontalBarItem } from './charts/HorizontalBarChart';
 import {
   Clock,
   AlertCircle,
   Download,
   ArrowUpRight,
   ShieldCheck,
-  Calendar,
   PieChart,
   BarChart3
 } from 'lucide-react';
@@ -32,36 +30,6 @@ export function ReceivablesAnalyticsTab({ data }: ReceivablesAnalyticsTabProps) 
       { label: '61–90 Days Overdue', value: data.overdue61_90, color: '#ea580c' },
       { label: '90+ Days Overdue', value: data.overdue90Plus, color: '#dc2626' }
     ].filter((s) => s.value > 0);
-  }, [data]);
-
-  const agingBarData: HorizontalBarItem[] = useMemo(() => {
-    return [
-      {
-        label: 'Not Yet Due (Current)',
-        value: data.currentReceivables,
-        colorClassName: 'bg-emerald-600'
-      },
-      {
-        label: '1–30 Days Overdue',
-        value: data.overdue1_30,
-        colorClassName: 'bg-amber-500'
-      },
-      {
-        label: '31–60 Days Overdue',
-        value: data.overdue31_60,
-        colorClassName: 'bg-amber-600'
-      },
-      {
-        label: '61–90 Days Overdue',
-        value: data.overdue61_90,
-        colorClassName: 'bg-orange-600'
-      },
-      {
-        label: 'Over 90 Days Overdue',
-        value: data.overdue90Plus,
-        colorClassName: 'bg-red-600'
-      }
-    ].filter((b) => b.value > 0);
   }, [data]);
 
   const handleExportAging = () => {
@@ -216,52 +184,40 @@ export function ReceivablesAnalyticsTab({ data }: ReceivablesAnalyticsTabProps) 
         </Card>
       </div>
 
-      {/* Visual Graphs: Aging Delinquency Donut & Horizontal Bars */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        {/* Aging Risk Donut Chart */}
-        <Card className="border-warm-border/70">
-          <div className="p-5 border-b border-warm-border/50 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="p-1.5 bg-warm-accentLight text-warm-accent">
-                <PieChart className="w-4 h-4" />
-              </div>
+      {/* Aging Risk Donut Chart */}
+      <Card className="border-warm-border/70">
+        <div className="p-5 border-b border-warm-border/50 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-warm-accentLight text-warm-accent">
+              <PieChart className="w-4 h-4" />
+            </div>
+            <div>
               <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
-                Aging Risk Distribution Graph
+                Aging Risk Distribution
               </h3>
+              <p className="text-xs text-warm-textMuted">Proportional outstanding amount grouped by delinquency bucket</p>
             </div>
           </div>
 
-          <CardContent className="p-5">
-            <DonutChart
-              data={agingDonutSegments}
-              centerLabel="Outstanding"
-              centerValue={formatCurrency(data.totalOutstanding)}
-              size={180}
-            />
-          </CardContent>
-        </Card>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleExportAging}
+            leftIcon={<Download className="w-3.5 h-3.5" />}
+          >
+            Export Aging CSV
+          </Button>
+        </div>
 
-        {/* Aging Buckets Bar Chart */}
-        <Card className="border-warm-border/70">
-          <div className="p-5 border-b border-warm-border/50 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="p-1.5 bg-warm-accentLight text-warm-accent">
-                <BarChart3 className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
-                  Aging Delinquency Graph
-                </h3>
-                <p className="text-xs text-warm-textMuted">Amount due grouped by overdue bucket</p>
-              </div>
-            </div>
-          </div>
-
-          <CardContent className="p-5">
-            <HorizontalBarChart data={agingBarData} />
-          </CardContent>
-        </Card>
-      </div>
+        <CardContent className="p-6">
+          <DonutChart
+            data={agingDonutSegments}
+            centerLabel="Outstanding"
+            centerValue={formatCurrency(data.totalOutstanding)}
+            size={180}
+          />
+        </CardContent>
+      </Card>
 
       {/* Detailed Outstanding Invoices Aging Ledger */}
       <Card className="border-warm-border/70">

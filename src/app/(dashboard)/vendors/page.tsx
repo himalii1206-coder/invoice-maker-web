@@ -178,86 +178,113 @@ export default function VendorsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Vendor / Trade Name</TableHead>
-                  <TableHead>Location / State</TableHead>
-                  <TableHead>GSTIN &amp; PAN</TableHead>
-                  <TableHead>Contact Person</TableHead>
-                  <TableHead>Payment Terms</TableHead>
-                  <TableHead>Opening Bal</TableHead>
-                  <TableHead>Purchase Activity</TableHead>
+                  <TableHead>Vendor</TableHead>
+                  <TableHead className="hidden md:table-cell">Contact</TableHead>
+                  <TableHead className="hidden lg:table-cell">Location &amp; GSTIN</TableHead>
+                  <TableHead className="hidden sm:table-cell">Terms &amp; Bills</TableHead>
+                  <TableHead className="hidden sm:table-cell text-right">Opening Bal</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {vendors.map((v) => (
                   <TableRow key={v.id}>
+                    {/* Vendor Info */}
                     <TableCell>
-                      <div className="flex flex-col">
+                      <div className="flex flex-col space-y-1">
                         <span className="font-bold text-warm-text text-sm">{v.name}</span>
-                        {v.tradeName && (
-                          <span className="text-xs text-warm-textMuted font-medium">
-                            {v.tradeName}
+                        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-warm-textMuted">
+                          {v.tradeName && (
+                            <span className="font-medium text-warm-text">{v.tradeName}</span>
+                          )}
+                          {v.tradeName && (
+                            <span>•</span>
+                          )}
+                          <span className="text-[10px] uppercase font-semibold px-1.5 py-0.2 bg-warm-input text-warm-text border border-warm-border/60">
+                            {v.type === 'INDIVIDUAL' ? 'Individual' : 'Business'}
                           </span>
+                        </div>
+                      </div>
+                    </TableCell>
+
+                    {/* Contact */}
+                    <TableCell className="hidden md:table-cell">
+                      <div className="space-y-1 text-xs text-warm-textMuted">
+                        {v.contactPerson && (
+                          <p className="font-medium text-warm-text">{v.contactPerson}</p>
                         )}
-                        <span className="text-[10px] uppercase font-bold text-warm-accent mt-0.5">
-                          {v.type === 'INDIVIDUAL' ? 'Proprietor / Individual' : 'Registered Business'}
-                        </span>
-                      </div>
-                    </TableCell>
-
-                    <TableCell>
-                      <div className="text-xs space-y-0.5">
-                        <p className="font-semibold text-warm-text">{v.city || '—'}</p>
-                        <p className="text-warm-textMuted text-[11px]">{v.state || '—'}</p>
-                      </div>
-                    </TableCell>
-
-                    <TableCell>
-                      <div className="text-xs space-y-0.5">
-                        <p className="text-warm-text font-semibold">{v.gstin || 'Unregistered'}</p>
-                        {v.pan && <p className="text-[11px] text-warm-textMuted">PAN: {v.pan}</p>}
-                      </div>
-                    </TableCell>
-
-                    <TableCell>
-                      <div className="text-xs space-y-0.5">
-                        <p className="font-medium text-warm-text">{v.contactPerson || v.name}</p>
-                        <p className="text-warm-textMuted text-[11px]">{v.phone}</p>
+                        {v.phone && (
+                          <p className="flex items-center gap-1.5">
+                            <Phone className="w-3.5 h-3.5 shrink-0 text-warm-accent" />
+                            <span>{v.phone}</span>
+                          </p>
+                        )}
                         {v.email && (
-                          <div className="text-warm-textSubtle text-[10px] truncate max-w-[140px]">
-                            {v.email}
-                          </div>
+                          <p className="flex items-center gap-1.5">
+                            <Mail className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate max-w-[180px]">{v.email}</span>
+                          </p>
+                        )}
+                        {!v.phone && !v.email && !v.contactPerson && <span>—</span>}
+                      </div>
+                    </TableCell>
+
+                    {/* Location & GSTIN */}
+                    <TableCell className="hidden lg:table-cell">
+                      <div className="space-y-1 text-xs">
+                        {(v.city || v.state) ? (
+                          <p className="flex items-center gap-1 text-warm-text font-medium">
+                            <MapPin className="w-3.5 h-3.5 text-warm-accent shrink-0" />
+                            <span>
+                              {[v.city, v.state].filter(Boolean).join(', ')}
+                            </span>
+                          </p>
+                        ) : (
+                          <span className="text-warm-textMuted">—</span>
+                        )}
+                        {v.gstin ? (
+                          <p className="text-[11px] text-warm-textMuted">
+                            GST: {v.gstin}
+                          </p>
+                        ) : (
+                          <span className="text-[10px] text-warm-textSubtle uppercase">Unregistered</span>
                         )}
                       </div>
                     </TableCell>
 
-                    <TableCell>
-                      <span className="text-xs text-warm-textMuted font-medium">
-                        {v.paymentTerms || 'Net 30 Days'}
-                      </span>
-                    </TableCell>
-
-                    <TableCell>
-                      <span className="text-xs font-semibold text-warm-text">
-                        {v.openingBalance ? formatCurrency(Number(v.openingBalance)) : '₹0.00'}
-                      </span>
-                      {v.balanceType && (
-                        <span className="text-[10px] text-warm-textSubtle ml-1 font-bold">
-                          ({v.balanceType})
+                    {/* Terms & Bills */}
+                    <TableCell className="hidden sm:table-cell">
+                      <div className="space-y-1 text-xs">
+                        <span className="text-warm-text font-medium block">
+                          {v.paymentTerms || 'Net 30'}
                         </span>
-                      )}
+                        <Link
+                          href={`/purchases?vendorId=${v.id}`}
+                          className="text-[11px] font-semibold text-warm-accent hover:underline inline-flex items-center gap-1"
+                        >
+                          <Receipt className="w-3 h-3" />
+                          <span>{v._count?.purchaseBills ?? 0} {v._count?.purchaseBills === 1 ? 'Bill' : 'Bills'}</span>
+                        </Link>
+                      </div>
                     </TableCell>
 
-                    <TableCell>
-                      <Link
-                        href={`/purchases?vendorId=${v.id}`}
-                        className="text-xs font-bold text-warm-accent hover:underline flex items-center gap-1"
-                      >
-                        <Receipt className="w-3.5 h-3.5" />
-                        <span>{v._count?.purchaseBills ?? 0} Bills</span>
-                      </Link>
+                    {/* Opening Balance */}
+                    <TableCell className="hidden sm:table-cell text-right">
+                      <div className="text-xs">
+                        {v.openingBalance && Number(v.openingBalance) > 0 ? (
+                          <span className="font-semibold text-warm-text tabular-nums">
+                            {formatCurrency(Number(v.openingBalance))}{' '}
+                            <span className="text-[10px] text-warm-textMuted font-normal">
+                              ({v.balanceType || 'CR'})
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="text-warm-textMuted">₹0.00</span>
+                        )}
+                      </div>
                     </TableCell>
 
+                    {/* Actions */}
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Link href={`/vendors/${v.id}/edit`}>

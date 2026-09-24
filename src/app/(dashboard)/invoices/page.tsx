@@ -383,13 +383,11 @@ export default function InvoicesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Bill No &amp; Type</TableHead>
-              <TableHead>Customer Name</TableHead>
-              <TableHead className="hidden md:table-cell">Bill &amp; Order Date</TableHead>
-              <TableHead className="hidden lg:table-cell">Order &amp; D.C. No</TableHead>
-              <TableHead className="hidden xl:table-cell">Dispatch / LH No</TableHead>
+              <TableHead>Invoice #</TableHead>
+              <TableHead>Customer</TableHead>
+              <TableHead className="hidden md:table-cell">Date</TableHead>
               <TableHead className="text-right">Amount</TableHead>
-              <TableHead className="hidden sm:table-cell text-right">Balance</TableHead>
+              <TableHead className="hidden sm:table-cell text-right">Balance Due</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -421,10 +419,10 @@ export default function InvoicesPage() {
                   </TableCell>
 
                   <TableCell>
-                    <p className="text-xs font-semibold text-warm-text truncate max-w-[190px]">
+                    <p className="text-xs font-semibold text-warm-text truncate max-w-[220px]">
                       {invoice.billingName}
                     </p>
-                    <p className="text-[11px] text-warm-textSubtle truncate max-w-[190px]">
+                    <p className="text-[11px] text-warm-textSubtle truncate max-w-[220px]">
                       {(invoice.customer?.city || invoice.billingState) ? (
                         <span className="inline-flex items-center gap-1 text-warm-textMuted">
                           <MapPin className="w-3 h-3 text-warm-accent shrink-0" />
@@ -439,40 +437,12 @@ export default function InvoicesPage() {
                   </TableCell>
 
                   <TableCell className="hidden md:table-cell">
-                    <p className="text-[11px] font-medium text-warm-text">
-                      Bill: {formatDate(invoice.issueDate)}
+                    <p className="text-xs font-semibold text-warm-text">
+                      {formatDate(invoice.issueDate)}
                     </p>
-                    {invoice.orderDate ? (
-                      <p className="text-[10px] text-warm-textMuted">
-                        Order: {formatDate(invoice.orderDate)}
-                      </p>
-                    ) : (
-                      <p className="text-[10px] text-warm-textSubtle">
-                        Due: {formatDate(invoice.dueDate)}
-                      </p>
-                    )}
-                  </TableCell>
-
-                  <TableCell className="hidden lg:table-cell">
-                    <p className="text-xs font-medium text-warm-text truncate max-w-[150px]">
-                      {invoice.poNumber ? `PO: ${invoice.poNumber}` : '—'}
+                    <p className="text-[11px] text-warm-textMuted">
+                      Due: {formatDate(invoice.dueDate)}
                     </p>
-                    {invoice.dcNo && (
-                      <p className="text-[11px] text-warm-textMuted truncate max-w-[150px]">
-                        DC: {invoice.dcNo}
-                      </p>
-                    )}
-                  </TableCell>
-
-                  <TableCell className="hidden xl:table-cell">
-                    <p className="text-xs text-warm-text truncate max-w-[150px]">
-                      {invoice.modeOfDispatch || '—'}
-                    </p>
-                    {invoice.lhNo && (
-                      <p className="text-[11px] text-warm-textMuted truncate max-w-[150px]">
-                        LH: {invoice.lhNo}
-                      </p>
-                    )}
                   </TableCell>
 
                   <TableCell className="text-right">

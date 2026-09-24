@@ -38,6 +38,7 @@ import {
   Mail,
   Phone,
   PhoneCall,
+  MapPin,
   Filter
 } from 'lucide-react';
 
@@ -194,14 +195,10 @@ export default function CustomersPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Account Head</TableHead>
-              <TableHead>Account Group</TableHead>
-              <TableHead>Category</TableHead>
+              <TableHead>Customer</TableHead>
               <TableHead className="hidden md:table-cell">Contact</TableHead>
-              <TableHead className="table-cell">City</TableHead>
-              <TableHead className="table-cell">State</TableHead>
-              <TableHead className="hidden xl:table-cell">GSTIN</TableHead>
-              <TableHead className="hidden sm:table-cell">Opening Balance</TableHead>
+              <TableHead className="hidden lg:table-cell">Location &amp; GSTIN</TableHead>
+              <TableHead className="hidden sm:table-cell text-right">Opening Balance</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -210,41 +207,29 @@ export default function CustomersPage() {
           <TableBody>
             {customers.map((customer) => (
               <TableRow key={customer.id}>
-                {/* Account Head */}
+                {/* Customer Info */}
                 <TableCell>
-                  <div className="space-y-0.5">
+                  <div className="space-y-1">
                     <Link
                       href={`/customers/${customer.id}`}
-                      className="font-semibold text-warm-text hover:text-warm-accent transition-colors block"
+                      className="font-bold text-warm-text hover:text-warm-accent transition-colors block text-sm"
                     >
                       {customer.name}
                     </Link>
-                    {customer.contactPerson && (
-                      <p className="text-xs text-warm-textMuted">{customer.contactPerson}</p>
-                    )}
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-warm-textMuted">
+                      {customer.contactPerson && (
+                        <span>{customer.contactPerson}</span>
+                      )}
+                      {customer.contactPerson && customer.partyCategory && (
+                        <span>•</span>
+                      )}
+                      {customer.partyCategory && (
+                        <span className="px-1.5 py-0.2 bg-warm-input text-warm-text text-[10px] font-medium border border-warm-border/60">
+                          {customer.partyCategory}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </TableCell>
-
-                {/* Account Group - In Capital */}
-                <TableCell>
-                  {customer.accountGroup ? (
-                    <span className="text-xs font-bold text-warm-text tracking-wider uppercase">
-                      {customer.accountGroup.toUpperCase()}
-                    </span>
-                  ) : (
-                    <span className="text-xs text-warm-textMuted">—</span>
-                  )}
-                </TableCell>
-
-                {/* Category - Theme Badge */}
-                <TableCell>
-                  {customer.partyCategory ? (
-                    <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-warm-surface border border-warm-border text-warm-text shadow-sm">
-                      {customer.partyCategory}
-                    </span>
-                  ) : (
-                    <span className="text-xs text-warm-textMuted">—</span>
-                  )}
                 </TableCell>
 
                 {/* Contact */}
@@ -256,62 +241,62 @@ export default function CustomersPage() {
                         <span className="font-medium text-warm-text">{customer.phone}</span>
                       </p>
                     )}
-                    {customer.officeNo && (
-                      <p className="flex items-center gap-1.5 text-warm-textMuted">
-                        <PhoneCall className="w-3.5 h-3.5 shrink-0" />
-                        <span>{customer.officeNo}</span>
-                      </p>
-                    )}
                     {customer.email && (
                       <p className="flex items-center gap-1.5">
                         <Mail className="w-3.5 h-3.5 shrink-0" />
-                        <span className="break-all">{customer.email}</span>
+                        <span className="truncate max-w-[200px]">{customer.email}</span>
                       </p>
                     )}
-                    {!customer.phone && !customer.email && !customer.officeNo && <span>—</span>}
+                    {!customer.phone && !customer.email && <span>—</span>}
                   </div>
                 </TableCell>
 
-                {/* City */}
-                <TableCell className="table-cell">
-                  <span className="text-xs font-semibold text-warm-text">
-                    {customer.city || '—'}
-                  </span>
+                {/* Location & GSTIN */}
+                <TableCell className="hidden lg:table-cell">
+                  <div className="space-y-1 text-xs">
+                    {(customer.city || customer.state) ? (
+                      <p className="flex items-center gap-1 text-warm-text font-medium">
+                        <MapPin className="w-3.5 h-3.5 text-warm-accent shrink-0" />
+                        <span>
+                          {[customer.city, customer.state].filter(Boolean).join(', ')}
+                        </span>
+                      </p>
+                    ) : (
+                      <span className="text-warm-textMuted">—</span>
+                    )}
+                    {customer.gstin ? (
+                      <p className="text-[11px] text-warm-textMuted">
+                        GST: {customer.gstin}
+                      </p>
+                    ) : (
+                      <span className="text-[10px] text-warm-textSubtle uppercase">Unregistered</span>
+                    )}
+                  </div>
                 </TableCell>
 
-                {/* State */}
-                <TableCell className="table-cell">
-                  <span className="text-xs font-medium text-warm-text">
-                    {customer.state || '—'}
-                  </span>
-                </TableCell>
-
-                <TableCell className="hidden xl:table-cell">
-                  <span className="text-xs text-warm-textMuted">
-                    {customer.gstin || '—'}
-                  </span>
-                </TableCell>
-
-                <TableCell className="hidden sm:table-cell">
+                {/* Opening Balance */}
+                <TableCell className="hidden sm:table-cell text-right">
                   <div className="text-xs">
-                    {customer.openingBalance !== null && customer.openingBalance !== undefined ? (
-                      <span className="font-semibold text-warm-text">
+                    {customer.openingBalance !== null && customer.openingBalance !== undefined && Number(customer.openingBalance) > 0 ? (
+                      <span className="font-semibold text-warm-text tabular-nums">
                         {formatCurrency(Number(customer.openingBalance))}{' '}
-                        <span className="text-[11px] text-warm-textMuted font-normal">
+                        <span className="text-[10px] text-warm-textMuted font-normal">
                           ({customer.balanceType || 'Dr.'})
                         </span>
                       </span>
                     ) : (
-                      <span className="text-warm-textMuted">—</span>
+                      <span className="text-warm-textMuted">₹0.00</span>
                     )}
                   </div>
                 </TableCell>
 
+                {/* Status */}
                 <TableCell>
                   <Badge status={customer.isActive ? 'ACTIVE' : 'INACTIVE'} />
                 </TableCell>
 
-                <TableCell>
+                {/* Actions */}
+                <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
                     <Link
                       href={`/customers/${customer.id}`}

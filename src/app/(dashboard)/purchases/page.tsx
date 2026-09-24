@@ -346,12 +346,11 @@ export default function PurchasesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Bill No / Vendor Inv</TableHead>
-                  <TableHead>Supplier / Vendor</TableHead>
-                  <TableHead>Bill Date</TableHead>
-                  <TableHead>Total Payable</TableHead>
-                  <TableHead>Balance Due</TableHead>
-                  <TableHead>GST Tax (ITC)</TableHead>
+                  <TableHead>Bill #</TableHead>
+                  <TableHead>Vendor</TableHead>
+                  <TableHead className="hidden md:table-cell">Date</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="hidden sm:table-cell text-right">Balance Due</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -359,6 +358,9 @@ export default function PurchasesPage() {
               <TableBody>
                 {bills.map((bill) => {
                   const balanceDueNum = Number(bill.balanceDue) || 0;
+                  const grandTotalNum = Number(bill.grandTotal) || 0;
+                  const amountPaidNum = Number(bill.amountPaid) || 0;
+
                   return (
                     <TableRow key={bill.id}>
                       <TableCell>
@@ -379,53 +381,54 @@ export default function PurchasesPage() {
 
                       <TableCell>
                         <div className="space-y-0.5">
-                          <span className="font-semibold text-warm-text block text-xs">
+                          <span className="font-semibold text-warm-text block text-xs truncate max-w-[200px]">
                             {bill.vendorName}
                           </span>
-                          {bill.vendorGstin && (
+                          {bill.vendorGstin ? (
                             <span className="text-[10px] text-warm-textSubtle block">
                               GST: {bill.vendorGstin}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-warm-textSubtle block uppercase">
+                              Unregistered
                             </span>
                           )}
                         </div>
                       </TableCell>
 
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <div className="space-y-0.5 text-xs text-warm-text">
-                          <span>{formatDate(bill.billDate)}</span>
+                          <span className="font-medium">{formatDate(bill.billDate)}</span>
                           {bill.dueDate && (
-                            <span className="text-[10px] text-warm-textMuted block">
+                            <span className="text-[11px] text-warm-textMuted block">
                               Due: {formatDate(bill.dueDate)}
                             </span>
                           )}
                         </div>
                       </TableCell>
 
-                      <TableCell>
-                        <span className="font-bold text-xs text-warm-text">
-                          {formatCurrency(bill.grandTotal)}
+                      <TableCell className="text-right">
+                        <span className="font-semibold text-warm-text tabular-nums text-xs">
+                          {formatCurrency(grandTotalNum)}
+                        </span>
+                        <span className="block text-[10px] text-warm-textSubtle uppercase">
+                          {bill.isIgst ? 'IGST (ITC)' : 'CGST+SGST (ITC)'}
                         </span>
                       </TableCell>
 
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell text-right">
                         <span
-                          className={`font-bold text-xs ${
+                          className={`font-semibold tabular-nums text-xs ${
                             balanceDueNum > 0 ? 'text-amber-800' : 'text-emerald-700'
                           }`}
                         >
-                          {formatCurrency(bill.balanceDue)}
+                          {formatCurrency(balanceDueNum)}
                         </span>
-                      </TableCell>
-
-                      <TableCell>
-                        <div className="space-y-0.5 text-xs">
-                          <span className="font-semibold text-warm-text">
-                            {formatCurrency(bill.taxAmount)}
+                        {amountPaidNum > 0 && (
+                          <span className="block text-[11px] text-warm-textSubtle">
+                            paid {formatCurrency(amountPaidNum)}
                           </span>
-                          <span className="text-[10px] text-warm-textSubtle block">
-                            {bill.isIgst ? 'IGST' : 'CGST+SGST'}
-                          </span>
-                        </div>
+                        )}
                       </TableCell>
 
                       <TableCell>
