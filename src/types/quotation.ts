@@ -180,6 +180,7 @@ export interface QuotationListParams {
 
 export interface QuotationSummary {
   totalCount: number;
+  totalQuotations?: number;
   draftCount: number;
   sentCount: number;
   acceptedCount: number;

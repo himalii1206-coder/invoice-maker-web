@@ -9,6 +9,7 @@ import { LoadingState } from '@/components/ui/LoadingState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { reportsApi, ComprehensiveAnalyticsPayload } from '@/lib/reports';
 import { SalesAnalyticsTab } from '@/components/analytics/SalesAnalyticsTab';
+import { QuotationAnalyticsTab } from '@/components/analytics/QuotationAnalyticsTab';
 import { InvoiceAnalyticsTab } from '@/components/analytics/InvoiceAnalyticsTab';
 import { PaymentAnalyticsTab } from '@/components/analytics/PaymentAnalyticsTab';
 import { GstAnalyticsTab } from '@/components/analytics/GstAnalyticsTab';
@@ -17,6 +18,7 @@ import { ProductAnalyticsTab } from '@/components/analytics/ProductAnalyticsTab'
 import { ReceivablesAnalyticsTab } from '@/components/analytics/ReceivablesAnalyticsTab';
 import {
   TrendingUp,
+  FileSpreadsheet,
   FileText,
   CreditCard,
   Percent,
@@ -29,6 +31,7 @@ import {
 
 type AnalyticsTabType =
   | 'sales'
+  | 'quotations'
   | 'invoices'
   | 'payments'
   | 'gst'
@@ -85,6 +88,7 @@ export default function AnalyticsPage() {
 
   const tabItems: Array<{ id: AnalyticsTabType; label: string; icon: React.ReactNode }> = [
     { id: 'sales', label: 'Sales Analytics', icon: <TrendingUp className="w-4 h-4" /> },
+    { id: 'quotations', label: 'Quotation Analytics', icon: <FileSpreadsheet className="w-4 h-4" /> },
     { id: 'invoices', label: 'Invoice Analytics', icon: <FileText className="w-4 h-4" /> },
     { id: 'payments', label: 'Payment Analytics', icon: <CreditCard className="w-4 h-4" /> },
     { id: 'gst', label: 'GST & Tax Analytics', icon: <Percent className="w-4 h-4" /> },
@@ -162,6 +166,9 @@ export default function AnalyticsPage() {
       ) : (
         <div>
           {activeTab === 'sales' && <SalesAnalyticsTab data={analyticsData.salesAnalytics} />}
+          {activeTab === 'quotations' && (
+            <QuotationAnalyticsTab data={analyticsData.quotationAnalytics} />
+          )}
           {activeTab === 'invoices' && <InvoiceAnalyticsTab data={analyticsData.invoiceAnalytics} />}
           {activeTab === 'payments' && <PaymentAnalyticsTab data={analyticsData.paymentAnalytics} />}
           {activeTab === 'gst' && <GstAnalyticsTab data={analyticsData.gstAnalytics} />}

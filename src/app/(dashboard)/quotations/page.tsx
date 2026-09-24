@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/Table';
 import { QuotationStatusBadge } from '@/components/quotations/QuotationStatusBadge';
 import { QuotationPreviewModal } from '@/components/quotations/QuotationPreviewModal';
+import { StatCard } from '@/components/invoices/StatCard';
 import { quotationsApi } from '@/lib/quotations';
 import { openPdfBlob } from '@/lib/invoices';
 import { apiErrorMessage } from '@/lib/customers';
@@ -285,58 +286,41 @@ export default function QuotationsPage() {
         />
 
         {/* Top KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-warm-surface border border-warm-border/70 p-4 shadow-warm">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-warm-textMuted uppercase tracking-wider">
-                Total Quotations
-              </span>
-              <FileSpreadsheet className="w-4 h-4 text-warm-accent" />
-            </div>
-            <p className="text-2xl font-bold text-warm-text mt-2">{summary.totalCount}</p>
-            <p className="text-xs text-warm-textSubtle mt-0.5">
-              Value: <span className="font-semibold text-warm-text">{formatCurrency(summary.totalValue)}</span>
-            </p>
-          </div>
-
-          <div className="bg-warm-surface border border-warm-border/70 p-4 shadow-warm">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-warm-textMuted uppercase tracking-wider">
-                Accepted
-              </span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            </div>
-            <p className="text-2xl font-bold text-emerald-700 mt-2">{summary.acceptedCount}</p>
-            <p className="text-xs text-warm-textSubtle mt-0.5">Ready for invoice conversion</p>
-          </div>
-
-          <div className="bg-warm-surface border border-warm-border/70 p-4 shadow-warm">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-warm-textMuted uppercase tracking-wider">
-                Converted to Invoices
-              </span>
-              <ArrowRightLeft className="w-4 h-4 text-purple-600" />
-            </div>
-            <p className="text-2xl font-bold text-purple-700 mt-2">{summary.convertedCount}</p>
-            <p className="text-xs text-warm-textSubtle mt-0.5">
-              Converted: <span className="font-semibold text-warm-text">{formatCurrency(summary.convertedValue)}</span>
-            </p>
-          </div>
-
-          <div className="bg-warm-surface border border-warm-border/70 p-4 shadow-warm">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-warm-textMuted uppercase tracking-wider">
-                Pending / Sent
-              </span>
-              <Clock className="w-4 h-4 text-blue-600" />
-            </div>
-            <p className="text-2xl font-bold text-blue-700 mt-2">
-              {summary.sentCount + summary.draftCount}
-            </p>
-            <p className="text-xs text-warm-textSubtle mt-0.5">
-              {summary.draftCount} drafts, {summary.sentCount} sent
-            </p>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            label="Total Quotations"
+            value={summary.totalValue ?? 0}
+            hint={`${summary.totalCount ?? 0} ${(summary.totalCount ?? 0) === 1 ? 'quotation' : 'quotations'}`}
+            icon={<FileSpreadsheet className="w-4 h-4" />}
+            tone="accent"
+            isLoading={isLoading}
+          />
+          <StatCard
+            label="Accepted"
+            value={summary.acceptedCount ?? 0}
+            isCurrency={false}
+            hint="Ready for invoice conversion"
+            icon={<CheckCircle2 className="w-4 h-4" />}
+            tone="success"
+            isLoading={isLoading}
+          />
+          <StatCard
+            label="Converted to Invoices"
+            value={summary.convertedValue ?? 0}
+            hint={`${summary.convertedCount ?? 0} converted`}
+            icon={<ArrowRightLeft className="w-4 h-4" />}
+            tone="purple"
+            isLoading={isLoading}
+          />
+          <StatCard
+            label="Pending / Sent"
+            value={(summary.sentCount ?? 0) + (summary.draftCount ?? 0)}
+            isCurrency={false}
+            hint={`${summary.draftCount ?? 0} drafts, ${summary.sentCount ?? 0} sent`}
+            icon={<Clock className="w-4 h-4" />}
+            tone="info"
+            isLoading={isLoading}
+          />
         </div>
 
         {/* Filter Bar */}
@@ -385,10 +369,12 @@ export default function QuotationsPage() {
 
         {/* Main Quotations Table */}
         {isLoading ? (
-          <LoadingState message="Loading quotations..." />
+          <div className="bg-warm-surface border border-warm-border/60 shadow-warm">
+            <LoadingState message="Loading quotations..." />
+          </div>
         ) : quotations.length === 0 ? (
           <EmptyState
-            icon={<FileSpreadsheet className="w-6 h-6" />}
+            icon={<FileSpreadsheet className="w-6 h-6 text-warm-accent" />}
             title="No quotations found"
             description={
               debouncedSearch || statusFilter

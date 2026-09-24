@@ -14,8 +14,7 @@ import {
   Users,
   Download,
   Building2,
-  PieChart,
-  Layers
+  PieChart
 } from 'lucide-react';
 
 interface SalesAnalyticsTabProps {

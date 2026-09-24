@@ -2,37 +2,41 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
-/**
- * Dashboard stat tile.
- *
- * Tones are semantic rather than decorative: the same colour always means the
- * same thing across the module, so "red" reliably reads as money that is late.
- */
-export type StatTone = 'accent' | 'success' | 'warning' | 'danger' | 'neutral';
+export type StatTone =
+  | 'accent'
+  | 'success'
+  | 'warning'
+  | 'danger'
+  | 'info'
+  | 'purple'
+  | 'neutral';
 
-const TONES: Record<StatTone, { icon: string; value: string }> = {
-  accent: { icon: 'bg-warm-accentLight text-warm-accent', value: 'text-warm-text' },
-  success: { icon: 'bg-emerald-50 text-emerald-600', value: 'text-emerald-700' },
-  warning: { icon: 'bg-amber-50 text-amber-600', value: 'text-amber-700' },
-  danger: { icon: 'bg-red-50 text-red-600', value: 'text-red-700' },
-  neutral: { icon: 'bg-warm-input text-warm-textMuted', value: 'text-warm-text' }
+const TONES: Record<StatTone, { icon: string; value: string; hint?: string }> = {
+  accent: { icon: 'text-warm-accent', value: 'text-warm-text', hint: 'text-warm-textMuted' },
+  success: { icon: 'text-emerald-600', value: 'text-emerald-700', hint: 'text-emerald-700/80' },
+  warning: { icon: 'text-amber-600', value: 'text-amber-800', hint: 'text-amber-800/80' },
+  danger: { icon: 'text-red-600', value: 'text-red-700', hint: 'text-red-600/80' },
+  info: { icon: 'text-blue-600', value: 'text-blue-700', hint: 'text-blue-700/80' },
+  purple: { icon: 'text-purple-600', value: 'text-purple-700', hint: 'text-purple-700/80' },
+  neutral: { icon: 'text-warm-textMuted', value: 'text-warm-text', hint: 'text-warm-textMuted' }
 };
 
 export interface StatCardProps {
   label: string;
-  value: number;
+  value: number | string;
   /** Rendered under the value, e.g. "12 invoices". */
-  hint?: string;
+  hint?: React.ReactNode;
   icon: React.ReactNode;
   tone?: StatTone;
-  /** Turns the whole tile into a filter shortcut. */
+  /** Turns the whole tile into a filter shortcut or link. */
   href?: string;
   isLoading?: boolean;
-  /** Set false for counts, which must not be formatted as currency. */
+  /** Set false for counts or pre-formatted text, which must not be formatted as currency. */
   isCurrency?: boolean;
+  className?: string;
+  onClick?: () => void;
 }
 
 export function StatCard({
@@ -43,44 +47,53 @@ export function StatCard({
   tone = 'neutral',
   href,
   isLoading = false,
-  isCurrency = true
+  isCurrency = true,
+  className,
+  onClick
 }: StatCardProps) {
-  const palette = TONES[tone];
+  const palette = TONES[tone] || TONES.neutral;
 
-  const body = (
+  const content = (
     <div
+      onClick={onClick}
       className={cn(
-        'h-full bg-warm-surface border border-warm-border/70 shadow-warm p-5 transition-colors',
-        href && 'hover:border-warm-accent/40 hover:bg-warm-accentLight/20 cursor-pointer'
+        'p-4 bg-warm-surface border border-warm-border/70 rounded-none shadow-warm transition-colors',
+        (href || onClick) && 'hover:border-warm-accent/40 cursor-pointer',
+        className
       )}
     >
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-warm-textMuted">
-          {label}
-        </span>
-        <span className={cn('p-2 rounded-none shrink-0', palette.icon)}>{icon}</span>
+      <div className="flex items-center justify-between text-warm-textMuted text-xs mb-1">
+        <span>{label}</span>
+        <span className={cn('shrink-0', palette.icon)}>{icon}</span>
       </div>
 
       {isLoading ? (
-        // Reserves the exact height of the value so the grid does not jump.
-        <div className="h-8 w-28 bg-warm-input animate-pulse" />
+        <div className="h-7 w-28 bg-warm-input animate-pulse my-0.5" />
       ) : (
-        <p className={cn('text-2xl font-bold tracking-tight tabular-nums', palette.value)}>
-          {isCurrency ? formatCurrency(value) : value.toLocaleString('en-IN')}
+        <p className={cn('text-xl font-bold tracking-tight tabular-nums', palette.value)}>
+          {typeof value === 'number'
+            ? isCurrency
+              ? formatCurrency(value)
+              : value.toLocaleString('en-IN')
+            : value}
         </p>
       )}
 
       {hint && !isLoading && (
-        <p className="text-[11px] text-warm-textMuted font-medium mt-1">{hint}</p>
+        <div className={cn('text-[11px] mt-1 block', palette.hint || 'text-warm-textMuted')}>
+          {hint}
+        </div>
       )}
     </div>
   );
 
-  return href ? (
-    <Link href={href} className="block h-full">
-      {body}
-    </Link>
-  ) : (
-    body
-  );
+  if (href) {
+    return (
+      <Link href={href} className="block h-full">
+        {content}
+      </Link>
+    );
+  }
+
+  return content;
 }

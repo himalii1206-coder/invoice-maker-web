@@ -81,7 +81,9 @@ export default function QuotationDetailPage() {
   if (isLoading) {
     return (
       <DashboardLayout>
-        <LoadingState message="Loading quotation details..." />
+        <div className="bg-warm-surface border border-warm-border/60 shadow-warm">
+          <LoadingState message="Loading quotation details..." />
+        </div>
       </DashboardLayout>
     );
   }

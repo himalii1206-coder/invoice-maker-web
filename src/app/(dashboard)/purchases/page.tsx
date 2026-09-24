@@ -27,6 +27,7 @@ import { PurchaseBill, PurchaseBillListParams, PurchaseDashboardMetrics, Vendor,
 import { PaginationMeta } from '@/types/index';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { RecordPaymentModal } from '@/components/purchases/RecordPaymentModal';
+import { StatCard } from '@/components/invoices/StatCard';
 import {
   Receipt,
   Plus,
@@ -170,59 +171,47 @@ export default function PurchasesPage() {
         {/* Purchase Analytics KPI Cards */}
         {metrics && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-4 bg-warm-surface border border-warm-border/70 rounded-none shadow-warm">
-              <div className="flex items-center justify-between text-warm-textMuted text-xs mb-1">
-                <span>Total Purchases (Gross)</span>
-                <Receipt className="w-4 h-4 text-warm-accent" />
-              </div>
-              <p className="text-xl font-bold text-warm-text">
-                {formatCurrency(metrics.totalPurchases)}
-              </p>
-              <span className="text-[11px] text-warm-textMuted mt-1 block">
-                {metrics.billCount} Inward Bill(s) in {fyFilter || 'all periods'}
-              </span>
-            </div>
+            <StatCard
+              label="Total Purchases (Gross)"
+              value={metrics.totalPurchases}
+              hint={`${metrics.billCount} Inward Bill(s) in ${fyFilter || 'all periods'}`}
+              icon={<Receipt className="w-4 h-4" />}
+              tone="accent"
+              isLoading={isLoading}
+            />
 
-            <div className="p-4 bg-warm-surface border border-warm-border/70 rounded-none shadow-warm">
-              <div className="flex items-center justify-between text-warm-textMuted text-xs mb-1">
-                <span>Input GST (ITC Claimable)</span>
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              </div>
-              <p className="text-xl font-bold text-emerald-700">
-                {formatCurrency(metrics.itcSummary.totalItc)}
-              </p>
-              <div className="text-[10px] text-warm-textMuted mt-1 flex gap-2">
-                <span>CGST: {formatCurrency(metrics.itcSummary.cgst)}</span>
-                <span>SGST: {formatCurrency(metrics.itcSummary.sgst)}</span>
-                <span>IGST: {formatCurrency(metrics.itcSummary.igst)}</span>
-              </div>
-            </div>
+            <StatCard
+              label="Input GST (ITC Claimable)"
+              value={metrics.itcSummary.totalItc}
+              hint={
+                <div className="text-[10px] text-warm-textMuted flex gap-2">
+                  <span>CGST: {formatCurrency(metrics.itcSummary.cgst)}</span>
+                  <span>SGST: {formatCurrency(metrics.itcSummary.sgst)}</span>
+                  <span>IGST: {formatCurrency(metrics.itcSummary.igst)}</span>
+                </div>
+              }
+              icon={<ShieldCheck className="w-4 h-4" />}
+              tone="success"
+              isLoading={isLoading}
+            />
 
-            <div className="p-4 bg-warm-surface border border-warm-border/70 rounded-none shadow-warm">
-              <div className="flex items-center justify-between text-warm-textMuted text-xs mb-1">
-                <span>Outstanding Payables</span>
-                <DollarSign className="w-4 h-4 text-amber-600" />
-              </div>
-              <p className="text-xl font-bold text-amber-800">
-                {formatCurrency(metrics.outstandingPayables)}
-              </p>
-              <span className="text-[11px] text-warm-textMuted mt-1 block">
-                Paid: {formatCurrency(metrics.totalPaid)}
-              </span>
-            </div>
+            <StatCard
+              label="Outstanding Payables"
+              value={metrics.outstandingPayables}
+              hint={`Paid: ${formatCurrency(metrics.totalPaid)}`}
+              icon={<DollarSign className="w-4 h-4" />}
+              tone="warning"
+              isLoading={isLoading}
+            />
 
-            <div className="p-4 bg-warm-surface border border-warm-border/70 rounded-none shadow-warm">
-              <div className="flex items-center justify-between text-warm-textMuted text-xs mb-1">
-                <span>Overdue Payables</span>
-                <AlertCircle className="w-4 h-4 text-red-600" />
-              </div>
-              <p className="text-xl font-bold text-red-700">
-                {formatCurrency(metrics.overduePayables)}
-              </p>
-              <span className="text-[11px] text-red-600/80 mt-1 block">
-                Bills past payment terms
-              </span>
-            </div>
+            <StatCard
+              label="Overdue Payables"
+              value={metrics.overduePayables}
+              hint="Bills past payment terms"
+              icon={<AlertCircle className="w-4 h-4" />}
+              tone="danger"
+              isLoading={isLoading}
+            />
           </div>
         )}
 
@@ -328,10 +317,12 @@ export default function PurchasesPage() {
 
         {/* Purchase Bills Table */}
         {isLoading ? (
-          <LoadingState message="Loading purchase bills..." />
+          <div className="bg-warm-surface border border-warm-border/60 shadow-warm">
+            <LoadingState message="Loading purchase bills..." />
+          </div>
         ) : bills.length === 0 ? (
           <EmptyState
-            icon={<Receipt className="w-6 h-6" />}
+            icon={<Receipt className="w-6 h-6 text-warm-accent" />}
             title="No purchase bills found"
             description={
               search || statusFilter || vendorFilter

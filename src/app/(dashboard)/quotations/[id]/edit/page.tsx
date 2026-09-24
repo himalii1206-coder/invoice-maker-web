@@ -41,7 +41,9 @@ export default function EditQuotationPage() {
   if (isLoading || !quotation) {
     return (
       <DashboardLayout>
-        <LoadingState message="Loading quotation for edit..." />
+        <div className="bg-warm-surface border border-warm-border/60 shadow-warm">
+          <LoadingState message="Loading quotation for edit..." />
+        </div>
       </DashboardLayout>
     );
   }

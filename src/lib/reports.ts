@@ -1,6 +1,26 @@
 import { api } from './api';
 import { ApiResponse } from '@/types/index';
 
+export interface QuotationPipelineData {
+  totalQuotations: number;
+  totalQuotedValue: number;
+  convertedQuotesCount: number;
+  convertedQuotesValue: number;
+  acceptedQuotesCount: number;
+  acceptedQuotesValue: number;
+  sentQuotesCount: number;
+  sentQuotesValue: number;
+  draftQuotesCount: number;
+  lostQuotesCount: number;
+  lostQuotesValue: number;
+  activePipelineValue: number;
+  conversionRatePercent: number;
+  averageQuotationValue: number;
+  byStatus: Array<{ status: string; label?: string; count: number; amount: number; percentage: number }>;
+  byMonth?: Array<{ month: string; quoted: number; converted: number; count: number }>;
+  byCustomer?: Array<{ customerId: string; name: string; quoted: number; converted: number; count: number }>;
+}
+
 export interface SalesAnalyticsData {
   byDay: Array<{ label: string; invoiced: number; paid: number; count: number }>;
   byWeek: Array<{ label: string; invoiced: number; paid: number; count: number }>;
@@ -16,6 +36,7 @@ export interface SalesAnalyticsData {
     outstanding: number;
     count: number;
   }>;
+  quotationPipeline?: QuotationPipelineData;
   companyOverview: {
     name: string;
     gstin: string;
@@ -151,6 +172,7 @@ export interface ReceivablesAnalyticsData {
 export interface ComprehensiveAnalyticsPayload {
   periodLabel: string;
   salesAnalytics: SalesAnalyticsData;
+  quotationAnalytics?: QuotationPipelineData;
   invoiceAnalytics: InvoiceAnalyticsData;
   paymentAnalytics: PaymentAnalyticsData;
   gstAnalytics: GstAnalyticsData;

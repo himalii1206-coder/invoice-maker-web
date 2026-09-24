@@ -160,10 +160,12 @@ export default function VendorsPage() {
 
         {/* Vendors Table */}
         {isLoading ? (
-          <LoadingState message="Loading vendors & suppliers..." />
+          <div className="bg-warm-surface border border-warm-border/60 shadow-warm">
+            <LoadingState message="Loading vendors & suppliers..." />
+          </div>
         ) : vendors.length === 0 ? (
           <EmptyState
-            icon={<Truck className="w-6 h-6" />}
+            icon={<Truck className="w-6 h-6 text-warm-accent" />}
             title="No vendors found"
             description={
               search

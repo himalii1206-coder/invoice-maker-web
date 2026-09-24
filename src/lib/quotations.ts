@@ -43,9 +43,24 @@ export const quotationsApi = {
       ApiResponse<Quotation[]> & { pagination?: PaginationMeta; summary?: QuotationSummary }
     >('/quotations', { params: clean(params) });
 
+    const rawSummary = (data as any).summary || {};
+    const summary: QuotationSummary = {
+      totalCount: Number(rawSummary.totalCount ?? rawSummary.totalQuotations ?? 0),
+      totalQuotations: Number(rawSummary.totalQuotations ?? rawSummary.totalCount ?? 0),
+      draftCount: Number(rawSummary.draftCount ?? 0),
+      sentCount: Number(rawSummary.sentCount ?? 0),
+      acceptedCount: Number(rawSummary.acceptedCount ?? 0),
+      convertedCount: Number(rawSummary.convertedCount ?? 0),
+      expiredCount: Number(rawSummary.expiredCount ?? 0),
+      rejectedCount: Number(rawSummary.rejectedCount ?? 0),
+      cancelledCount: Number(rawSummary.cancelledCount ?? 0),
+      totalValue: Number(rawSummary.totalValue ?? 0),
+      convertedValue: Number(rawSummary.convertedValue ?? 0)
+    };
+
     return {
       quotations: (data.data as Quotation[]) ?? [],
-      summary: (data as any).summary ?? EMPTY_SUMMARY,
+      summary,
       meta: (data as any).pagination ?? (data.meta as PaginationMeta) ?? EMPTY_META
     };
   },

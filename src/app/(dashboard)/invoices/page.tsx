@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
@@ -94,6 +95,7 @@ const MONTHS = [
 export default function InvoicesPage() {
   const router = useRouter();
 
+  const [mounted, setMounted] = useState(false);
   const [invoices, setInvoices] = useState<InvoiceListRow[]>([]);
   const [meta, setMeta] = useState<PaginationMeta>(EMPTY_META);
   const [summary, setSummary] = useState<InvoiceListSummary>(EMPTY_SUMMARY);
@@ -120,27 +122,41 @@ export default function InvoicesPage() {
 
   const debouncedSearch = useDebounce(search, 400);
 
-  // Row actions
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  // Floating portal row action state
+  const [menuAnchor, setMenuAnchor] = useState<{
+    invoice: InvoiceListRow;
+    top: number;
+    right: number;
+    openUpwards: boolean;
+  } | null>(null);
+
   const [cancelling, setCancelling] = useState<InvoiceListRow | null>(null);
   const [deleting, setDeleting] = useState<InvoiceListRow | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [isActionBusy, setIsActionBusy] = useState(false);
 
   useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest('.row-action-menu')) {
-        setOpenMenuId(null);
-      }
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const handleDismiss = () => setMenuAnchor(null);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuAnchor(null);
     };
-    if (openMenuId) {
-      document.addEventListener('click', handleOutsideClick);
-    }
+
+    window.addEventListener('click', handleDismiss);
+    window.addEventListener('resize', handleDismiss);
+    window.addEventListener('scroll', handleDismiss, true);
+    window.addEventListener('keydown', handleKeyDown);
+
     return () => {
-      document.removeEventListener('click', handleOutsideClick);
+      window.removeEventListener('click', handleDismiss);
+      window.removeEventListener('resize', handleDismiss);
+      window.removeEventListener('scroll', handleDismiss, true);
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [openMenuId]);
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Data
@@ -495,7 +511,7 @@ export default function InvoicesPage() {
                   </TableCell>
 
                   <TableCell className="text-right">
-                    <div className="relative inline-flex items-center justify-end gap-1.5 row-action-menu">
+                    <div className="flex items-center justify-end gap-1.5">
                       <Link
                         href={`/invoices/${invoice.id}`}
                         title="View invoice"
@@ -510,89 +526,28 @@ export default function InvoicesPage() {
                         title="More options"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setOpenMenuId(openMenuId === invoice.id ? null : invoice.id);
+                          if (menuAnchor?.invoice.id === invoice.id) {
+                            setMenuAnchor(null);
+                            return;
+                          }
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const menuHeight = 220;
+                          const spaceBelow = window.innerHeight - rect.bottom;
+                          const openUpwards = spaceBelow < menuHeight && rect.top > menuHeight;
+                          setMenuAnchor({
+                            invoice,
+                            top: openUpwards ? rect.top - 4 : rect.bottom + 4,
+                            right: window.innerWidth - rect.right,
+                            openUpwards
+                          });
                         }}
                         className={cn(
-                          'p-1 text-warm-textMuted hover:text-warm-text hover:bg-warm-input border border-warm-border/60 transition-colors',
-                          openMenuId === invoice.id && 'bg-warm-input text-warm-text'
+                          'p-1 text-warm-textMuted hover:text-warm-text hover:bg-warm-input border border-warm-border/60 transition-colors cursor-pointer',
+                          menuAnchor?.invoice.id === invoice.id && 'bg-warm-input text-warm-text'
                         )}
                       >
                         <MoreVertical className="w-4 h-4" />
                       </button>
-
-                      {openMenuId === invoice.id && (
-                        <div
-                          className="absolute right-0 top-full mt-1 w-44 bg-warm-surface border border-warm-border/80 shadow-warmLg z-50 py-1 text-left animate-in fade-in zoom-in-95 duration-150"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {invoice.status !== 'CANCELLED' && (
-                            <Link
-                              href={`/invoices/${invoice.id}/edit`}
-                              onClick={() => setOpenMenuId(null)}
-                              className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-warm-text hover:bg-warm-input transition-colors"
-                            >
-                              <Pencil className="w-3.5 h-3.5 text-warm-textMuted" />
-                              <span>Edit Invoice</span>
-                            </Link>
-                          )}
-
-                          <button
-                            type="button"
-                            disabled={isBusy}
-                            onClick={() => {
-                              setOpenMenuId(null);
-                              handleDownload(invoice);
-                            }}
-                            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-warm-text hover:bg-warm-input transition-colors disabled:opacity-40"
-                          >
-                            <Download className="w-3.5 h-3.5 text-warm-textMuted" />
-                            <span>Download PDF</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            disabled={isBusy}
-                            onClick={() => {
-                              setOpenMenuId(null);
-                              handleDuplicate(invoice);
-                            }}
-                            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-warm-text hover:bg-warm-input transition-colors disabled:opacity-40"
-                          >
-                            <Copy className="w-3.5 h-3.5 text-warm-textMuted" />
-                            <span>Duplicate as Draft</span>
-                          </button>
-
-                          <div className="h-px bg-warm-border/60 my-1" />
-
-                          {invoice.status === 'DRAFT' ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOpenMenuId(null);
-                                setDeleting(invoice);
-                              }}
-                              className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 transition-colors"
-                            >
-                              <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                              <span>Delete Draft</span>
-                            </button>
-                          ) : (
-                            invoice.status !== 'CANCELLED' && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setOpenMenuId(null);
-                                  setCancelling(invoice);
-                                }}
-                                className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 transition-colors"
-                              >
-                                <Ban className="w-3.5 h-3.5 text-red-500" />
-                                <span>Cancel Invoice</span>
-                              </button>
-                            )
-                          )}
-                        </div>
-                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -867,6 +822,95 @@ export default function InvoicesPage() {
       </div>
 
       {renderTable()}
+
+      {/* Floating Action Menu rendered outside in document.body via Portal */}
+      {mounted && menuAnchor && (
+        createPortal(
+          <div
+            className={cn(
+              'fixed z-[9999] w-48 bg-warm-surface border border-warm-border/80 shadow-warmLg py-1 text-left animate-in fade-in zoom-in-95 duration-100',
+              menuAnchor.openUpwards ? '-translate-y-full origin-bottom-right' : 'origin-top-right'
+            )}
+            style={{
+              top: `${menuAnchor.top}px`,
+              right: `${menuAnchor.right}px`
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {menuAnchor.invoice.status !== 'CANCELLED' && (
+              <Link
+                href={`/invoices/${menuAnchor.invoice.id}/edit`}
+                onClick={() => setMenuAnchor(null)}
+                className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-warm-text hover:bg-warm-input transition-colors"
+              >
+                <Pencil className="w-3.5 h-3.5 text-warm-textMuted" />
+                <span>Edit Invoice</span>
+              </Link>
+            )}
+
+            <button
+              type="button"
+              disabled={busyId === menuAnchor.invoice.id}
+              onClick={() => {
+                const inv = menuAnchor.invoice;
+                setMenuAnchor(null);
+                handleDownload(inv);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-warm-text hover:bg-warm-input transition-colors disabled:opacity-40 cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-warm-textMuted" />
+              <span>Download PDF</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={busyId === menuAnchor.invoice.id}
+              onClick={() => {
+                const inv = menuAnchor.invoice;
+                setMenuAnchor(null);
+                handleDuplicate(inv);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-warm-text hover:bg-warm-input transition-colors disabled:opacity-40 cursor-pointer"
+            >
+              <Copy className="w-3.5 h-3.5 text-warm-textMuted" />
+              <span>Duplicate as Draft</span>
+            </button>
+
+            <div className="h-px bg-warm-border/60 my-1" />
+
+            {menuAnchor.invoice.status === 'DRAFT' ? (
+              <button
+                type="button"
+                onClick={() => {
+                  const inv = menuAnchor.invoice;
+                  setMenuAnchor(null);
+                  setDeleting(inv);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                <span>Delete Draft</span>
+              </button>
+            ) : (
+              menuAnchor.invoice.status !== 'CANCELLED' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const inv = menuAnchor.invoice;
+                    setMenuAnchor(null);
+                    setCancelling(inv);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                >
+                  <Ban className="w-3.5 h-3.5 text-red-500" />
+                  <span>Cancel Invoice</span>
+                </button>
+              )
+            )}
+          </div>,
+          document.body
+        )
+      )}
 
       {/* Cancelling keeps the number consumed and the document auditable. */}
       <ConfirmDialog
