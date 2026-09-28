@@ -71,9 +71,6 @@ export function ProductAnalyticsTab({ data }: ProductAnalyticsTabProps) {
             <p className="text-3xl font-bold text-warm-text tracking-tight">
               {data.totalProductCount}
             </p>
-            <p className="text-xs text-warm-textMuted mt-2 pt-2 border-t border-warm-border/50">
-              Unique items / services billed
-            </p>
           </CardContent>
         </Card>
 
@@ -90,9 +87,6 @@ export function ProductAnalyticsTab({ data }: ProductAnalyticsTabProps) {
             </div>
             <p className="text-3xl font-bold text-blue-800 tracking-tight">
               {data.totalQuantitySold}
-            </p>
-            <p className="text-xs text-warm-textMuted mt-2 pt-2 border-t border-warm-border/50">
-              Aggregated quantity delivered
             </p>
           </CardContent>
         </Card>
@@ -111,9 +105,6 @@ export function ProductAnalyticsTab({ data }: ProductAnalyticsTabProps) {
             <p className="text-2xl font-bold text-emerald-800 tracking-tight">
               {formatCurrency(data.totalProductRevenue)}
             </p>
-            <p className="text-xs text-warm-textMuted mt-2 pt-2 border-t border-warm-border/50">
-              Total sales across line items
-            </p>
           </CardContent>
         </Card>
 
@@ -131,9 +122,6 @@ export function ProductAnalyticsTab({ data }: ProductAnalyticsTabProps) {
             <p className="text-2xl font-bold text-warm-accent tracking-tight">
               {formatCurrency(data.totalTaxGenerated)}
             </p>
-            <p className="text-xs text-warm-textMuted mt-2 pt-2 border-t border-warm-border/50">
-              Output tax on products sold
-            </p>
           </CardContent>
         </Card>
       </div>
@@ -149,7 +137,6 @@ export function ProductAnalyticsTab({ data }: ProductAnalyticsTabProps) {
               <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                 Product Gross Revenue Graph
               </h3>
-              <p className="text-xs text-warm-textMuted">Top items ranked by sales volume</p>
             </div>
           </div>
 

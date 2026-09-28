@@ -244,7 +244,12 @@ export default function QuotationDetailPage() {
           ]}
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <QuotationStatusBadge status={quotation.status} size="md" />
+              <QuotationStatusBadge
+                status={quotation.status}
+                convertedInvoiceId={quotation.convertedInvoiceId}
+                convertedInvoiceNumber={quotation.convertedInvoice?.invoiceNumber}
+                size="md"
+              />
               {isDraft && (
                 <Link href={`/quotations/${quotation.id}/edit`}>
                   <Button variant="secondary" size="sm" leftIcon={<Pencil className="w-3.5 h-3.5" />}>

@@ -318,9 +318,6 @@ export function DataBackupSection() {
               <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                 Export Business Data
               </h3>
-              <p className="text-xs text-warm-textMuted">
-                Download structured CSV spreadsheets for CA audit, offline analysis, and accounting
-              </p>
             </div>
           </div>
         </div>

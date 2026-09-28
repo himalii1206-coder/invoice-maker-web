@@ -58,9 +58,6 @@ export function ReceivablesAnalyticsTab({ data }: ReceivablesAnalyticsTabProps) 
             <p className="text-3xl font-bold text-amber-900 tracking-tight">
               {formatCurrency(data.totalOutstanding)}
             </p>
-            <p className="text-xs text-warm-textMuted mt-1">
-              Aggregate unpaid balance across all issued client invoices
-            </p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -195,7 +192,6 @@ export function ReceivablesAnalyticsTab({ data }: ReceivablesAnalyticsTabProps) 
               <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                 Aging Risk Distribution
               </h3>
-              <p className="text-xs text-warm-textMuted">Proportional outstanding amount grouped by delinquency bucket</p>
             </div>
           </div>
 
@@ -226,9 +222,6 @@ export function ReceivablesAnalyticsTab({ data }: ReceivablesAnalyticsTabProps) 
             <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
               Receivables Aging Schedule (By Due Date)
             </h3>
-            <p className="text-xs text-warm-textMuted">
-              Prioritized debtor recovery queue ordered by delinquency
-            </p>
           </div>
         </div>
 

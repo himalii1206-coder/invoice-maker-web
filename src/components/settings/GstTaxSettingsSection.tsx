@@ -83,9 +83,6 @@ export function GstTaxSettingsSection({
               <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                 Indian GST &amp; Tax Configuration
               </h3>
-              <p className="text-xs text-warm-textMuted">
-                Default tax slabs, pricing mode, and statutory invoice formatting
-              </p>
             </div>
           </div>
         </div>

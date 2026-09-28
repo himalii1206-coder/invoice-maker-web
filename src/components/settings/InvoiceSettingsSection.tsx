@@ -124,9 +124,6 @@ export function InvoiceSettingsSection({
               <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                 Invoice Numbering &amp; Formatting
               </h3>
-              <p className="text-xs text-warm-textMuted">
-                Configure automated sequential numbering and prefix rules
-              </p>
             </div>
           </div>
 
@@ -199,9 +196,6 @@ export function InvoiceSettingsSection({
             <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
               Commercial Terms &amp; Defaults
             </h3>
-            <p className="text-xs text-warm-textMuted">
-              Default currency, standard payment credit period, and auto-populated terms
-            </p>
           </div>
         </div>
 
@@ -261,9 +255,6 @@ export function InvoiceSettingsSection({
             <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
               Invoice Presentation &amp; Column Toggles
             </h3>
-            <p className="text-xs text-warm-textMuted">
-              Show or hide specific columns, statutory tax details, and banking information
-            </p>
           </div>
         </div>
 

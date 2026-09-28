@@ -262,9 +262,6 @@ export function SecuritySettingsSection() {
             <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
               Change Account Password
             </h3>
-            <p className="text-xs text-warm-textMuted">
-              Changing your password signs out every other device
-            </p>
           </div>
         </div>
 
@@ -324,9 +321,6 @@ export function SecuritySettingsSection() {
               <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                 Two-Factor Authentication
               </h3>
-              <p className="text-xs text-warm-textMuted">
-                A 6-digit code from your authenticator app, on top of your password
-              </p>
             </div>
           </div>
 

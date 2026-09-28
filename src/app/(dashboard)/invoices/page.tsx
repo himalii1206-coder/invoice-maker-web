@@ -403,7 +403,7 @@ export default function InvoicesPage() {
               <TableHead>Customer</TableHead>
               <TableHead className="hidden md:table-cell">Date</TableHead>
               <TableHead className="text-right">Amount</TableHead>
-              <TableHead className="hidden sm:table-cell text-right">Balance Due</TableHead>
+              <TableHead className="hidden sm:table-cell text-right">Amount Due</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -414,6 +414,15 @@ export default function InvoicesPage() {
               const balance = toNumber(invoice.balanceDue);
               const isBusy = busyId === invoice.id;
               const formattedBillType = (invoice.billType || 'TAX_INVOICE').replace(/_/g, ' ');
+              const isOverdue =
+                invoice.status !== 'PAID' &&
+                invoice.status !== 'CANCELLED' &&
+                invoice.status !== 'DRAFT' &&
+                balance > 0 &&
+                (invoice.dueDate
+                  ? new Date(invoice.dueDate).setHours(0, 0, 0, 0) <
+                    new Date().setHours(0, 0, 0, 0)
+                  : false);
 
               return (
                 <TableRow key={invoice.id}>
@@ -468,17 +477,24 @@ export default function InvoicesPage() {
                     <p className="text-xs font-semibold text-warm-text">
                       {formatDate(invoice.issueDate)}
                     </p>
-                    <p className="text-[11px] text-warm-textMuted">
-                      Due: {formatDate(invoice.dueDate)}
-                    </p>
+                    {isOverdue ? (
+                      <p className="text-[11px] font-semibold text-red-600 inline-flex items-center gap-1 mt-0.5">
+                        <span>Due: {formatDate(invoice.dueDate)}</span>
+                        <span>·</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-50 border border-red-200 px-1 py-0.2">
+                          Overdue
+                        </span>
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-warm-textMuted mt-0.5">
+                        Due: {formatDate(invoice.dueDate)}
+                      </p>
+                    )}
                   </TableCell>
 
                   <TableCell className="text-right">
                     <span className="font-semibold text-warm-text tabular-nums">
                       {formatCurrency(toNumber(invoice.grandTotal))}
-                    </span>
-                    <span className="block text-[10px] text-warm-textSubtle uppercase">
-                      {invoice.isIgst ? 'IGST' : 'CGST+SGST'}
                     </span>
                   </TableCell>
 
@@ -507,7 +523,7 @@ export default function InvoicesPage() {
                   </TableCell>
 
                   <TableCell>
-                    <InvoiceStatusBadge status={invoice.status} />
+                    <InvoiceStatusBadge invoice={invoice} />
                   </TableCell>
 
                   <TableCell className="text-right">
@@ -605,7 +621,7 @@ export default function InvoicesPage() {
     <DashboardLayout>
       <PageHeader
         title="Tax Invoices"
-        description="Create, track and collect on GST compliant tax invoices, delivery challans, and bills."
+        // description="Create, track and collect on GST compliant tax invoices, delivery challans, and bills."
         breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Tax Invoices' }]}
         actions={
           <Link href="/invoices/new">
@@ -708,7 +724,7 @@ export default function InvoicesPage() {
               options={[
                 { value: '', label: 'All Statuses' },
                 { value: 'DRAFT', label: 'Draft' },
-                { value: 'SENT', label: 'Sent' },
+                { value: 'SENT', label: 'Unpaid' },
                 { value: 'PARTIALLY_PAID', label: 'Partially Paid' },
                 { value: 'PAID', label: 'Paid' },
                 { value: 'OVERDUE', label: 'Overdue' },

@@ -87,9 +87,6 @@ export function PaymentSettingsSection({
               <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                 Settlement Bank Account Details
               </h3>
-              <p className="text-xs text-warm-textMuted">
-                Printed on invoice PDFs for direct client RTGS / NEFT / IMPS wire transfers
-              </p>
             </div>
           </div>
         </div>
@@ -152,9 +149,6 @@ export function PaymentSettingsSection({
             <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
               UPI &amp; Digital QR Payments
             </h3>
-            <p className="text-xs text-warm-textMuted">
-              UPI handle for instant mobile payments via PhonePe, Google Pay, and Paytm
-            </p>
           </div>
         </div>
 

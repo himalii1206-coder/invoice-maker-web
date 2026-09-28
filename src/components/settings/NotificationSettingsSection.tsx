@@ -95,9 +95,6 @@ export function NotificationSettingsSection({
               <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                 Event Notification Triggers
               </h3>
-              <p className="text-xs text-warm-textMuted">
-                Choose which business events alert you and your team
-              </p>
             </div>
           </div>
         </div>

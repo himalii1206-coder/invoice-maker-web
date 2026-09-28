@@ -10,7 +10,7 @@ export default function NewInvoicePage() {
     <DashboardLayout>
       <PageHeader
         title="Create Invoice"
-        description="Pick a customer, add line items, and GST is calculated as you type."
+        // description="Pick a customer, add line items, and GST is calculated as you type."
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'Invoices', href: '/invoices' },

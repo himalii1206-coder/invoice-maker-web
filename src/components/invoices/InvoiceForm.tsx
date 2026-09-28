@@ -244,10 +244,11 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
           enableRoundOff: defaults?.enableRoundOff ?? true,
           gstEnabled: defaults?.gstEnabled ?? true,
           pricesIncludeTax: defaults?.pricesIncludeTax ?? false,
-          extraCharges: parseFloat(form.extraCharges) || 0
+          extraCharges: parseFloat(form.extraCharges) || 0,
+          isReverseCharge: form.isReverseCharge
         }
       ),
-    [items, isIgst, defaults, form.extraCharges]
+    [items, isIgst, defaults, form.extraCharges, form.isReverseCharge]
   );
 
   // Handle auto-load from URL query (?quotationId=...)
@@ -585,7 +586,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
       <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-5 space-y-4">
         <div className="flex items-center justify-between border-b border-warm-border/40 pb-3">
           <h2 className="text-sm font-bold text-warm-text uppercase tracking-wider">
-            1. Document &amp; Customer Information
+            1. Customer Information
           </h2>
           <span className="text-[11px] font-semibold text-warm-accent px-2 py-0.5 bg-warm-accentLight">
             {form.billType.replace(/_/g, ' ')}
@@ -636,19 +637,19 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
             value={form.billType}
             options={BILL_TYPES}
             onChange={(e) => setForm((prev) => ({ ...prev, billType: e.target.value }))}
-            helperText="Document classification"
+            // helperText="Document classification"
           />
 
           <Input
-            label="Bill No. (Auto Generated)"
+            label="Bill No."
             value={isEdit ? invoice?.invoiceNumber ?? '' : defaults?.invoiceNumber ?? ''}
             readOnly
             disabled
-            helperText={
-              isEdit
-                ? 'An issued number never changes.'
-                : 'Generated automatically upon save.'
-            }
+            // helperText={
+            //   isEdit
+            //     ? 'An issued number never changes.'
+            //     : 'Generated automatically upon save.'
+            // }
           />
 
           <Input
@@ -674,7 +675,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-2">
           <div className="lg:col-span-2">
             <CustomerSelect
-              label="Customer Name / Party"
+              label="Customer Name"
               required
               value={form.customerId}
               initialLabel={form.customerName}
@@ -690,7 +691,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
             value={form.placeOfSupply}
             disabled={isLocked}
             onChange={(e) => setForm((prev) => ({ ...prev, placeOfSupply: e.target.value }))}
-            helperText="Overrides destination state for GST calculation."
+            // helperText="Overrides destination state for GST calculation."
           />
 
           {(selectedCustomer || invoice) && (
@@ -922,12 +923,9 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
       <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-warm-border/40 pb-3">
           <div>
-            <h2 className="text-sm font-bold text-warm-text uppercase tracking-wider">
-              4. Material Description &amp; Line Items
+            <h2 className="text-sm font-bold text-warm-accent uppercase tracking-wider">
+              4. Invoice Items
             </h2>
-            <p className="text-xs text-warm-textMuted mt-0.5">
-              Material description, HSN / SAC code, quantity, units, rate, discount and GST %
-            </p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -948,6 +946,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
           items={items}
           onChange={setItems}
           isIgst={isIgst}
+          isReverseCharge={form.isReverseCharge}
           defaultTaxRate={defaults?.defaultTaxRate ?? 18}
           gstRates={reference?.gstRates ?? [0, 5, 12, 18, 28]}
           units={reference?.units ?? ['PCS', 'BOX', 'KGS', 'MTR', 'NOS', 'SET', 'UNIT', 'BAG']}
@@ -1039,7 +1038,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
           />
         </div>
 
-        <InvoiceTotals totals={totals} isIgst={isIgst} className="h-fit" />
+        <InvoiceTotals totals={totals} isIgst={isIgst} isReverseCharge={form.isReverseCharge} className="h-fit" />
       </div>
 
       {/* Actions */}

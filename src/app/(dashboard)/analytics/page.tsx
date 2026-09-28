@@ -101,7 +101,7 @@ export default function AnalyticsPage() {
     <DashboardLayout>
       <PageHeader
         title="Analytics & Business Intelligence"
-        description="Comprehensive operational analytics, Indian GST statutory compliance, and revenue intelligence."
+        // description="Comprehensive operational analytics, Indian GST statutory compliance, and revenue intelligence."
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'Analytics' }

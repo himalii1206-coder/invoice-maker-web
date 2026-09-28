@@ -400,20 +400,26 @@ export default function PurchaseBillDetailPage() {
 
               {bill.isIgst ? (
                 <div className="flex justify-between text-warm-textMuted">
-                  <span>Integrated Tax (IGST):</span>
+                  <span>Integrated Tax (IGST){bill.isReverseCharge ? ' [RCM]' : ''}:</span>
                   <span className="font-semibold text-warm-text">{formatCurrency(bill.igstAmount)}</span>
                 </div>
               ) : (
                 <>
                   <div className="flex justify-between text-warm-textMuted">
-                    <span>Central Tax (CGST):</span>
+                    <span>Central Tax (CGST){bill.isReverseCharge ? ' [RCM]' : ''}:</span>
                     <span className="font-semibold text-warm-text">{formatCurrency(bill.cgstAmount)}</span>
                   </div>
                   <div className="flex justify-between text-warm-textMuted">
-                    <span>State Tax (SGST):</span>
+                    <span>State Tax (SGST){bill.isReverseCharge ? ' [RCM]' : ''}:</span>
                     <span className="font-semibold text-warm-text">{formatCurrency(bill.sgstAmount)}</span>
                   </div>
                 </>
+              )}
+
+              {bill.isReverseCharge && Number(bill.taxAmount) > 0 && (
+                <div className="p-2 bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-900 leading-snug">
+                  <span className="font-bold">Reverse Charge (₹{formatCurrency(bill.taxAmount).replace('₹', '')}):</span> Tax is payable directly by recipient under RCM and excluded from total bill amount payable to vendor.
+                </div>
               )}
 
               {Number(bill.otherCharges) > 0 && (

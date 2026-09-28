@@ -359,7 +359,7 @@ export default function CustomersPage() {
     <DashboardLayout>
       <PageHeader
         title="Customers"
-        description="Manage client directory, ledger account groups, contacts, and balances."
+        // description="Manage client directory, ledger account groups, contacts, and balances."
         breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Customers' }]}
         actions={
           <Link href="/customers/new">

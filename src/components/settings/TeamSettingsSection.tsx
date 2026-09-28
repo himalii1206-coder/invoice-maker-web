@@ -151,9 +151,6 @@ export function TeamSettingsSection() {
               <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                 Team Members &amp; Collaborators
               </h3>
-              <p className="text-xs text-warm-textMuted">
-                Invite accountants and billing staff, and control what each of them can do
-              </p>
             </div>
           </div>
 

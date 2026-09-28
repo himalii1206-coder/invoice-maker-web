@@ -586,7 +586,11 @@ export default function CustomerDetailPage() {
                         </span>
                       </TableCell>
                       <TableCell className="min-w-[100px] text-center">
-                        <QuotationStatusBadge status={q.status} />
+                        <QuotationStatusBadge
+                          status={q.status}
+                          convertedInvoiceId={q.convertedInvoice?.id || q.convertedInvoiceId}
+                          convertedInvoiceNumber={q.convertedInvoice?.invoiceNumber}
+                        />
                       </TableCell>
                       <TableCell className="min-w-[130px] text-right">
                         <div className="inline-flex items-center justify-end gap-1.5">
@@ -650,70 +654,93 @@ export default function CustomerDetailPage() {
                     <TableHead className="min-w-[140px]">Invoice #</TableHead>
                     <TableHead className="min-w-[130px]">Issue &amp; Due Date</TableHead>
                     <TableHead className="min-w-[120px] text-right">Grand Total</TableHead>
-                    <TableHead className="min-w-[120px] text-right">Balance Due</TableHead>
+                    <TableHead className="min-w-[120px] text-right">Amount Due</TableHead>
                     <TableHead className="min-w-[100px] text-center">Status</TableHead>
                     <TableHead className="min-w-[110px] text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {invoices.map((inv) => (
-                    <TableRow key={inv.id}>
-                      <TableCell className="min-w-[140px]">
-                        <Link
-                          href={`/invoices/${inv.id}`}
-                          className="font-bold text-warm-text hover:text-warm-accent transition-colors"
-                        >
-                          {inv.invoiceNumber}
-                        </Link>
-                        {inv.quotations && inv.quotations.length > 0 && (
-                          <span className="block text-[10px] text-purple-700 font-medium">
-                            From {inv.quotations[0].quotationNumber}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="min-w-[130px]">
-                        <p className="text-xs font-semibold text-warm-text">
-                          {formatDate(inv.issueDate)}
-                        </p>
-                        <p className="text-[11px] text-warm-textMuted">
-                          Due: {formatDate(inv.dueDate)}
-                        </p>
-                      </TableCell>
-                      <TableCell className="min-w-[120px] text-right">
-                        <span className="font-semibold text-warm-text tabular-nums">
-                          {formatCurrency(toNumber(inv.grandTotal))}
-                        </span>
-                      </TableCell>
-                      <TableCell className="min-w-[120px] text-right">
-                        {inv.status === 'CANCELLED' ? (
-                          <span className="text-warm-textSubtle text-xs font-normal">
-                            —
-                          </span>
-                        ) : (
-                          <span
-                            className={cn(
-                              'font-semibold tabular-nums text-xs',
-                              toNumber(inv.balanceDue) > 0 ? 'text-red-700' : 'text-emerald-700'
-                            )}
+                  {invoices.map((inv) => {
+                    const invBalance = toNumber(inv.balanceDue);
+                    const isOverdue =
+                      inv.status !== 'PAID' &&
+                      inv.status !== 'CANCELLED' &&
+                      inv.status !== 'DRAFT' &&
+                      invBalance > 0 &&
+                      (inv.dueDate
+                        ? new Date(inv.dueDate).setHours(0, 0, 0, 0) <
+                          new Date().setHours(0, 0, 0, 0)
+                        : false);
+
+                    return (
+                      <TableRow key={inv.id}>
+                        <TableCell className="min-w-[140px]">
+                          <Link
+                            href={`/invoices/${inv.id}`}
+                            className="font-bold text-warm-text hover:text-warm-accent transition-colors"
                           >
-                            {formatCurrency(toNumber(inv.balanceDue))}
+                            {inv.invoiceNumber}
+                          </Link>
+                          {inv.quotations && inv.quotations.length > 0 && (
+                            <span className="block text-[10px] text-purple-700 font-medium">
+                              From {inv.quotations[0].quotationNumber}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="min-w-[130px]">
+                          <p className="text-xs font-semibold text-warm-text">
+                            {formatDate(inv.issueDate)}
+                          </p>
+                          {isOverdue ? (
+                            <p className="text-[11px] font-semibold text-red-600 inline-flex items-center gap-1 mt-0.5">
+                              <span>Due: {formatDate(inv.dueDate)}</span>
+                              <span>·</span>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-50 border border-red-200 px-1 py-0.2">
+                                Overdue
+                              </span>
+                            </p>
+                          ) : (
+                            <p className="text-[11px] text-warm-textMuted mt-0.5">
+                              Due: {formatDate(inv.dueDate)}
+                            </p>
+                          )}
+                        </TableCell>
+                        <TableCell className="min-w-[120px] text-right">
+                          <span className="font-semibold text-warm-text tabular-nums">
+                            {formatCurrency(toNumber(inv.grandTotal))}
                           </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="min-w-[100px] text-center">
-                        <InvoiceStatusBadge status={inv.status} />
-                      </TableCell>
-                      <TableCell className="min-w-[110px] text-right">
-                        <Link
-                          href={`/invoices/${inv.id}`}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-warm-text bg-warm-input/50 hover:bg-warm-accent hover:text-white border border-warm-border/60 transition-colors"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>View</span>
-                        </Link>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                        <TableCell className="min-w-[120px] text-right">
+                          {inv.status === 'CANCELLED' ? (
+                            <span className="text-warm-textSubtle text-xs font-normal">
+                              —
+                            </span>
+                          ) : (
+                            <span
+                              className={cn(
+                                'font-semibold tabular-nums text-xs',
+                                invBalance > 0 ? 'text-red-700' : 'text-emerald-700'
+                              )}
+                            >
+                              {formatCurrency(invBalance)}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="min-w-[100px] text-center">
+                          <InvoiceStatusBadge invoice={inv} />
+                        </TableCell>
+                        <TableCell className="min-w-[110px] text-right">
+                          <Link
+                            href={`/invoices/${inv.id}`}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-warm-text bg-warm-input/50 hover:bg-warm-accent hover:text-white border border-warm-border/60 transition-colors"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>View</span>
+                          </Link>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}

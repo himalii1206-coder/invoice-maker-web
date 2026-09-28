@@ -12,6 +12,7 @@ import { buildRateBreakdown, PreviewTotals } from '@/lib/gst';
 export interface InvoiceTotalsProps {
   totals: PreviewTotals;
   isIgst: boolean;
+  isReverseCharge?: boolean;
   currency?: string;
   extraCharges?: number;
   /** Settlement rows, shown only on a saved invoice. */
@@ -25,6 +26,7 @@ export interface InvoiceTotalsProps {
 export function InvoiceTotals({
   totals,
   isIgst,
+  isReverseCharge: explicitReverseCharge,
   currency,
   extraCharges,
   amountPaid,
@@ -33,6 +35,7 @@ export function InvoiceTotals({
   balanceDue,
   className
 }: InvoiceTotalsProps) {
+  const isRcm = explicitReverseCharge ?? totals.isReverseCharge ?? false;
   const rateRows = buildRateBreakdown(totals.lines);
   const effectiveExtraCharges = extraCharges ?? totals.extraCharges ?? 0;
   const hasSettlement = amountPaid !== undefined || balanceDue !== undefined;
@@ -41,17 +44,26 @@ export function InvoiceTotals({
     label,
     value,
     muted = false,
-    negative = false
+    negative = false,
+    badge
   }: {
     label: string;
     value: number;
     muted?: boolean;
     negative?: boolean;
+    badge?: string;
   }) => (
     <div className="flex items-center justify-between gap-4 py-1.5">
-      <span className={cn('text-xs', muted ? 'text-warm-textSubtle' : 'text-warm-textMuted')}>
-        {label}
-      </span>
+      <div className="flex items-center gap-1.5">
+        <span className={cn('text-xs', muted ? 'text-warm-textSubtle' : 'text-warm-textMuted')}>
+          {label}
+        </span>
+        {badge && (
+          <span className="px-1 py-0.2 text-[9px] font-bold uppercase bg-amber-100 text-amber-800 border border-amber-300 rounded-none">
+            {badge}
+          </span>
+        )}
+      </div>
       <span
         className={cn(
           'text-xs font-semibold tabular-nums',
@@ -66,8 +78,13 @@ export function InvoiceTotals({
 
   return (
     <div className={cn('bg-warm-surface border border-warm-border/60 shadow-warm', className)}>
-      <div className="px-4 py-3 border-b border-warm-border/50">
+      <div className="px-4 py-3 border-b border-warm-border/50 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-warm-text tracking-tight">Summary</h3>
+        {isRcm && (
+          <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 bg-amber-500/15 text-amber-800 border border-amber-500/30">
+            RCM Active
+          </span>
+        )}
       </div>
 
       <div className="p-4">
@@ -81,11 +98,11 @@ export function InvoiceTotals({
 
         {(() => {
           const singleRate = rateRows.length === 1 ? rateRows[0].taxRate : null;
-          const halfRate = singleRate !== null ? (singleRate / 2) : null;
+          const halfRate = singleRate !== null ? singleRate / 2 : null;
 
           if (isIgst) {
             const igstLabel = singleRate !== null ? `IGST (${singleRate}%)` : 'IGST';
-            return <Row label={igstLabel} value={totals.igstAmount} />;
+            return <Row label={igstLabel} value={totals.igstAmount} badge={isRcm ? 'RCM' : undefined} />;
           }
 
           const cgstLabel = halfRate !== null ? `CGST (${halfRate}%)` : 'CGST';
@@ -93,8 +110,8 @@ export function InvoiceTotals({
 
           return (
             <>
-              <Row label={cgstLabel} value={totals.cgstAmount} />
-              <Row label={sgstLabel} value={totals.sgstAmount} />
+              <Row label={cgstLabel} value={totals.cgstAmount} badge={isRcm ? 'RCM' : undefined} />
+              <Row label={sgstLabel} value={totals.sgstAmount} badge={isRcm ? 'RCM' : undefined} />
             </>
           );
         })()}
@@ -103,7 +120,7 @@ export function InvoiceTotals({
         {rateRows.length > 1 && (
           <div className="mt-2 pt-2 border-t border-dashed border-warm-border/70 space-y-1.5">
             <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle">
-              Tax Rate Breakdown
+              Tax Rate Breakdown {isRcm && '(Reverse Charge)'}
             </p>
             {rateRows.map((row) => {
               const rowHalf = row.taxRate / 2;
@@ -123,6 +140,12 @@ export function InvoiceTotals({
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {isRcm && totals.taxAmount > 0 && (
+          <div className="my-2.5 p-2 bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-900 leading-snug">
+            <span className="font-bold">Tax on Reverse Charge (₹{formatCurrency(totals.taxAmount).replace('₹', '')}):</span> Payable directly by recipient to Govt. Excluded from Grand Total.
           </div>
         )}
 

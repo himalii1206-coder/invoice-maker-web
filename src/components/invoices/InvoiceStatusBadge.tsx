@@ -5,59 +5,117 @@ import { cn } from '@/lib/utils';
 import { InvoiceStatus } from '@/types/invoice';
 import {
   FileEdit,
-  Send,
   CheckCircle2,
   CircleDollarSign,
   AlertTriangle,
+  Clock,
   Ban
 } from 'lucide-react';
 
-/**
- * Status pill for invoices.
- *
- * The generic `Badge` handles simple labels; invoices get their own because the
- * status is the single most scanned thing in the list, and pairing each one
- * with a fixed icon lets it be recognised without reading the word.
- */
+export type InvoiceDisplayStatus =
+  | 'DRAFT'
+  | 'UNPAID'
+  | 'PARTIALLY_PAID'
+  | 'PAID'
+  | 'OVERDUE'
+  | 'CANCELLED';
 
-const STATUS_STYLES: Record<
-  InvoiceStatus,
-  { label: string; className: string; Icon: React.ComponentType<{ className?: string }> }
+// Backward compatibility alias
+export type PaymentStatus = InvoiceDisplayStatus;
+
+export const INVOICE_STATUS_STYLES: Record<
+  InvoiceDisplayStatus,
+  {
+    label: string;
+    className: string;
+    iconClassName: string;
+    Icon: React.ComponentType<{ className?: string }>;
+  }
 > = {
   DRAFT: {
     label: 'Draft',
-    className: 'bg-status-draftBg text-status-draftText border-gray-200',
+    className: 'bg-warm-input text-warm-textSubtle border-warm-border font-medium',
+    iconClassName: 'text-warm-textSubtle',
     Icon: FileEdit
   },
-  SENT: {
-    label: 'Sent',
-    className: 'bg-blue-50 text-blue-700 border-blue-200',
-    Icon: Send
+  UNPAID: {
+    label: 'Unpaid',
+    className: 'bg-slate-50 text-slate-700 border-slate-200/90 font-semibold',
+    iconClassName: 'text-slate-500',
+    Icon: Clock
   },
   PARTIALLY_PAID: {
     label: 'Partially Paid',
-    className: 'bg-status-pendingBg text-status-pendingText border-amber-200',
+    className: 'bg-amber-50/90 text-amber-800 border-amber-200 font-semibold',
+    iconClassName: 'text-amber-600',
     Icon: CircleDollarSign
   },
   PAID: {
     label: 'Paid',
-    className: 'bg-status-paidBg text-status-paidText border-emerald-200',
+    className: 'bg-emerald-50/90 text-emerald-800 border-emerald-200 font-semibold',
+    iconClassName: 'text-emerald-600',
     Icon: CheckCircle2
   },
   OVERDUE: {
     label: 'Overdue',
-    className: 'bg-status-overdueBg text-status-overdueText border-red-200',
+    className: 'bg-red-50 text-red-800 border-red-200 font-bold',
+    iconClassName: 'text-red-600',
     Icon: AlertTriangle
   },
   CANCELLED: {
     label: 'Cancelled',
-    className: 'bg-warm-input text-warm-textSubtle border-warm-border line-through',
+    className: 'bg-warm-input/70 text-warm-textSubtle border-warm-border/60 line-through font-normal',
+    iconClassName: 'text-warm-textSubtle',
     Icon: Ban
   }
 };
 
+export const PAYMENT_STATUS_STYLES = INVOICE_STATUS_STYLES;
+
+export function getInvoiceDisplayStatus(invoice: {
+  status: InvoiceStatus | string;
+  balanceDue?: number | string | null;
+  amountPaid?: number | string | null;
+  dueDate?: Date | string | null;
+}): InvoiceDisplayStatus {
+  if (invoice.status === 'CANCELLED') return 'CANCELLED';
+  if (invoice.status === 'DRAFT') return 'DRAFT';
+
+  const balance = Number(invoice.balanceDue ?? 0);
+  const paid = Number(invoice.amountPaid ?? 0);
+
+  if (invoice.status === 'PAID' || (balance <= 0 && paid > 0)) {
+    return 'PAID';
+  }
+
+  const isPastDue = invoice.dueDate
+    ? new Date(invoice.dueDate).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0)
+    : false;
+
+  if (invoice.status === 'OVERDUE' || (balance > 0 && isPastDue)) {
+    return 'OVERDUE';
+  }
+
+  if (invoice.status === 'PARTIALLY_PAID' || (paid > 0 && balance > 0)) {
+    return 'PARTIALLY_PAID';
+  }
+
+  // If sent / issued and balance > 0
+  return 'UNPAID';
+}
+
+export const getInvoicePaymentStatus = getInvoiceDisplayStatus;
+
 export interface InvoiceStatusBadgeProps {
-  status: InvoiceStatus;
+  status?: InvoiceStatus;
+  invoice?: {
+    status: InvoiceStatus | string;
+    balanceDue?: number | string | null;
+    amountPaid?: number | string | null;
+    dueDate?: Date | string | null;
+    sentAt?: Date | string | null;
+  };
+  direction?: 'col' | 'row';
   size?: 'sm' | 'md';
   showIcon?: boolean;
   className?: string;
@@ -65,24 +123,44 @@ export interface InvoiceStatusBadgeProps {
 
 export function InvoiceStatusBadge({
   status,
+  invoice,
   size = 'sm',
   showIcon = true,
   className
 }: InvoiceStatusBadgeProps) {
-  const config = STATUS_STYLES[status] ?? STATUS_STYLES.DRAFT;
+  let displayStatus: InvoiceDisplayStatus = 'UNPAID';
+
+  if (invoice) {
+    displayStatus = getInvoiceDisplayStatus(invoice);
+  } else if (status) {
+    if (status === 'DRAFT') displayStatus = 'DRAFT';
+    else if (status === 'SENT') displayStatus = 'UNPAID';
+    else if (status === 'PARTIALLY_PAID') displayStatus = 'PARTIALLY_PAID';
+    else if (status === 'PAID') displayStatus = 'PAID';
+    else if (status === 'OVERDUE') displayStatus = 'OVERDUE';
+    else if (status === 'CANCELLED') displayStatus = 'CANCELLED';
+  }
+
+  const config = INVOICE_STATUS_STYLES[displayStatus] ?? INVOICE_STATUS_STYLES.UNPAID;
   const { Icon } = config;
 
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 font-semibold border rounded-none select-none whitespace-nowrap',
-        size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-3 py-1 text-xs',
+        'inline-flex items-center gap-1.5 border rounded-none select-none whitespace-nowrap shadow-xs',
+        size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs',
         config.className,
         className
       )}
     >
-      {showIcon && <Icon className={size === 'sm' ? 'w-3 h-3' : 'w-3.5 h-3.5'} />}
-      {config.label}
+      {showIcon && (
+        <Icon className={cn(size === 'sm' ? 'w-3 h-3' : 'w-3.5 h-3.5', 'shrink-0', config.iconClassName)} />
+      )}
+      <span>{config.label}</span>
     </span>
   );
 }
+
+// Backward compatibility alias
+export const PaymentStatusBadge = InvoiceStatusBadge;
+export const InvoiceStatusGroup = InvoiceStatusBadge;

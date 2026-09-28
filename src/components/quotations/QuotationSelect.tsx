@@ -130,9 +130,9 @@ export function QuotationSelect({
             <FileSpreadsheet className="w-3.5 h-3.5 text-warm-accent" />
             {label} {required && <span className="text-red-500">*</span>}
           </label>
-          <span className="text-[11px] text-warm-textSubtle">
+          {/* <span className="text-[11px] text-warm-textSubtle">
             Auto-fills items, rates &amp; customer
-          </span>
+          </span> */}
         </div>
       )}
 

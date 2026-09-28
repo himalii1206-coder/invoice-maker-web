@@ -94,7 +94,7 @@ export default function EditInvoicePage() {
           { label: invoice.invoiceNumber, href: `/invoices/${invoice.id}` },
           { label: 'Edit' }
         ]}
-        actions={<InvoiceStatusBadge status={invoice.status} size="md" />}
+        actions={<InvoiceStatusBadge invoice={invoice} direction="row" size="md" />}
       />
 
       <InvoiceForm invoice={invoice} />

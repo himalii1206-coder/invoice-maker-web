@@ -47,6 +47,7 @@ export interface PreviewTotals {
   extraCharges?: number;
   roundOff: number;
   grandTotal: number;
+  isReverseCharge?: boolean;
   lines: PreviewLine[];
 }
 
@@ -81,6 +82,7 @@ const clampPercent = (value: number, max: number): number => {
 export interface PreviewTaxMode {
   gstEnabled?: boolean;
   pricesIncludeTax?: boolean;
+  isReverseCharge?: boolean;
 }
 
 export const computeLine = (
@@ -88,7 +90,7 @@ export const computeLine = (
   isIgst: boolean,
   mode: PreviewTaxMode = {}
 ): PreviewLine => {
-  const { gstEnabled = true, pricesIncludeTax = false } = mode;
+  const { gstEnabled = true, pricesIncludeTax = false, isReverseCharge = false } = mode;
 
   const quantity = round3(Math.max(0, num(input.quantity)));
   const enteredPrice = round2(Math.max(0, num(input.unitPrice)));
@@ -142,17 +144,17 @@ export const computeLine = (
     igstRate: isIgst ? taxRate : 0,
     igstAmount: fromPaise(igstPaise),
     taxAmount: fromPaise(taxPaise),
-    total: fromPaise(taxablePaise + taxPaise)
+    total: fromPaise(taxablePaise + (isReverseCharge ? 0 : taxPaise))
   };
 };
 
 export const computeTotals = (
   lines: PreviewLineInput[],
-  options: { isIgst: boolean; enableRoundOff?: boolean; extraCharges?: number } & PreviewTaxMode
+  options: { isIgst: boolean; enableRoundOff?: boolean; extraCharges?: number; isReverseCharge?: boolean } & PreviewTaxMode
 ): PreviewTotals => {
-  const { isIgst, enableRoundOff = true, gstEnabled, pricesIncludeTax, extraCharges = 0 } = options;
+  const { isIgst, enableRoundOff = true, gstEnabled, pricesIncludeTax, extraCharges = 0, isReverseCharge = false } = options;
   const extraPaise = toPaise(Math.max(0, extraCharges));
-  const computed = lines.map((line) => computeLine(line, isIgst, { gstEnabled, pricesIncludeTax }));
+  const computed = lines.map((line) => computeLine(line, isIgst, { gstEnabled, pricesIncludeTax, isReverseCharge }));
 
   // Totals sum the rounded line values, never the raw products.
   const acc = computed.reduce(
@@ -176,7 +178,7 @@ export const computeTotals = (
     }
   );
 
-  const beforeRoundOff = acc.taxableAmount + acc.taxAmount + extraPaise;
+  const beforeRoundOff = acc.taxableAmount + (isReverseCharge ? 0 : acc.taxAmount) + extraPaise;
   const rounded = enableRoundOff ? Math.round(beforeRoundOff / 100) * 100 : beforeRoundOff;
 
   return {
@@ -190,7 +192,8 @@ export const computeTotals = (
     taxAmount: fromPaise(acc.taxAmount),
     extraCharges: fromPaise(extraPaise),
     roundOff: fromPaise(rounded - beforeRoundOff),
-    grandTotal: fromPaise(rounded)
+    grandTotal: fromPaise(rounded),
+    isReverseCharge
   };
 };
 

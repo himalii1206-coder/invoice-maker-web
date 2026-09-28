@@ -271,7 +271,7 @@ export default function QuotationsPage() {
         {/* Page Header */}
         <PageHeader
           title="Quotations"
-          description="Create, manage, and convert quotation estimates into GST Tax Invoices"
+          // description="Create, manage, and convert quotation estimates into GST Tax Invoices"
           actions={
             <Link href="/quotations/new">
               <Button
@@ -326,17 +326,15 @@ export default function QuotationsPage() {
         {/* Filter Bar */}
         <div className="bg-warm-surface border border-warm-border/70 p-4 shadow-warm flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3 flex-1 w-full sm:w-auto min-w-0">
-            <div className="relative flex-1 min-w-[180px] max-w-sm w-full">
-              <Search className="w-4 h-4 text-warm-textMuted absolute left-3 top-1/2 -translate-y-1/2" />
+            <div className="flex-1 min-w-[180px] max-w-sm w-full">
               <Input
-                type="text"
+                placeholder="Search by Q. No., customer, subject..."
+                leftIcon={<Search className="w-4 h-4" />}
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                placeholder="Search by Q. No., customer, subject..."
-                className="pl-9"
               />
             </div>
 
@@ -390,8 +388,8 @@ export default function QuotationsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Quotation #</TableHead>
-                  <TableHead>Customer / M/S</TableHead>
-                  <TableHead className="hidden md:table-cell">Subject & Terms</TableHead>
+                  <TableHead>Customer</TableHead>
+                  {/* <TableHead className="hidden md:table-cell">Subject & Terms</TableHead> */}
                   <TableHead className="hidden sm:table-cell">Date & Validity</TableHead>
                   <TableHead className="text-right">Total Amount</TableHead>
                   <TableHead className="text-center">Status</TableHead>
@@ -416,6 +414,16 @@ export default function QuotationsPage() {
                               Inq: {q.inquiryNumber}
                             </span>
                           )}
+                          {q.status === 'CONVERTED' && (q.convertedInvoice?.invoiceNumber || q.convertedInvoiceId) && (
+                            <Link
+                              href={`/invoices/${q.convertedInvoice?.id || q.convertedInvoiceId}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-600 hover:text-white px-1.5 py-0.2 border border-purple-200 transition-colors"
+                              title={`Converted to Invoice ${q.convertedInvoice?.invoiceNumber || ''}`}
+                            >
+                              <span>→ {q.convertedInvoice?.invoiceNumber || 'View Invoice'}</span>
+                            </Link>
+                          )}
                         </div>
                       </TableCell>
 
@@ -439,7 +447,7 @@ export default function QuotationsPage() {
                       </TableCell>
 
                       {/* Subject & Terms */}
-                      <TableCell className="hidden md:table-cell">
+                      {/* <TableCell className="hidden md:table-cell">
                         <p className="text-xs text-warm-text truncate max-w-[240px]" title={q.subject || ''}>
                           {q.subject || '—'}
                         </p>
@@ -448,7 +456,7 @@ export default function QuotationsPage() {
                             Terms: {q.paymentTerms}
                           </p>
                         )}
-                      </TableCell>
+                      </TableCell> */}
 
                       {/* Date & Validity */}
                       <TableCell className="hidden sm:table-cell">
@@ -471,14 +479,15 @@ export default function QuotationsPage() {
                         <span className="font-semibold text-warm-text tabular-nums">
                           {formatCurrency(Number(q.grandTotal))}
                         </span>
-                        <span className="block text-[10px] text-warm-textSubtle uppercase">
-                          {q.isIgst ? 'IGST' : 'CGST+SGST'}
-                        </span>
                       </TableCell>
 
                       {/* Status Badge */}
                       <TableCell className="text-center">
-                        <QuotationStatusBadge status={q.status} />
+                        <QuotationStatusBadge
+                          status={q.status}
+                          convertedInvoiceId={q.convertedInvoice?.id || q.convertedInvoiceId}
+                          convertedInvoiceNumber={q.convertedInvoice?.invoiceNumber}
+                        />
                       </TableCell>
 
                       {/* Actions */}

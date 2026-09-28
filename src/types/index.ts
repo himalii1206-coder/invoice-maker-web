@@ -50,6 +50,7 @@ export interface Company {
   ifscCode?: string;
   branch?: string;
   invoiceSettings?: any;
+  nextProductCode?: string;
 }
 
 export interface AuthState {

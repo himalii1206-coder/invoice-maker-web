@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { QuotationStatus } from '@/types/quotation';
 import {
@@ -24,7 +25,7 @@ const STATUS_STYLES: Record<
   },
   SENT: {
     label: 'Sent',
-    className: 'bg-blue-50 text-blue-700 border-blue-200',
+    className: 'bg-warm-accentLight/70 text-warm-accent border-warm-accent/30',
     Icon: Send
   },
   ACCEPTED: {
@@ -56,6 +57,8 @@ const STATUS_STYLES: Record<
 
 export interface QuotationStatusBadgeProps {
   status: QuotationStatus;
+  convertedInvoiceId?: string | null;
+  convertedInvoiceNumber?: string | null;
   size?: 'sm' | 'md';
   showIcon?: boolean;
   className?: string;
@@ -63,6 +66,8 @@ export interface QuotationStatusBadgeProps {
 
 export function QuotationStatusBadge({
   status,
+  convertedInvoiceId,
+  convertedInvoiceNumber,
   size = 'sm',
   showIcon = true,
   className
@@ -70,17 +75,47 @@ export function QuotationStatusBadge({
   const config = STATUS_STYLES[status] ?? STATUS_STYLES.DRAFT;
   const { Icon } = config;
 
-  return (
+  const isConvertedWithInvoice = status === 'CONVERTED' && Boolean(convertedInvoiceId);
+
+  const badgeContent = (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 font-semibold border rounded-none select-none whitespace-nowrap',
+        'inline-flex items-center gap-1.5 font-semibold border rounded-none select-none whitespace-nowrap transition-colors',
         size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-3 py-1 text-xs',
-        config.className,
+        isConvertedWithInvoice
+          ? 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-600 hover:text-white cursor-pointer group shadow-xs'
+          : config.className,
         className
       )}
+      title={
+        isConvertedWithInvoice
+          ? `Converted to Invoice ${convertedInvoiceNumber ? convertedInvoiceNumber : ''} · Click to view invoice`
+          : undefined
+      }
     >
-      {showIcon && <Icon className={size === 'sm' ? 'w-3 h-3' : 'w-3.5 h-3.5'} />}
-      {config.label}
+      {showIcon && <Icon className={size === 'sm' ? 'w-3 h-3 shrink-0' : 'w-3.5 h-3.5 shrink-0'} />}
+      <span>{config.label}</span>
+      {isConvertedWithInvoice && convertedInvoiceNumber && (
+        <span className="font-bold text-[10px] pl-1 border-l border-purple-300/80 group-hover:border-purple-300 group-hover:text-white">
+          → {convertedInvoiceNumber}
+        </span>
+      )}
     </span>
   );
+
+  if (isConvertedWithInvoice && convertedInvoiceId) {
+    return (
+      <Link
+        href={`/invoices/${convertedInvoiceId}`}
+        onClick={(e) => e.stopPropagation()}
+        className="inline-block"
+        title={`Open related invoice ${convertedInvoiceNumber || ''}`}
+      >
+        {badgeContent}
+      </Link>
+    );
+  }
+
+  return badgeContent;
 }
+

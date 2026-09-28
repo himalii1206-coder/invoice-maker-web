@@ -33,9 +33,6 @@ export function EmailReminderSettingsSection({
               <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                 Email Dispatch &amp; Sender Profile
               </h3>
-              <p className="text-xs text-warm-textMuted">
-                Outgoing email identity used when sending invoices, receipts, and credit notes
-              </p>
             </div>
           </div>
 

@@ -466,6 +466,7 @@ export interface InvoiceSettings {
   updatedAt: string;
   /** Returned only by the update endpoint, so the UI can confirm the change. */
   nextNumberPreview?: string;
+  nextProductCode?: string;
 }
 
 export type InvoiceSettingsPayload = Partial<

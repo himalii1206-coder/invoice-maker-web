@@ -172,7 +172,6 @@ export function GstAnalyticsTab({ data }: GstAnalyticsTabProps) {
               <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                 Monthly GST Output Tax Graph
               </h3>
-              <p className="text-xs text-warm-textMuted">Output tax generation trajectory per month</p>
             </div>
           </div>
         </div>
@@ -242,7 +241,6 @@ export function GstAnalyticsTab({ data }: GstAnalyticsTabProps) {
             <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
               HSN / SAC Summary (GSTR-1 Section 12)
             </h3>
-            <p className="text-xs text-warm-textMuted">Harmonized System of Nomenclature breakdown</p>
           </div>
 
           <Button

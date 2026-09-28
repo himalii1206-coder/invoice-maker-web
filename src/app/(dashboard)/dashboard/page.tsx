@@ -118,7 +118,6 @@ export default function DashboardPage() {
     <DashboardLayout>
       <PageHeader
         title={`Welcome back, ${user?.firstName || 'Business Owner'}!`}
-        description={`Operations overview, live sales metrics, and invoice performance for ${company?.name || 'your business'}.`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <div className="w-full sm:w-48">
@@ -425,7 +424,6 @@ export default function DashboardPage() {
                     <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                       Recent Invoices
                     </h3>
-                    <p className="text-xs text-warm-textMuted">Latest generated billing documents</p>
                   </div>
                 </div>
                 <Link href="/invoices">
@@ -455,16 +453,16 @@ export default function DashboardPage() {
                         <p className="text-xs font-semibold text-warm-text truncate">
                           {inv.customer?.name || inv.billingName || 'Unknown Customer'}
                         </p>
-                        <p className="text-[11px] text-warm-textMuted">
+                        {/* <p className="text-[11px] text-warm-textMuted">
                           Issued: {formatDate(inv.issueDate)} • Due: {formatDate(inv.dueDate)}
-                        </p>
+                        </p> */}
                       </div>
 
                       <div className="text-right shrink-0 space-y-1">
                         <p className="text-sm font-bold text-warm-text">
                           {formatCurrency(inv.grandTotal)}
                         </p>
-                        <InvoiceStatusBadge status={inv.status as InvoiceStatus} size="sm" />
+                        <InvoiceStatusBadge invoice={inv} direction="row" size="sm" />
                       </div>
                     </Link>
                   ))}
@@ -491,7 +489,6 @@ export default function DashboardPage() {
                     <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                       Top Clients
                     </h3>
-                    <p className="text-xs text-warm-textMuted">Highest billing volume partners</p>
                   </div>
                 </div>
                 <Link href="/customers">
@@ -515,9 +512,6 @@ export default function DashboardPage() {
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-warm-text truncate">
                             {cust.name}
-                          </p>
-                          <p className="text-[11px] text-warm-textMuted">
-                            {cust.count} {cust.count === 1 ? 'invoice' : 'invoices'}
                           </p>
                         </div>
                       </div>

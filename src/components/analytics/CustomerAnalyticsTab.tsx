@@ -179,7 +179,6 @@ export function CustomerAnalyticsTab({ data }: CustomerAnalyticsTabProps) {
                 <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                   Top Revenue Customers Graph
                 </h3>
-                <p className="text-xs text-warm-textMuted">Highest billing volume clients</p>
               </div>
             </div>
 
@@ -210,7 +209,6 @@ export function CustomerAnalyticsTab({ data }: CustomerAnalyticsTabProps) {
               <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                 Pending Customer Balances Graph
               </h3>
-              <p className="text-xs text-warm-textMuted">Clients with largest open accounts receivable</p>
             </div>
           </div>
 
@@ -240,7 +238,6 @@ export function CustomerAnalyticsTab({ data }: CustomerAnalyticsTabProps) {
               <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                 Recent Customer Receipts &amp; Payment History
               </h3>
-              <p className="text-xs text-warm-textMuted">Latest verified customer payment settlements</p>
             </div>
           </div>
 

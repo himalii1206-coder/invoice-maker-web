@@ -252,13 +252,13 @@ export default function ProductsPage() {
                   {/* Actions */}
                   <TableCell>
                     <div className="flex items-center justify-end gap-1">
-                      <button
+                      {/* <button
                         title="View details"
                         onClick={() => setViewingId(product.id)}
                         className="p-1.5 text-warm-textMuted hover:text-warm-accent hover:bg-warm-accentLight transition-colors"
                       >
                         <Eye className="w-4 h-4" />
-                      </button>
+                      </button> */}
                       <button
                         title="Edit product"
                         onClick={() => openEdit(product)}
@@ -300,7 +300,7 @@ export default function ProductsPage() {
     <DashboardLayout>
       <PageHeader
         title="Products & Services"
-        description="Catalog of items with category, code, units, HSN, and price."
+        // description="Catalog of items with category, code, units, HSN, and price."
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'Products & Services' }

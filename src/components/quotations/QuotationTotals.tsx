@@ -106,7 +106,7 @@ export function QuotationTotals({
         />
 
         {/* Forwarding & Packaging */}
-        <Row label="Forwarding & Packaging" value={forwardingPackagingAmount} />
+        <Row label="Extra Charges" value={forwardingPackagingAmount} />
 
         <div className="my-2 border-t border-dashed border-warm-border/80" />
 

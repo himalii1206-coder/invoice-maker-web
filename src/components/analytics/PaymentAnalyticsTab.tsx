@@ -75,9 +75,6 @@ export function PaymentAnalyticsTab({ data }: PaymentAnalyticsTabProps) {
             <p className="text-2xl font-bold text-emerald-800 tracking-tight">
               {formatCurrency(data.totalReceived)}
             </p>
-            <p className="text-xs text-warm-textMuted mt-2 pt-2 border-t border-warm-border/50">
-              Total cleared customer receipts
-            </p>
           </CardContent>
         </Card>
 
@@ -94,9 +91,6 @@ export function PaymentAnalyticsTab({ data }: PaymentAnalyticsTabProps) {
             </div>
             <p className="text-2xl font-bold text-amber-900 tracking-tight">
               {formatCurrency(data.pendingPayments)}
-            </p>
-            <p className="text-xs text-warm-textMuted mt-2 pt-2 border-t border-warm-border/50">
-              Open balances awaiting payment
             </p>
           </CardContent>
         </Card>
@@ -115,9 +109,6 @@ export function PaymentAnalyticsTab({ data }: PaymentAnalyticsTabProps) {
             <p className="text-2xl font-bold text-red-900 tracking-tight">
               {formatCurrency(data.overduePayments)}
             </p>
-            <p className="text-xs text-red-700 font-medium mt-2 pt-2 border-t border-warm-border/50">
-              Payments past due date
-            </p>
           </CardContent>
         </Card>
       </div>
@@ -133,7 +124,6 @@ export function PaymentAnalyticsTab({ data }: PaymentAnalyticsTabProps) {
               <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                 Monthly Payment Collection Inflow Graph
               </h3>
-              <p className="text-xs text-warm-textMuted">Cash inflow trajectory across periods</p>
             </div>
           </div>
         </div>
@@ -154,7 +144,6 @@ export function PaymentAnalyticsTab({ data }: PaymentAnalyticsTabProps) {
               <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                 Payment Method Share
               </h3>
-              <p className="text-xs text-warm-textMuted">Proportional volume and transaction breakdown by payment instrument</p>
             </div>
           </div>
 

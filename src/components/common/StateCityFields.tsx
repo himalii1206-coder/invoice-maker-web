@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useState, useId } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { INDIAN_STATES, getCitiesForState, lookupPincode, normalizeStateName } from '@/lib/geo';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { MapPin, Hash, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { MapPin, Hash, Loader2, ChevronDown, Check } from 'lucide-react';
 
 export interface StateCityFieldsProps {
   stateValue: string;
@@ -38,7 +39,11 @@ export function StateCityFields({
   const [cities, setCities] = useState<string[]>([]);
   const [isLoadingCities, setIsLoadingCities] = useState(false);
   const [isLookingUpPin, setIsLookingUpPin] = useState(false);
-  const datalistId = useId();
+
+  const [isCityOpen, setIsCityOpen] = useState(false);
+  const [cityHighlightIdx, setCityHighlightIdx] = useState(-1);
+  const cityContainerRef = useRef<HTMLDivElement>(null);
+  const cityInputRef = useRef<HTMLInputElement>(null);
 
   // Load cities from free API whenever state changes
   useEffect(() => {
@@ -109,6 +114,53 @@ export function StateCityFields({
     return found ? `${found.code}-${found.name}` : stateValue;
   })();
 
+  const filteredCities = useMemo(() => {
+    const query = (cityValue || '').trim().toLowerCase();
+    if (!query) return cities.slice(0, 100);
+
+    const matches = cities.filter((c) => c.toLowerCase().includes(query)).slice(0, 100);
+    const exactMatch = cities.some((c) => c.toLowerCase() === query);
+    if (!exactMatch && query) {
+      return [cityValue.trim(), ...matches];
+    }
+    return matches;
+  }, [cityValue, cities]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (cityContainerRef.current && !cityContainerRef.current.contains(e.target as Node)) {
+        setIsCityOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleCityKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      setIsCityOpen(false);
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!isCityOpen) {
+        setIsCityOpen(true);
+        setCityHighlightIdx(0);
+      } else {
+        setCityHighlightIdx((prev) => Math.min(prev + 1, filteredCities.length - 1));
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setCityHighlightIdx((prev) => Math.max(prev - 1, 0));
+    } else if (e.key === 'Enter') {
+      if (isCityOpen && cityHighlightIdx >= 0 && filteredCities[cityHighlightIdx]) {
+        e.preventDefault();
+        onCityChange(filteredCities[cityHighlightIdx]);
+        setIsCityOpen(false);
+      }
+    }
+  };
+
   return (
     <>
       {includePincode && onPincodeChange && (
@@ -135,7 +187,7 @@ export function StateCityFields({
 
       <div>
         <Select
-          label="State / Union Territory"
+          label="State"
           required={required}
           value={normalizedSelectedState}
           options={stateOptions}
@@ -144,40 +196,103 @@ export function StateCityFields({
           onChange={(e) => {
             onStateChange(e.target.value);
           }}
-          helperText="GST State code and territory name"
         />
       </div>
 
-      <div className="relative">
-        <Input
-          label="City / District"
-          required={required}
-          placeholder={isLoadingCities ? 'Loading cities...' : 'Enter or select city'}
-          value={cityValue}
-          disabled={disabled}
-          error={cityError}
-          leftIcon={
-            isLoadingCities ? (
+      <div className="w-full space-y-1.5" ref={cityContainerRef}>
+        <label className="block text-xs font-semibold uppercase tracking-wider text-warm-textMuted">
+          City {required && <span className="text-red-500">*</span>}
+        </label>
+        <div className="relative">
+          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-warm-textMuted pointer-events-none">
+            {isLoadingCities ? (
               <Loader2 className="w-4 h-4 animate-spin text-warm-accent" />
             ) : (
               <MapPin className="w-4 h-4" />
-            )
-          }
-          list={datalistId}
-          onChange={(e) => onCityChange(e.target.value)}
-          helperText={
-            cities.length > 0
-              ? `${cities.length} cities available in dropdown / auto-suggest`
-              : 'Type city name or select state for suggestions'
-          }
-        />
+            )}
+          </div>
+          <input
+            ref={cityInputRef}
+            type="text"
+            value={cityValue}
+            disabled={disabled}
+            placeholder={isLoadingCities ? 'Loading cities...' : 'Enter or select city'}
+            onFocus={() => {
+              if (cities.length > 0) setIsCityOpen(true);
+            }}
+            onChange={(e) => {
+              onCityChange(e.target.value);
+              if (cities.length > 0) setIsCityOpen(true);
+              setCityHighlightIdx(0);
+            }}
+            onKeyDown={handleCityKeyDown}
+            className={cn(
+              'w-full h-10 pl-9 pr-9 bg-warm-input text-warm-text placeholder:text-warm-placeholder text-sm rounded-none border border-warm-border/60 transition-colors focus:outline-none focus:ring-2 focus:ring-warm-accent/40 focus:border-warm-accent disabled:opacity-60 disabled:cursor-not-allowed',
+              cityError && 'border-red-500 focus:ring-red-500/40 focus:border-red-500'
+            )}
+          />
+          {cities.length > 0 && (
+            <button
+              type="button"
+              tabIndex={-1}
+              disabled={disabled}
+              onClick={() => {
+                setIsCityOpen((prev) => !prev);
+                cityInputRef.current?.focus();
+              }}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-warm-textMuted hover:text-warm-text transition-colors cursor-pointer"
+            >
+              <ChevronDown
+                className={cn(
+                  'w-4 h-4 transition-transform duration-200',
+                  isCityOpen && 'rotate-180 text-warm-accent'
+                )}
+              />
+            </button>
+          )}
 
-        {cities.length > 0 && (
-          <datalist id={datalistId}>
-            {cities.map((c) => (
-              <option key={c} value={c} />
-            ))}
-          </datalist>
+          {isCityOpen && filteredCities.length > 0 && (
+            <div className="absolute left-0 top-full mt-1 w-full bg-warm-surface border border-warm-border/80 shadow-warmLg z-50 max-h-56 overflow-y-auto">
+              <ul className="py-1 divide-y divide-warm-border/20">
+                {filteredCities.map((city, idx) => {
+                  const isSelected = city.toLowerCase() === cityValue.trim().toLowerCase();
+                  const isHighlighted = idx === cityHighlightIdx;
+                  return (
+                    <li key={`${city}-${idx}`}>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          onCityChange(city);
+                          setIsCityOpen(false);
+                        }}
+                        onMouseEnter={() => setCityHighlightIdx(idx)}
+                        className={cn(
+                          'w-full px-3.5 py-2 text-left text-sm flex items-center justify-between transition-colors cursor-pointer',
+                          isHighlighted
+                            ? 'bg-warm-accent/15 text-warm-accent font-medium'
+                            : 'text-warm-text hover:bg-warm-input/60',
+                          isSelected && 'text-warm-accent font-semibold bg-warm-accent/5'
+                        )}
+                      >
+                        <span className="truncate">{city}</span>
+                        {isSelected && <Check className="w-4 h-4 text-warm-accent shrink-0 ml-2" />}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
+        {cityError ? (
+          <p className="text-xs text-red-600 mt-1 font-medium">{cityError}</p>
+        ) : (
+          <p className="text-xs text-warm-textSubtle mt-1">
+            {cities.length > 0
+              ? `${cities.length} cities available in dropdown`
+              : 'Type city name or select state for suggestions'}
+          </p>
         )}
       </div>
     </>

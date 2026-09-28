@@ -145,10 +145,10 @@ export function PurchaseBillForm({ initialBill, isEditing = false }: PurchaseBil
         discountPercent: i.discountPercent,
         taxRate: i.taxRate
       })),
-      { isIgst, enableRoundOff: true }
+      { isIgst, enableRoundOff: true, isReverseCharge, extraCharges: numericOtherCharges }
     );
 
-    const grandTotal = Math.round((doc.taxableAmount + doc.taxAmount + numericOtherCharges + doc.roundOff) * 100) / 100;
+    const grandTotal = Math.round((doc.taxableAmount + (isReverseCharge ? 0 : doc.taxAmount) + numericOtherCharges + doc.roundOff) * 100) / 100;
 
     return {
       subtotal: doc.subtotal,
@@ -160,9 +160,10 @@ export function PurchaseBillForm({ initialBill, isEditing = false }: PurchaseBil
       taxAmount: doc.taxAmount,
       otherCharges: numericOtherCharges,
       roundOff: doc.roundOff,
-      grandTotal
+      grandTotal,
+      isReverseCharge
     };
-  }, [items, isIgst, otherCharges]);
+  }, [items, isIgst, otherCharges, isReverseCharge]);
 
   // Handle vendor selection from dropdown
   const handleVendorSelect = (vendorId: string) => {
@@ -299,9 +300,6 @@ export function PurchaseBillForm({ initialBill, isEditing = false }: PurchaseBil
             <h2 className="text-base font-bold text-warm-text">
               {isEditing ? `Edit Purchase Bill: ${initialBill?.billNumber}` : 'New Inward Purchase Bill'}
             </h2>
-            <span className="text-[11px] text-warm-textMuted">
-              Record supplier inward invoices with GST Input Tax Credit (ITC) allocation.
-            </span>
           </div>
         </div>
 
@@ -355,7 +353,7 @@ export function PurchaseBillForm({ initialBill, isEditing = false }: PurchaseBil
               value={selectedVendorId}
               onChange={(e) => handleVendorSelect(e.target.value)}
               options={[
-                { value: '', label: '— Select or Enter Manual Vendor —' },
+                { value: '', label: '— Select or Enter vendor manually —' },
                 ...vendors.map((v) => ({
                   value: v.id,
                   label: `${v.name} ${v.gstin ? `(${v.gstin})` : ''} - ${v.city || v.state || ''}`
@@ -366,7 +364,7 @@ export function PurchaseBillForm({ initialBill, isEditing = false }: PurchaseBil
 
           <div className="sm:col-span-2">
             <Input
-              label="Vendor / Legal Business Name *"
+              label="Vendor / Business Name *"
               placeholder="Enter vendor or business name"
               value={vendorName}
               onChange={(e) => setVendorName(e.target.value)}
@@ -375,7 +373,7 @@ export function PurchaseBillForm({ initialBill, isEditing = false }: PurchaseBil
           </div>
 
           <Input
-            label="Vendor GSTIN (15 Digits)"
+            label="GSTIN"
             placeholder="Enter 15-digit GSTIN"
             maxLength={15}
             value={vendorGstin}
@@ -383,14 +381,14 @@ export function PurchaseBillForm({ initialBill, isEditing = false }: PurchaseBil
           />
 
           <Input
-            label="Vendor Phone"
+            label="Phone"
             placeholder="Enter phone number"
             value={vendorPhone}
             onChange={(e) => setVendorPhone(e.target.value)}
           />
 
           <Input
-            label="Vendor Email"
+            label="Email"
             type="email"
             placeholder="Enter email address"
             value={vendorEmail}
@@ -414,15 +412,13 @@ export function PurchaseBillForm({ initialBill, isEditing = false }: PurchaseBil
             />
           </div>
 
-          <div className="sm:col-span-2">
-            <StateCityFields
-              stateValue={vendorState}
-              cityValue={vendorCity}
-              onStateChange={(st) => setVendorState(st)}
-              onCityChange={(ct) => setVendorCity(ct)}
-              includePincode={false}
-            />
-          </div>
+          <StateCityFields
+            stateValue={vendorState}
+            cityValue={vendorCity}
+            onStateChange={(st) => setVendorState(st)}
+            onCityChange={(ct) => setVendorCity(ct)}
+            includePincode={false}
+          />
         </div>
       </div>
 
@@ -431,13 +427,13 @@ export function PurchaseBillForm({ initialBill, isEditing = false }: PurchaseBil
         <div className="flex items-center gap-2 pb-2 border-b border-warm-border/60">
           <Calendar className="w-4 h-4 text-warm-accent" />
           <h3 className="text-xs font-bold uppercase tracking-wider text-warm-text">
-            2. Bill Numbering, Dates & Inward Documentation
+            2. Purchase & Inward Documentation
           </h3>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Input
-            label="Vendor Invoice / Bill No *"
+            label="Supplier Invoice No."
             placeholder="Enter supplier invoice number"
             value={vendorInvoiceNumber}
             onChange={(e) => setVendorInvoiceNumber(e.target.value)}
@@ -445,14 +441,14 @@ export function PurchaseBillForm({ initialBill, isEditing = false }: PurchaseBil
           />
 
           <Input
-            label="Internal PB Voucher No (Auto)"
+            label="Purchase Voucher No."
             placeholder="Auto-generated"
             value={billNumber}
             onChange={(e) => setBillNumber(e.target.value)}
           />
 
           <Input
-            label="Bill / Invoice Date *"
+            label="Supplier Invoice Date"
             type="date"
             value={billDate}
             onChange={(e) => setBillDate(e.target.value)}
@@ -481,20 +477,20 @@ export function PurchaseBillForm({ initialBill, isEditing = false }: PurchaseBil
           />
 
           <Select
-            label="Bill Status"
+            label="Payment Status"
             value={status}
             onChange={(e) => setStatus(e.target.value as PurchaseBillStatus)}
             options={[
-              { value: 'RECEIVED', label: 'Received (Pending Payment)' },
-              { value: 'DRAFT', label: 'Draft Voucher' },
-              { value: 'PAID', label: 'Fully Paid' },
+              { value: 'RECEIVED', label: 'Pending Payment' },
               { value: 'PARTIALLY_PAID', label: 'Partially Paid' },
+              { value: 'PAID', label: 'Paid' },
+              { value: 'OVERDUE', label: 'Overdue' },
               { value: 'CANCELLED', label: 'Cancelled' }
             ]}
           />
 
-          <Input
-            label="Purchase Order (PO) No"
+          <Input                                                                                              
+            label="Purchase Order No."
             placeholder="Enter PO number"
             value={poNumber}
             onChange={(e) => setPoNumber(e.target.value)}
@@ -508,7 +504,7 @@ export function PurchaseBillForm({ initialBill, isEditing = false }: PurchaseBil
           />
 
           <Input
-            label="GRN / Inward Challan No"
+            label="Goods Receipt No. (GRN)"
             placeholder="Enter GRN / Challan number"
             value={grnNumber}
             onChange={(e) => setGrnNumber(e.target.value)}
@@ -529,7 +525,7 @@ export function PurchaseBillForm({ initialBill, isEditing = false }: PurchaseBil
           />
 
           <Input
-            label="Vehicle Number"
+            label="Vehicle No."
             placeholder="Enter vehicle number"
             value={vehicleNumber}
             onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
@@ -599,6 +595,7 @@ export function PurchaseBillForm({ initialBill, isEditing = false }: PurchaseBil
           items={items}
           onChange={setItems}
           isIgst={isIgst}
+          isReverseCharge={isReverseCharge}
           defaultTaxRate={18}
           gstRates={GST_RATES}
           units={UNITS}
@@ -653,22 +650,28 @@ export function PurchaseBillForm({ initialBill, isEditing = false }: PurchaseBil
             <div className="pt-2 border-t border-warm-border/40 space-y-1 text-warm-textMuted">
               {isIgst ? (
                 <div className="flex justify-between">
-                  <span>Integrated Tax (IGST):</span>
+                  <span>Integrated Tax (IGST){isReverseCharge ? ' [RCM]' : ''}:</span>
                   <span className="font-semibold text-warm-text">{formatCurrency(totals.igstAmount)}</span>
                 </div>
               ) : (
                 <>
                   <div className="flex justify-between">
-                    <span>Central Tax (CGST):</span>
+                    <span>Central Tax (CGST){isReverseCharge ? ' [RCM]' : ''}:</span>
                     <span className="font-semibold text-warm-text">{formatCurrency(totals.cgstAmount)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>State Tax (SGST):</span>
+                    <span>State Tax (SGST){isReverseCharge ? ' [RCM]' : ''}:</span>
                     <span className="font-semibold text-warm-text">{formatCurrency(totals.sgstAmount)}</span>
                   </div>
                 </>
               )}
             </div>
+
+            {isReverseCharge && totals.taxAmount > 0 && (
+              <div className="p-2 bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-900 leading-snug">
+                <span className="font-bold">Reverse Charge (₹{formatCurrency(totals.taxAmount).replace('₹', '')}):</span> Tax is payable directly by recipient and excluded from payable total.
+              </div>
+            )}
 
             <div className="pt-2 border-t border-warm-border/40 flex items-center justify-between gap-3">
               <label className="text-xs text-warm-textMuted shrink-0">

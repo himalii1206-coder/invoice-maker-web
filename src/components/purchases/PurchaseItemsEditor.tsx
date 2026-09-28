@@ -28,6 +28,7 @@ export interface PurchaseItemsEditorProps {
   items: PurchaseEditorItem[];
   onChange: (items: PurchaseEditorItem[]) => void;
   isIgst: boolean;
+  isReverseCharge?: boolean;
   defaultTaxRate: number;
   gstRates: number[];
   units: string[];
@@ -65,6 +66,7 @@ export function PurchaseItemsEditor({
   items,
   onChange,
   isIgst,
+  isReverseCharge = false,
   defaultTaxRate,
   gstRates,
   units,
@@ -116,6 +118,7 @@ export function PurchaseItemsEditor({
           </h3>
           <p className="text-[11px] text-warm-textMuted mt-0.5">
             GST calculation: <span className="font-semibold text-warm-accent">{isIgst ? 'Interstate (IGST)' : 'Intrastate (CGST + SGST 50/50)'}</span>
+            {isReverseCharge && <span className="ml-2 font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 border border-amber-200">RCM ACTIVE</span>}
           </p>
         </div>
         <Button
@@ -140,7 +143,8 @@ export function PurchaseItemsEditor({
               discountPercent: item.discountPercent,
               taxRate: item.taxRate
             },
-            isIgst
+            isIgst,
+            { isReverseCharge }
           );
 
           const rowError = errors[index];

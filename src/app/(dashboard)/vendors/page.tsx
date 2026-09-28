@@ -111,7 +111,7 @@ export default function VendorsPage() {
       <div className="space-y-6">
         <PageHeader
           title="Vendors & Suppliers"
-          description="Manage supplier profiles, statutory GST details, payment terms and inward purchases."
+          // description="Manage supplier profiles, statutory GST details, payment terms and inward purchases."
           actions={
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <Link href="/purchases/new">

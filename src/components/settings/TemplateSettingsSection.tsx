@@ -107,9 +107,6 @@ export function TemplateSettingsSection({
               <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                 Invoice PDF Layout &amp; Template Themes
               </h3>
-              <p className="text-xs text-warm-textMuted">
-                Select visual style for printed bills, tax invoices, and client export PDFs
-              </p>
             </div>
           </div>
           <span className="text-[11px] font-bold text-warm-accent bg-warm-accentLight/60 px-2.5 py-1 self-start sm:self-auto border border-warm-accent/20">
@@ -308,9 +305,6 @@ export function TemplateSettingsSection({
                   Real-time Renderer
                 </span>
               </h3>
-              <p className="text-xs text-warm-textMuted">
-                Demonstrates how invoices, tax breakdowns, and payment terms render for clients
-              </p>
             </div>
           </div>
 

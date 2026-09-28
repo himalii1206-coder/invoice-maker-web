@@ -339,18 +339,16 @@ export function VendorForm({ initialData, isEditing = false }: VendorFormProps) 
           />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="md:col-span-2">
-              <StateCityFields
-                stateValue={selectedState}
-                cityValue={selectedCity}
-                onStateChange={(st) => setValue('state', st, { shouldValidate: true })}
-                onCityChange={(ct) => setValue('city', ct, { shouldValidate: true })}
-                stateError={errors.state?.message}
-                cityError={errors.city?.message}
-                includePincode={false}
-                required
-              />
-            </div>
+            <StateCityFields
+              stateValue={selectedState}
+              cityValue={selectedCity}
+              onStateChange={(st) => setValue('state', st, { shouldValidate: true })}
+              onCityChange={(ct) => setValue('city', ct, { shouldValidate: true })}
+              stateError={errors.state?.message}
+              cityError={errors.city?.message}
+              includePincode={false}
+              required
+            />
 
             <Input
               label="Postal PIN Code"

@@ -3,7 +3,6 @@
 import React from 'react';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Product } from '@/types/index';
-import { Button } from '@/components/ui/Button';
 import { ProductPicker } from '@/components/invoices/ProductPicker';
 import { Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 
@@ -114,27 +113,6 @@ export function QuotationItemsEditor({
 
   return (
     <div className="bg-warm-surface border border-warm-border/60 shadow-warm">
-      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-warm-border/50">
-        <div>
-          <h3 className="text-sm font-semibold text-warm-text tracking-tight">Quotation Items</h3>
-          <p className="text-[11px] text-warm-textMuted mt-0.5">
-            {isIgst
-              ? 'Inter-State supply — IGST applicable.'
-              : 'Intra-State supply — CGST & SGST applicable.'}
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={addRow}
-          disabled={disabled}
-          leftIcon={<Plus className="w-3.5 h-3.5" />}
-        >
-          Add Item
-        </Button>
-      </div>
-
       <div className="overflow-x-auto">
         <table className="w-full min-w-[850px] text-left border-collapse">
           <thead className="bg-warm-input/70 border-b border-warm-border/80">
@@ -330,6 +308,18 @@ export function QuotationItemsEditor({
             })}
           </tbody>
         </table>
+      </div>
+
+      <div className="px-4 py-3 border-t border-warm-border/50 bg-warm-accentLight/20">
+        <button
+          type="button"
+          onClick={addRow}
+          disabled={disabled}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-warm-accent hover:text-warm-accentHover disabled:opacity-50 cursor-pointer"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Add another line
+        </button>
       </div>
     </div>
   );

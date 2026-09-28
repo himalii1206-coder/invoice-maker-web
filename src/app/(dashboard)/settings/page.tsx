@@ -228,7 +228,7 @@ export default function SettingsPage() {
     <DashboardLayout>
       <PageHeader
         title="Settings & Configuration"
-        description="System-wide defaults, numbering sequences, tax regimes, styling templates, and team security."
+        // description="System-wide defaults, numbering sequences, tax regimes, styling templates, and team security."
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'Settings' }

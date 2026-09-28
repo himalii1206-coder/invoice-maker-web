@@ -143,7 +143,6 @@ export function InvoiceAnalyticsTab({ data }: InvoiceAnalyticsTabProps) {
                 <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                   Invoice Status Distribution Graph
                 </h3>
-                <p className="text-xs text-warm-textMuted">Document count split across status buckets</p>
               </div>
             </div>
           </div>
@@ -170,7 +169,6 @@ export function InvoiceAnalyticsTab({ data }: InvoiceAnalyticsTabProps) {
                 <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                   Settlement &amp; Balance Graph
                 </h3>
-                <p className="text-xs text-warm-textMuted">Paid collections vs unpaid balance value</p>
               </div>
             </div>
           </div>
@@ -202,9 +200,6 @@ export function InvoiceAnalyticsTab({ data }: InvoiceAnalyticsTabProps) {
             <p className="text-2xl font-bold text-warm-text tracking-tight">
               {data.draftInvoices}
             </p>
-            <p className="text-xs text-warm-textMuted mt-2 pt-2 border-t border-warm-border/50">
-              Unsent preparation drafts
-            </p>
           </CardContent>
         </Card>
 
@@ -221,9 +216,6 @@ export function InvoiceAnalyticsTab({ data }: InvoiceAnalyticsTabProps) {
             </div>
             <p className="text-2xl font-bold text-gray-800 tracking-tight">
               {data.cancelledInvoices}
-            </p>
-            <p className="text-xs text-warm-textMuted mt-2 pt-2 border-t border-warm-border/50">
-              Voided / Cancelled vouchers
             </p>
           </CardContent>
         </Card>
@@ -279,9 +271,6 @@ export function InvoiceAnalyticsTab({ data }: InvoiceAnalyticsTabProps) {
             <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
               Invoice Lifecycle Summary
             </h3>
-            <p className="text-xs text-warm-textMuted mt-0.5">
-              Real-time distribution of billing documents across operations
-            </p>
           </div>
 
           <Link href="/invoices">

@@ -186,9 +186,6 @@ export function SalesAnalyticsTab({ data }: SalesAnalyticsTabProps) {
               <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                 Sales Volume &amp; Collections Graph
               </h3>
-              <p className="text-xs text-warm-textMuted">
-                Period comparison: Total billed revenue (brown) vs money collected (green)
-              </p>
             </div>
           </div>
 
@@ -262,7 +259,6 @@ export function SalesAnalyticsTab({ data }: SalesAnalyticsTabProps) {
                 <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                   Sales by Status Graph
                 </h3>
-                <p className="text-xs text-warm-textMuted">Proportional value across invoice statuses</p>
               </div>
             </div>
           </div>
@@ -288,7 +284,6 @@ export function SalesAnalyticsTab({ data }: SalesAnalyticsTabProps) {
                 <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                   Top Customers Sales Graph
                 </h3>
-                <p className="text-xs text-warm-textMuted">Ranked revenue share comparison</p>
               </div>
             </div>
           </div>

@@ -120,7 +120,8 @@ export default function InvoiceDetailPage() {
       {
         isIgst: invoice.isIgst,
         enableRoundOff: toNumber(invoice.roundOff) !== 0,
-        extraCharges: toNumber(invoice.extraCharges)
+        extraCharges: toNumber(invoice.extraCharges),
+        isReverseCharge: invoice.isReverseCharge
       }
     );
   }, [invoice]);
@@ -257,7 +258,7 @@ export default function InvoiceDetailPage() {
         ]}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <InvoiceStatusBadge status={invoice.status} size="md" />
+            <InvoiceStatusBadge invoice={invoice} direction="row" size="md" />
             {!isCancelled && (
               <Link href={`/invoices/${invoice.id}/edit`}>
                 <Button variant="secondary" size="sm" leftIcon={<Pencil className="w-3.5 h-3.5" />}>
@@ -811,6 +812,7 @@ export default function InvoiceDetailPage() {
           <InvoiceTotals
             totals={totals}
             isIgst={invoice.isIgst}
+            isReverseCharge={invoice.isReverseCharge}
             amountPaid={toNumber(invoice.amountPaid)}
             creditNoteTotal={toNumber(invoice.creditNoteTotal)}
             debitNoteTotal={toNumber(invoice.debitNoteTotal)}

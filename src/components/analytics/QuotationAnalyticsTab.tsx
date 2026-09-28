@@ -214,9 +214,6 @@ export function QuotationAnalyticsTab({ data }: QuotationAnalyticsTabProps) {
                 <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                   Monthly Quotation Volume vs Invoice Conversion
                 </h3>
-                <p className="text-xs text-warm-textMuted">
-                  Comparison of total value quoted (brown) vs value successfully converted into invoices (green)
-                </p>
               </div>
             </div>
 
@@ -251,7 +248,6 @@ export function QuotationAnalyticsTab({ data }: QuotationAnalyticsTabProps) {
                 <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                   Quotation Status Distribution
                 </h3>
-                <p className="text-xs text-warm-textMuted">Proportional value across quotation stages</p>
               </div>
             </div>
           </div>
@@ -277,7 +273,6 @@ export function QuotationAnalyticsTab({ data }: QuotationAnalyticsTabProps) {
                 <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                   Opportunity-to-Invoice Funnel
                 </h3>
-                <p className="text-xs text-warm-textMuted">Progression from initial proposal to invoice conversion</p>
               </div>
             </div>
           </div>
@@ -364,7 +359,6 @@ export function QuotationAnalyticsTab({ data }: QuotationAnalyticsTabProps) {
                   <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                     Top Clients by Quoted Value
                   </h3>
-                  <p className="text-xs text-warm-textMuted">Ranked estimates and conversion volume</p>
                 </div>
               </div>
             </div>

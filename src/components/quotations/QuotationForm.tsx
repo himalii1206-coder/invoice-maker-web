@@ -422,9 +422,6 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
               <FileSpreadsheet className="w-5 h-5 text-warm-accent" />
               {isEdit ? `Edit Quotation: ${quotation?.quotationNumber}` : 'Create New Quotation'}
             </h1>
-            <p className="text-xs text-warm-textMuted mt-0.5">
-              Draft or send quotation estimates to customers with automated GST calculations
-            </p>
           </div>
         </div>
 
@@ -482,10 +479,7 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
       {/* Section 1: Customer (M/S) Details & Address Snapshot */}
       <div className="bg-warm-surface border border-warm-border/70 p-5 shadow-warm space-y-4">
         <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider text-warm-accent flex items-center justify-between border-b border-warm-border/40 pb-2">
-          <span>1. Customer Details (M/S)</span>
-          <span className="text-[11px] font-normal text-warm-textMuted normal-case">
-            Auto-fills and stores historical address snapshot
-          </span>
+          <span>1. Customer Details</span>
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -494,7 +488,7 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
               value={form.customerId}
               onChange={handleCustomerChange}
               initialLabel={form.billingName}
-              label="M/S (Customer Name)"
+              label="Customer Name"
               required
             />
           </div>
@@ -526,7 +520,7 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
 
           <div className="sm:col-span-2 lg:col-span-4">
             <label className="block text-xs font-semibold text-warm-text mb-1">
-              Customer Address (Snapshot)
+              Customer Address
             </label>
             <Textarea
               value={form.billingAddress}
@@ -596,25 +590,25 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-xs font-semibold text-warm-text mb-1">
-              Q. No. (Quotation Number)
+              Quotation Number
             </label>
             <Input
               type="text"
               value={form.quotationNumber || nextNumberPreview || 'QT-00001'}
               disabled
               readOnly
-              helperText={
-                isEdit
-                  ? 'An issued quotation number cannot be changed.'
-                  : 'Auto-allocated upon save.'
-              }
+              // helperText={
+              //   isEdit
+              //     ? 'An issued quotation number cannot be changed.'
+              //     : 'Auto-allocated upon save.'
+              // }
               className="bg-warm-input/60 cursor-not-allowed text-warm-text"
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-warm-text mb-1">
-              Q. Date (Quotation Date) *
+              Quotation Date *
             </label>
             <Input
               type="date"
@@ -710,11 +704,8 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-warm-border/40 pb-2">
           <div>
             <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider text-warm-accent">
-              3. Quotation Items &amp; Product Pricing
+              3. Quotation Items
             </h3>
-            <p className="text-xs text-warm-textMuted mt-0.5">
-              Add products or services with quantity, units, rates, discounts and GST rates
-            </p>
           </div>
           <span
             className={cn(
@@ -759,7 +750,7 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
 
             <div>
               <label className="block text-xs font-semibold text-warm-text mb-1">
-                Forwarding &amp; Packaging (₹)
+                Extra Charges (₹)
               </label>
               <Input
                 type="number"

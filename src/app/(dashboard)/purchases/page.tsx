@@ -66,7 +66,7 @@ const STATUS_VARIANTS: Record<PurchaseBillStatus, 'draft' | 'pending' | 'paid' |
 
 const STATUS_LABELS: Record<PurchaseBillStatus, string> = {
   DRAFT: 'Draft',
-  RECEIVED: 'Received',
+  RECEIVED: 'Pending Payment',
   PARTIALLY_PAID: 'Partially Paid',
   PAID: 'Paid',
   OVERDUE: 'Overdue',
@@ -151,7 +151,7 @@ export default function PurchasesPage() {
       <div className="space-y-6">
         <PageHeader
           title="Purchase Bills"
-          description="Track raw material & merchandise procurement, inward vendor invoices, and GST Input Tax Credit (ITC)."
+          // description="Track raw material & merchandise procurement, inward vendor invoices, and GST Input Tax Credit (ITC)."
           actions={
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <Link href="/vendors">
@@ -172,9 +172,8 @@ export default function PurchasesPage() {
         {metrics && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
-              label="Total Purchases (Gross)"
+              label="Total Purchases"
               value={metrics.totalPurchases}
-              hint={`${metrics.billCount} Inward Bill(s) in ${fyFilter || 'all periods'}`}
               icon={<Receipt className="w-4 h-4" />}
               tone="accent"
               isLoading={isLoading}
@@ -257,10 +256,10 @@ export default function PurchasesPage() {
                 }}
                 options={[
                   { value: '', label: 'All Statuses' },
-                  { value: 'RECEIVED', label: 'Received (Pending)' },
+                  { value: 'RECEIVED', label: 'Pending Payment' },
                   { value: 'PARTIALLY_PAID', label: 'Partially Paid' },
                   { value: 'PAID', label: 'Paid' },
-                  { value: 'DRAFT', label: 'Draft' },
+                  { value: 'OVERDUE', label: 'Overdue' },
                   { value: 'CANCELLED', label: 'Cancelled' }
                 ]}
               />

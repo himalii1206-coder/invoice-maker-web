@@ -131,7 +131,7 @@ export default function CompanyPage() {
     <DashboardLayout>
       <PageHeader
         title="Business Profile & GST Settings"
-        description="Configure your business location, GSTIN, and seller state for automatic CGST/SGST vs IGST tax application."
+        // description="Configure your business location, GSTIN, and seller state for automatic CGST/SGST vs IGST tax application."
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'Company Profile' }
@@ -173,7 +173,6 @@ export default function CompanyPage() {
           <CardHeader>
             <div>
               <CardTitle>Business Overview & Contact</CardTitle>
-              <CardDescription>Primary organization information displayed on invoices and PDFs</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -222,9 +221,6 @@ export default function CompanyPage() {
           <CardHeader>
             <div>
               <CardTitle>Business Location & Tax Jurisdiction</CardTitle>
-              <CardDescription>
-                Your registered business address and home state for GST calculations
-              </CardDescription>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -270,8 +266,7 @@ export default function CompanyPage() {
         <Card>
           <CardHeader>
             <div>
-              <CardTitle>Bank Details (Printed on Invoices)</CardTitle>
-              <CardDescription>Default bank account information shown on tax invoice footers</CardDescription>
+              <CardTitle>Bank Details</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">

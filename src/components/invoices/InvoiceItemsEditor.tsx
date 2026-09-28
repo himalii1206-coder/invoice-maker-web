@@ -5,9 +5,8 @@ import { cn, formatCurrency } from '@/lib/utils';
 import { computeLine } from '@/lib/gst';
 import { toNumber } from '@/lib/products';
 import { Product } from '@/types/index';
-import { Button } from '@/components/ui/Button';
 import { ProductPicker } from './ProductPicker';
-import { Plus, Trash2, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
+import { Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 
 /**
  * The line item editor.
@@ -36,6 +35,7 @@ export interface InvoiceItemsEditorProps {
   items: EditorItem[];
   onChange: (items: EditorItem[]) => void;
   isIgst: boolean;
+  isReverseCharge?: boolean;
   customerId?: string;
   defaultTaxRate: number;
   gstRates: number[];
@@ -104,6 +104,7 @@ export function InvoiceItemsEditor({
   items,
   onChange,
   isIgst,
+  isReverseCharge = false,
   customerId,
   defaultTaxRate,
   gstRates,
@@ -161,55 +162,22 @@ export function InvoiceItemsEditor({
 
   return (
     <div className="bg-warm-surface border border-warm-border/60 shadow-warm">
-      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 px-4 py-3 border-b border-warm-border/50">
-        <div>
-          <h3 className="text-sm font-semibold text-warm-text tracking-tight">Line Items</h3>
-          <p className="text-[11px] text-warm-textMuted mt-0.5">
-            {isIgst
-              ? 'Inter-state supply — IGST is charged at the full rate.'
-              : 'Intra-state supply — GST is split equally into CGST and SGST.'}
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={addRow}
-          disabled={disabled}
-          leftIcon={<Plus className="w-3.5 h-3.5" />}
-        >
-          Add Item
-        </Button>
-      </div>
-
       {/* Horizontal scroll keeps every column usable on a phone without a
           separate card layout that would drift out of sync with this one. */}
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px] text-left border-collapse">
+        <table className="w-full min-w-[850px] text-left border-collapse">
           <thead className="bg-warm-input/70 border-b border-warm-border/80">
             <tr className="text-[10px] font-semibold uppercase tracking-wider text-warm-textMuted">
-              <th className="py-2.5 px-2 w-8"></th>
-              <th className="py-2.5 px-2 min-w-[220px]">Item &amp; Description</th>
-              {showHsn && <th className="py-2.5 px-2 w-[90px]">HSN/SAC</th>}
+              <th className="py-2.5 px-2 w-8">#</th>
+              <th className="py-2.5 px-2 min-w-[200px]">Item Name &amp; Description</th>
+              {showHsn && <th className="py-2.5 px-2 w-[95px]">HSN/SAC</th>}
               <th className="py-2.5 px-2 w-[80px] text-right">Qty</th>
-              <th className="py-2.5 px-2 w-[90px]">Unit</th>
-              <th className="py-2.5 px-2 w-[110px] text-right">
-                <span>Rate</span>
-                {/* The entered figure means something different in each mode,
-                    so the column says which. */}
-                <span className="block text-[9px] font-semibold text-warm-accent uppercase tracking-normal">
-                  {pricesIncludeTax ? 'Incl. GST' : 'Excl. GST'}
-                </span>
-              </th>
-              {showDiscount && <th className="py-2.5 px-2 w-[80px] text-right">Disc %</th>}
-              <th className="py-2.5 px-2 w-[125px] text-right">
-                <span>GST %</span>
-                <span className="block text-[9px] font-semibold text-warm-accent uppercase tracking-normal">
-                  {isIgst ? 'IGST (Inter-State)' : 'CGST + SGST'}
-                </span>
-              </th>
-              <th className="py-2.5 px-2 w-[110px] text-right">Amount</th>
-              <th className="py-2.5 px-2 w-10"></th>
+              <th className="py-2.5 px-2 w-[85px]">Unit</th>
+              <th className="py-2.5 px-2 w-[105px] text-right">Rate (₹)</th>
+              {showDiscount && <th className="py-2.5 px-2 w-[85px] text-right">Disc %</th>}
+              <th className="py-2.5 px-2 w-[95px] text-right">GST %</th>
+              <th className="py-2.5 px-2 w-[115px] text-right">Amount (₹)</th>
+              <th className="py-2.5 px-2 w-16 text-center">Action</th>
             </tr>
           </thead>
 
@@ -222,44 +190,70 @@ export function InvoiceItemsEditor({
                   discountPercent: item.discountPercent,
                   taxRate: item.taxRate
                 },
-                isIgst
+                isIgst,
+                {
+                  gstEnabled: true,
+                  pricesIncludeTax,
+                  isReverseCharge
+                }
               );
 
               const rowError = errors[index];
 
               return (
-                <tr key={item.key} className={cn(rowError && 'bg-red-50/40')}>
-                  <td className="py-2 px-2 align-top">
-                    <div className="flex flex-col items-center pt-1.5">
-                      <GripVertical className="w-3.5 h-3.5 text-warm-textSubtle" />
-                      <span className="text-[10px] font-semibold text-warm-textSubtle mt-0.5">
-                        {index + 1}
-                      </span>
+                <tr key={item.key} className={cn('hover:bg-warm-input/20', rowError && 'bg-red-50/40')}>
+                  <td className="py-2 px-1 text-center align-top pt-3">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span className="text-[11px] font-bold text-warm-textMuted">{index + 1}</span>
+                      <div className="flex flex-col">
+                        <button
+                          type="button"
+                          onClick={() => move(index, -1)}
+                          disabled={disabled || index === 0}
+                          className="text-warm-textMuted hover:text-warm-text disabled:opacity-20 cursor-pointer"
+                          title="Move up"
+                        >
+                          <ChevronUp className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => move(index, 1)}
+                          disabled={disabled || index === items.length - 1}
+                          className="text-warm-textMuted hover:text-warm-text disabled:opacity-20 cursor-pointer"
+                          title="Move down"
+                        >
+                          <ChevronDown className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                   </td>
 
                   <td className="py-2 px-2 align-top">
-                    <ProductPicker
-                      value={item.name}
-                      disabled={disabled}
-                      error={Boolean(rowError)}
-                      onTextChange={(value) =>
-                        // Typing over a catalog pick detaches the row from it,
-                        // so the stored line is not falsely linked to a product.
-                        patch(index, { name: value, productId: null })
-                      }
-                      onSelect={(product) => applyProduct(index, product)}
-                    />
-                    <input
-                      value={item.description}
-                      disabled={disabled}
-                      onChange={(e) => patch(index, { description: e.target.value })}
-                      placeholder="Description (optional)"
-                      className={cn(cellInput, 'mt-1 h-8 text-xs')}
-                    />
-                    {rowError && (
-                      <p className="text-[11px] text-red-600 font-medium mt-1">{rowError}</p>
-                    )}
+                    <div className="space-y-1">
+                      <ProductPicker
+                        value={item.name}
+                        disabled={disabled}
+                        error={Boolean(rowError)}
+                        placeholder="Select or enter item name"
+                        onTextChange={(value) =>
+                          // Typing over a catalog pick detaches the row from it,
+                          // so the stored line is not falsely linked to a product.
+                          patch(index, { name: value, productId: null })
+                        }
+                        onSelect={(product) => applyProduct(index, product)}
+                      />
+                      <input
+                        type="text"
+                        value={item.description}
+                        disabled={disabled}
+                        onChange={(e) => patch(index, { description: e.target.value })}
+                        placeholder="Description (optional)"
+                        className="w-full h-7 px-2 text-xs bg-warm-input/60 border border-warm-border/40 text-warm-text placeholder:text-warm-placeholder/70 rounded-none focus:outline-none focus:border-warm-accent"
+                      />
+                      {rowError && (
+                        <p className="text-[11px] text-red-600 font-medium mt-1">{rowError}</p>
+                      )}
+                    </div>
                   </td>
 
                   {showHsn && (
@@ -286,6 +280,7 @@ export function InvoiceItemsEditor({
                       onChange={(e) =>
                         patch(index, { quantity: e.target.value.replace(/[^\d.]/g, '') })
                       }
+                      placeholder="1"
                       className={cn(cellInput, 'text-right')}
                     />
                   </td>
@@ -351,73 +346,33 @@ export function InvoiceItemsEditor({
                     >
                       {!gstRates.map(String).includes(item.taxRate) && (
                         <option value={item.taxRate}>
-                          {item.taxRate}%{' '}
-                          {isIgst
-                            ? `(IGST ${item.taxRate}%)`
-                            : `(C ${Number(item.taxRate) / 2}% + S ${Number(item.taxRate) / 2}%)`}
+                          {item.taxRate}%
                         </option>
                       )}
                       {gstRates.map((rate) => (
                         <option key={rate} value={rate}>
-                          {rate}%{' '}
-                          {rate > 0
-                            ? isIgst
-                              ? `(IGST ${rate}%)`
-                              : `(C ${rate / 2}% + S ${rate / 2}%)`
-                            : '(Nil)'}
+                          {rate}%
                         </option>
                       ))}
                     </select>
-                    <p className="text-[10px] text-warm-textSubtle text-right mt-0.5 tabular-nums">
-                      {isIgst
-                        ? line.taxAmount > 0
-                          ? `IGST (${line.igstRate}%): ${formatCurrency(line.igstAmount)}`
-                          : `IGST ${line.igstRate}%`
-                        : line.taxAmount > 0
-                        ? `C (${line.cgstRate}%): ${formatCurrency(line.cgstAmount)} + S (${line.sgstRate}%): ${formatCurrency(line.sgstAmount)}`
-                        : `CGST ${line.cgstRate}% + SGST ${line.sgstRate}%`}
-                    </p>
                   </td>
 
-                  <td className="py-2 px-2 align-top text-right">
-                    <p className="h-9 flex items-center justify-end text-sm font-semibold text-warm-text tabular-nums">
+                  <td className="py-2 px-2 align-top text-right pt-3.5">
+                    <span className="text-sm font-semibold tabular-nums text-warm-text">
                       {formatCurrency(line.total)}
-                    </p>
-                    <p className="text-[10px] text-warm-textSubtle tabular-nums">
-                      Taxable {formatCurrency(line.taxableAmount)}
-                    </p>
+                    </span>
                   </td>
 
-                  <td className="py-2 px-2 align-top">
-                    <div className="flex flex-col items-center gap-0.5 pt-0.5">
-                      <button
-                        type="button"
-                        title="Move up"
-                        disabled={disabled || index === 0}
-                        onClick={() => move(index, -1)}
-                        className="p-0.5 text-warm-textMuted hover:text-warm-accent disabled:opacity-30 disabled:cursor-not-allowed"
-                      >
-                        <ChevronUp className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        title="Remove item"
-                        disabled={disabled}
-                        onClick={() => removeRow(index)}
-                        className="p-0.5 text-warm-textMuted hover:text-red-600 disabled:opacity-30"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        title="Move down"
-                        disabled={disabled || index === items.length - 1}
-                        onClick={() => move(index, 1)}
-                        className="p-0.5 text-warm-textMuted hover:text-warm-accent disabled:opacity-30 disabled:cursor-not-allowed"
-                      >
-                        <ChevronDown className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                  <td className="py-2 px-2 align-top text-center pt-2.5">
+                    <button
+                      type="button"
+                      onClick={() => removeRow(index)}
+                      disabled={disabled}
+                      className="p-1.5 text-warm-textMuted hover:text-red-600 hover:bg-red-50 rounded-none transition-colors cursor-pointer disabled:opacity-30"
+                      title="Remove row"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </td>
                 </tr>
               );
@@ -431,7 +386,7 @@ export function InvoiceItemsEditor({
           type="button"
           onClick={addRow}
           disabled={disabled}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-warm-accent hover:text-warm-accentHover disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-warm-accent hover:text-warm-accentHover disabled:opacity-50 cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5" />
           Add another line

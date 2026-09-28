@@ -90,9 +90,6 @@ export function CustomerProductSettingsSection({
               <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
                 Customer Directory Defaults
               </h3>
-              <p className="text-xs text-warm-textMuted">
-                Account numbering prefix, default credit period, and compulsory data fields
-              </p>
             </div>
           </div>
         </div>
@@ -180,9 +177,6 @@ export function CustomerProductSettingsSection({
             <h3 className="text-sm font-bold text-warm-text uppercase tracking-wider">
               Product &amp; Service Catalog Defaults
             </h3>
-            <p className="text-xs text-warm-textMuted">
-              Default unit of measure, SKU prefixing, and discount calculations
-            </p>
           </div>
         </div>
 
