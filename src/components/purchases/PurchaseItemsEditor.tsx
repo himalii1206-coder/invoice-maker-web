@@ -109,7 +109,7 @@ export function PurchaseItemsEditor({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between pb-2 border-b border-warm-border/60">
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 pb-2 border-b border-warm-border/60">
         <div>
           <h3 className="text-xs font-bold uppercase tracking-wider text-warm-text">
             Line Items (Goods, Raw Materials & Services)
@@ -125,6 +125,7 @@ export function PurchaseItemsEditor({
           leftIcon={<Plus className="w-4 h-4" />}
           onClick={addItem}
           disabled={disabled}
+          className="shrink-0"
         >
           Add Item Row
         </Button>
@@ -153,12 +154,12 @@ export function PurchaseItemsEditor({
               )}
             >
               {/* Top Bar of Row */}
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="w-5 h-5 flex items-center justify-center bg-warm-accent text-white text-[10px] font-bold rounded-full">
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 sm:gap-3 mb-3">
+                <div className="flex items-center gap-2 flex-1 min-w-0 w-full sm:w-auto">
+                  <span className="w-5 h-5 flex items-center justify-center bg-warm-accent text-white text-[10px] font-bold rounded-full shrink-0">
                     {index + 1}
                   </span>
-                  <div className="w-64">
+                  <div className="w-full sm:w-64 min-w-0">
                     <ProductPicker
                       value={item.name}
                       onTextChange={(val) => updateItem(index, { name: val })}
@@ -168,7 +169,7 @@ export function PurchaseItemsEditor({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 shrink-0 ml-auto sm:ml-0">
                   <button
                     type="button"
                     onClick={() => moveItem(index, 'up')}

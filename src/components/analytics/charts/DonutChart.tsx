@@ -105,7 +105,7 @@ export function DonutChart({
       </div>
 
       {/* Legend */}
-      <div className="space-y-2 flex-1 min-w-[180px] w-full">
+      <div className="space-y-2 flex-1 min-w-0 w-full">
         {data.map((item, idx) => {
           const sharePercent = Math.round((item.value / total) * 100);
           const isHovered = hoveredIdx === idx;

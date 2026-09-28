@@ -54,8 +54,9 @@ export function ProductPicker({
     const dropdownHeight = 250;
     const placeAbove = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
 
-    const width = Math.max(rect.width, 320);
-    const left = Math.min(rect.left, window.innerWidth - width - 16);
+    const maxViewportWidth = typeof window !== 'undefined' ? window.innerWidth - 16 : 320;
+    const width = Math.min(Math.max(rect.width, 280), maxViewportWidth);
+    const left = Math.min(rect.left, (typeof window !== 'undefined' ? window.innerWidth : 320) - width - 8);
 
     setCoords({
       top: placeAbove ? rect.top - dropdownHeight - 4 : rect.bottom + 4,
@@ -206,7 +207,7 @@ export function ProductPicker({
 
         {!isLoading &&
           products.map((product, index) => {
-            const code = product.productCode || product.sku;
+            const code = product.productCode || product.sku || product.id;
             return (
               <li key={product.id}>
                 <button
@@ -218,24 +219,15 @@ export function ProductPicker({
                     highlighted === index && 'bg-warm-accentLight'
                   )}
                 >
-                  <span className="min-w-0">
-                    <span className="flex items-center gap-1.5">
-                      <span className="text-xs font-semibold text-warm-text truncate">
-                        {product.name}
-                      </span>
-                      {code && (
-                        <span className="text-[10px] px-1 bg-warm-input border border-warm-border text-warm-textMuted">
-                          {code}
-                        </span>
-                      )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-semibold text-warm-text truncate">
+                      {product.name}
                     </span>
-                    <span className="block text-[10px] text-warm-textMuted truncate">
-                      {product.category ? `${product.category} · ` : ''}
-                      {product.hsnSacCode ? `HSN ${product.hsnSacCode} · ` : ''}
-                      per {product.unit || 'PCS'}
+                    <span className="block text-[10px] text-warm-textMuted truncate mt-0.5">
+                      Product ID: {code}
                     </span>
                   </span>
-                  <span className="text-xs font-semibold text-warm-accent shrink-0 tabular-nums">
+                  <span className="text-xs font-semibold text-warm-accent shrink-0 tabular-nums pt-0.5">
                     {formatCurrency(toNumber(product.price))}
                   </span>
                 </button>

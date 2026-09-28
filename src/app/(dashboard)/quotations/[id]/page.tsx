@@ -258,7 +258,7 @@ export default function QuotationDetailPage() {
 
         {/* Converted to Invoice Banner */}
         {isConverted && quotation.convertedInvoiceId && (
-          <div className="flex items-center justify-between gap-4 p-4 bg-purple-50 border border-purple-200">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-purple-50 border border-purple-200">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-none bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
                 <ArrowRightLeft className="w-4 h-4" />
@@ -441,7 +441,7 @@ export default function QuotationDetailPage() {
               size="sm"
               onClick={() => setDeleteDialogOpen(true)}
               leftIcon={<Trash2 className="w-3.5 h-3.5 text-red-600" />}
-              className="text-red-600 hover:text-red-700 hover:bg-red-50 ml-auto"
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 ml-0 sm:ml-auto"
             >
               Delete Draft
             </Button>
@@ -573,7 +573,7 @@ export default function QuotationDetailPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[650px] text-left border-collapse">
+                <table className="w-full min-w-[720px] text-left border-collapse">
                   <thead className="bg-warm-input/70 border-b border-warm-border/80">
                     <tr className="text-[10px] font-semibold uppercase tracking-wider text-warm-textMuted">
                       <th className="py-2.5 px-4 w-8">#</th>
@@ -581,39 +581,55 @@ export default function QuotationDetailPage() {
                       <th className="py-2.5 px-3 w-24">HSN/SAC</th>
                       <th className="py-2.5 px-3 w-20 text-right">Qty</th>
                       <th className="py-2.5 px-3 w-20">Unit</th>
-                      <th className="py-2.5 px-3 w-28 text-right">Rate</th>
+                      <th className="py-2.5 px-3 w-24 text-right">Rate</th>
+                      <th className="py-2.5 px-3 w-20 text-right">Disc %</th>
                       <th className="py-2.5 px-3 w-20 text-right">GST %</th>
                       <th className="py-2.5 px-4 w-28 text-right">Amount</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-warm-border/40 text-xs">
-                    {quotation.items.map((item, idx) => (
-                      <tr key={item.id} className="hover:bg-warm-input/20">
-                        <td className="py-2.5 px-4 text-warm-textMuted">{idx + 1}</td>
-                        <td className="py-2.5 px-3">
-                          <p className="font-semibold text-warm-text">{item.name}</p>
-                          {item.description && (
-                            <p className="text-[11px] text-warm-textMuted mt-0.5 leading-snug">
-                              {item.description}
-                            </p>
-                          )}
-                        </td>
-                        <td className="py-2.5 px-3 text-warm-textMuted">{item.hsnSacCode || '—'}</td>
-                        <td className="py-2.5 px-3 text-right font-medium text-warm-text tabular-nums">
-                          {Number(item.quantity)}
-                        </td>
-                        <td className="py-2.5 px-3 text-warm-textMuted">{item.unit}</td>
-                        <td className="py-2.5 px-3 text-right text-warm-text tabular-nums">
-                          {formatCurrency(Number(item.rate))}
-                        </td>
-                        <td className="py-2.5 px-3 text-right text-warm-textMuted">
-                          {Number(item.taxRate)}%
-                        </td>
-                        <td className="py-2.5 px-4 text-right font-semibold text-warm-text tabular-nums">
-                          {formatCurrency(Number(item.quantity) * Number(item.rate))}
-                        </td>
-                      </tr>
-                    ))}
+                    {quotation.items.map((item, idx) => {
+                      const qty = Number(item.quantity) || 0;
+                      const rate = Number(item.rate) || 0;
+                      const discPct = Number(item.discountPercent) || 0;
+                      const discAmt = Number(item.discountAmount) || (discPct > 0 ? (qty * rate * discPct) / 100 : 0);
+                      const taxable = Number(item.taxableAmount) || Math.max(0, qty * rate - discAmt);
+
+                      return (
+                        <tr key={item.id} className="hover:bg-warm-input/20">
+                          <td className="py-2.5 px-4 text-warm-textMuted">{idx + 1}</td>
+                          <td className="py-2.5 px-3">
+                            <p className="font-semibold text-warm-text">{item.name}</p>
+                            {item.description && (
+                              <p className="text-[11px] text-warm-textMuted mt-0.5 leading-snug">
+                                {item.description}
+                              </p>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-warm-textMuted">{item.hsnSacCode || '—'}</td>
+                          <td className="py-2.5 px-3 text-right font-medium text-warm-text tabular-nums">
+                            {qty}
+                          </td>
+                          <td className="py-2.5 px-3 text-warm-textMuted">{item.unit}</td>
+                          <td className="py-2.5 px-3 text-right text-warm-text tabular-nums">
+                            {formatCurrency(rate)}
+                          </td>
+                          <td className="py-2.5 px-3 text-right text-warm-text tabular-nums">
+                            {discPct > 0 ? (
+                              <span className="text-warm-accent font-medium">{discPct}%</span>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-right text-warm-textMuted">
+                            {Number(item.taxRate)}%
+                          </td>
+                          <td className="py-2.5 px-4 text-right font-semibold text-warm-text tabular-nums">
+                            {formatCurrency(taxable)}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -711,7 +727,7 @@ export default function QuotationDetailPage() {
               type="text"
               value={reasonInput}
               onChange={(e) => setReasonInput(e.target.value)}
-              placeholder="e.g. Price negotiation or budget constraints..."
+              placeholder="Reason for rejection (optional)"
             />
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" size="sm" onClick={() => setRejectDialogOpen(false)}>
@@ -744,7 +760,7 @@ export default function QuotationDetailPage() {
               type="text"
               value={reasonInput}
               onChange={(e) => setReasonInput(e.target.value)}
-              placeholder="e.g. Cancelled by customer request..."
+              placeholder="Reason for cancellation (optional)"
             />
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" size="sm" onClick={() => setCancelDialogOpen(false)}>

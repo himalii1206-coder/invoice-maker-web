@@ -63,7 +63,7 @@ export function Pagination({
         <span className="font-semibold text-warm-text">{totalItems}</span> results
       </p>
 
-      <div className="flex items-center gap-1.5 order-1 sm:order-2">
+      <div className="flex flex-wrap items-center justify-center gap-1.5 order-1 sm:order-2">
         <Button
           variant="outline"
           size="sm"
@@ -86,7 +86,7 @@ export function Pagination({
           <ChevronLeft className="w-4 h-4" />
         </button>
 
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center justify-center gap-1">
           {pageItems.map((item, index) =>
             item === ELLIPSIS ? (
               <span

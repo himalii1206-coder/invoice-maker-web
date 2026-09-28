@@ -136,39 +136,39 @@ export function QuotationPreviewModal({ isOpen, onClose, quotation }: QuotationP
       {/* Modal Container */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-5xl h-[92vh] max-h-[920px] bg-warm-surface shadow-warmLg border border-warm-border z-10 flex flex-col overflow-hidden transform transition-all animate-in zoom-in-95 duration-200"
+        className="relative w-full max-w-5xl h-[92dvh] max-h-[920px] bg-warm-surface shadow-warmLg border border-warm-border z-10 flex flex-col overflow-hidden transform transition-all animate-in zoom-in-95 duration-200"
       >
         {/* Header Toolbar */}
-        <div className="px-5 py-3.5 bg-warm-surface text-warm-text flex flex-wrap items-center justify-between gap-3 border-b border-warm-border">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-warm-accent-light border border-warm-accent/20 flex items-center justify-center text-warm-accent shadow-xs">
-              <FileSpreadsheet className="w-5 h-5" />
+        <div className="px-4 py-3 bg-warm-surface text-warm-text flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-warm-border">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 bg-warm-accent-light border border-warm-accent/20 flex items-center justify-center text-warm-accent shadow-xs shrink-0">
+              <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-warm-text tracking-tight">
-                  Quotation Preview: {quotation.quotationNumber}
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-sm sm:text-base font-bold text-warm-text tracking-tight truncate">
+                  Quotation: {quotation.quotationNumber}
                 </h3>
-                <span className="px-2 py-0.5 text-[11px] font-semibold bg-warm-accent-light text-warm-accent border border-warm-accent/30">
+                <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-warm-accent-light text-warm-accent border border-warm-accent/30">
                   GST Quotation
                 </span>
               </div>
-              <p className="text-xs text-warm-textMuted mt-0.5">
+              <p className="text-xs text-warm-textMuted mt-0.5 truncate">
                 M/S: <span className="text-warm-text font-semibold">{customerName}</span>
               </p>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 justify-end">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handlePrint}
               disabled={loading || !pdfUrl}
-              leftIcon={<Printer className="w-4 h-4 text-warm-accent" />}
-              className="bg-warm-input border-warm-border text-warm-text hover:bg-warm-accent-light hover:text-warm-accent hover:border-warm-accent/40 font-medium whitespace-nowrap"
+              leftIcon={<Printer className="w-3.5 h-3.5 text-warm-accent" />}
+              className="bg-warm-input border-warm-border text-warm-text hover:bg-warm-accent-light hover:text-warm-accent hover:border-warm-accent/40 font-medium whitespace-nowrap text-xs"
             >
               Print
             </Button>
@@ -178,13 +178,13 @@ export function QuotationPreviewModal({ isOpen, onClose, quotation }: QuotationP
               size="sm"
               onClick={handleDownload}
               disabled={loading || !pdfBlob}
-              leftIcon={<Download className="w-4 h-4" />}
-              className="bg-warm-accent hover:bg-warm-accent-hover text-white shadow-xs font-semibold whitespace-nowrap"
+              leftIcon={<Download className="w-3.5 h-3.5" />}
+              className="bg-warm-accent hover:bg-warm-accent-hover text-white shadow-xs font-semibold whitespace-nowrap text-xs"
             >
               Download PDF
             </Button>
 
-            <div className="h-6 w-px bg-warm-border mx-1 hidden sm:block" />
+            <div className="h-5 w-px bg-warm-border mx-0.5 hidden sm:block" />
 
             <button
               type="button"
@@ -192,7 +192,7 @@ export function QuotationPreviewModal({ isOpen, onClose, quotation }: QuotationP
               className="p-1.5 text-warm-textMuted hover:text-warm-text hover:bg-warm-input transition-colors cursor-pointer"
               title="Close Preview"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>

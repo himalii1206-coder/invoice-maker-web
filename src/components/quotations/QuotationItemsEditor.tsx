@@ -28,6 +28,7 @@ export interface QuotationItemsEditorProps {
   defaultTaxRate?: number;
   gstRates?: number[];
   units?: string[];
+  showDiscount?: boolean;
   disabled?: boolean;
   errors?: Record<number, string>;
 }
@@ -62,6 +63,7 @@ export function QuotationItemsEditor({
   defaultTaxRate = 18,
   gstRates = COMMON_GST_RATES,
   units = COMMON_UNITS,
+  showDiscount = true,
   disabled = false,
   errors = {}
 }: QuotationItemsEditorProps) {
@@ -138,13 +140,14 @@ export function QuotationItemsEditor({
           <thead className="bg-warm-input/70 border-b border-warm-border/80">
             <tr className="text-[10px] font-semibold uppercase tracking-wider text-warm-textMuted">
               <th className="py-2.5 px-2 w-8">#</th>
-              <th className="py-2.5 px-2 min-w-[220px]">Item Name & Description</th>
-              <th className="py-2.5 px-2 w-[100px]">HSN/SAC</th>
-              <th className="py-2.5 px-2 w-[85px] text-right">Qty</th>
-              <th className="py-2.5 px-2 w-[90px]">Unit</th>
-              <th className="py-2.5 px-2 w-[110px] text-right">Rate (₹)</th>
+              <th className="py-2.5 px-2 min-w-[200px]">Item Name & Description</th>
+              <th className="py-2.5 px-2 w-[95px]">HSN/SAC</th>
+              <th className="py-2.5 px-2 w-[80px] text-right">Qty</th>
+              <th className="py-2.5 px-2 w-[85px]">Unit</th>
+              <th className="py-2.5 px-2 w-[105px] text-right">Rate (₹)</th>
+              {showDiscount && <th className="py-2.5 px-2 w-[85px] text-right">Disc %</th>}
               <th className="py-2.5 px-2 w-[95px] text-right">GST %</th>
-              <th className="py-2.5 px-2 w-[120px] text-right">Amount (₹)</th>
+              <th className="py-2.5 px-2 w-[115px] text-right">Amount (₹)</th>
               <th className="py-2.5 px-2 w-16 text-center">Action</th>
             </tr>
           </thead>
@@ -152,7 +155,10 @@ export function QuotationItemsEditor({
             {items.map((item, idx) => {
               const qtyNum = parseFloat(item.quantity) || 0;
               const rateNum = parseFloat(item.rate) || 0;
-              const lineAmount = qtyNum * rateNum;
+              const discNum = parseFloat(item.discountPercent) || 0;
+              const grossAmount = qtyNum * rateNum;
+              const discAmount = discNum > 0 ? (grossAmount * discNum) / 100 : 0;
+              const taxableAmount = Math.max(0, grossAmount - discAmount);
               const hasError = Boolean(errors[idx]);
 
               return (
@@ -199,7 +205,7 @@ export function QuotationItemsEditor({
                         type="text"
                         value={item.description}
                         onChange={(e) => patch(idx, { description: e.target.value })}
-                        placeholder="Optional description / specs"
+                        placeholder="Description (optional)"
                         disabled={disabled}
                         className="w-full h-7 px-2 text-xs bg-warm-input/60 border border-warm-border/40 text-warm-text placeholder:text-warm-placeholder/70 rounded-none focus:outline-none focus:border-warm-accent"
                       />
@@ -212,7 +218,7 @@ export function QuotationItemsEditor({
                       type="text"
                       value={item.hsnSacCode}
                       onChange={(e) => patch(idx, { hsnSacCode: e.target.value })}
-                      placeholder="HSN"
+                      placeholder="HSN/SAC"
                       disabled={disabled}
                       className={cellInput}
                     />
@@ -262,6 +268,28 @@ export function QuotationItemsEditor({
                     />
                   </td>
 
+                  {/* Disc % */}
+                  {showDiscount && (
+                    <td className="py-2 px-2 align-top">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="any"
+                        value={item.discountPercent}
+                        onChange={(e) => patch(idx, { discountPercent: e.target.value.replace(/[^\d.]/g, '') })}
+                        placeholder="0"
+                        disabled={disabled}
+                        className={cn(cellInput, 'text-right')}
+                      />
+                      {discAmount > 0 && (
+                        <p className="text-[10px] text-warm-textSubtle text-right mt-0.5 tabular-nums">
+                          -{formatCurrency(discAmount)}
+                        </p>
+                      )}
+                    </td>
+                  )}
+
                   {/* Tax Rate % */}
                   <td className="py-2 px-2 align-top">
                     <select
@@ -278,10 +306,10 @@ export function QuotationItemsEditor({
                     </select>
                   </td>
 
-                  {/* Amount (Qty * Rate) */}
+                  {/* Amount (Qty * Rate - Disc) */}
                   <td className="py-2 px-2 align-top text-right pt-3.5">
                     <span className="text-sm font-semibold tabular-nums text-warm-text">
-                      {formatCurrency(lineAmount)}
+                      {formatCurrency(taxableAmount)}
                     </span>
                   </td>
 

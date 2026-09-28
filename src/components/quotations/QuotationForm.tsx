@@ -520,7 +520,7 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
               type="text"
               value={form.billingGstin}
               onChange={(e) => setForm((prev) => ({ ...prev, billingGstin: e.target.value }))}
-              placeholder="24AAAAA0000A1Z5"
+              placeholder="GSTIN"
             />
           </div>
 
@@ -581,7 +581,7 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
               type="email"
               value={form.billingEmail}
               onChange={(e) => setForm((prev) => ({ ...prev, billingEmail: e.target.value }))}
-              placeholder="client@company.com"
+              placeholder="Email address"
             />
           </div>
         </div>
@@ -664,7 +664,7 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
               type="text"
               value={form.inquiryNumber}
               onChange={(e) => setForm((prev) => ({ ...prev, inquiryNumber: e.target.value }))}
-              placeholder="INQ-2026-081"
+              placeholder="Inquiry number"
             />
           </div>
 
@@ -687,7 +687,7 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
               type="text"
               value={form.referenceNumber}
               onChange={(e) => setForm((prev) => ({ ...prev, referenceNumber: e.target.value }))}
-              placeholder="RFQ / Email Reference"
+              placeholder="Reference number"
             />
           </div>
 
@@ -781,7 +781,7 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
                   type="text"
                   value={form.customPaymentTerms}
                   onChange={(e) => setForm((prev) => ({ ...prev, customPaymentTerms: e.target.value }))}
-                  placeholder="e.g. 50% Advance balance before dispatch"
+                  placeholder="Custom payment terms"
                 />
               </div>
             )}
@@ -794,7 +794,7 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
                 value={form.termsAndConditions}
                 onChange={(e) => setForm((prev) => ({ ...prev, termsAndConditions: e.target.value }))}
                 rows={3}
-                placeholder="1. Delivery within 2 weeks of purchase order. 2. Prices are ex-works..."
+                placeholder="Terms and conditions..."
               />
             </div>
 
@@ -806,7 +806,7 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
                 value={form.notes}
                 onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
                 rows={2}
-                placeholder="Thank you for your business inquiry..."
+                placeholder="Notes / remarks..."
               />
             </div>
           </div>

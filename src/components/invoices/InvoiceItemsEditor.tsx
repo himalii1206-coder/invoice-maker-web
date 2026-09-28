@@ -161,7 +161,7 @@ export function InvoiceItemsEditor({
 
   return (
     <div className="bg-warm-surface border border-warm-border/60 shadow-warm">
-      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-warm-border/50">
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 px-4 py-3 border-b border-warm-border/50">
         <div>
           <h3 className="text-sm font-semibold text-warm-text tracking-tight">Line Items</h3>
           <p className="text-[11px] text-warm-textMuted mt-0.5">

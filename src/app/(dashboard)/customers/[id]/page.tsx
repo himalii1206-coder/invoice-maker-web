@@ -25,7 +25,7 @@ import { customersApi, apiErrorMessage } from '@/lib/customers';
 import { invoicesApi, toNumber } from '@/lib/invoices';
 import { quotationsApi } from '@/lib/quotations';
 import { Customer } from '@/types/index';
-import { InvoiceListRow } from '@/types/invoice';
+import { InvoiceListRow, InvoicePayment } from '@/types/invoice';
 import { Quotation } from '@/types/quotation';
 import { formatDate, formatCurrency, cn } from '@/lib/utils';
 import {
@@ -45,7 +45,11 @@ import {
   Users,
   ArrowLeft,
   ArrowRightLeft,
-  Eye
+  Eye,
+  Receipt,
+  CreditCard,
+  CheckCircle2,
+  TrendingUp
 } from 'lucide-react';
 
 function DetailItem({ label, value }: { label: string; value?: string | number | null }) {
@@ -61,6 +65,23 @@ function DetailItem({ label, value }: { label: string; value?: string | number |
   );
 }
 
+function formatPaymentMethod(method?: string) {
+  switch (method) {
+    case 'BANK_TRANSFER':
+      return 'Bank Transfer / NEFT';
+    case 'UPI':
+      return 'UPI / QR';
+    case 'CHEQUE':
+      return 'Cheque';
+    case 'CASH':
+      return 'Cash';
+    case 'CARD':
+      return 'Credit / Debit Card';
+    default:
+      return method || 'Payment';
+  }
+}
+
 export default function CustomerDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -69,7 +90,8 @@ export default function CustomerDetailPage() {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [invoices, setInvoices] = useState<InvoiceListRow[]>([]);
   const [quotations, setQuotations] = useState<Quotation[]>([]);
-  const [activeTab, setActiveTab] = useState<'profile' | 'quotations' | 'invoices'>('profile');
+  const [payments, setPayments] = useState<InvoicePayment[]>([]);
+  const [activeTab, setActiveTab] = useState<'profile' | 'quotations' | 'invoices' | 'transactions'>('profile');
 
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingRelations, setIsLoadingRelations] = useState(false);
@@ -96,12 +118,14 @@ export default function CustomerDetailPage() {
     if (!customerId) return;
     setIsLoadingRelations(true);
     try {
-      const [invoicesRes, quotationsRes] = await Promise.all([
-        invoicesApi.list({ customerId, limit: 50 }).catch(() => ({ invoices: [] })),
-        quotationsApi.list({ customerId, limit: 50 }).catch(() => ({ quotations: [] }))
+      const [invoicesRes, quotationsRes, paymentsRes] = await Promise.all([
+        invoicesApi.list({ customerId, limit: 100 }).catch(() => ({ invoices: [] })),
+        quotationsApi.list({ customerId, limit: 100 }).catch(() => ({ quotations: [] })),
+        invoicesApi.listAllPayments({ customerId, limit: 100 }).catch(() => ({ payments: [] }))
       ]);
       setInvoices(invoicesRes.invoices || []);
       setQuotations(quotationsRes.quotations || []);
+      setPayments(paymentsRes.payments || []);
     } catch {
       // Non-blocking
     } finally {
@@ -175,11 +199,28 @@ export default function CustomerDetailPage() {
     .filter(Boolean)
     .join('\n');
 
+  // Financial and ledger calculations
+  const totalInvoiced = invoices
+    .filter((inv) => inv.status !== 'CANCELLED')
+    .reduce((sum, inv) => sum + toNumber(inv.grandTotal), 0);
+
+  const totalPaid = payments.reduce((sum, p) => sum + toNumber(p.amount), 0);
+
+  const totalInvoiceBalance = invoices
+    .filter((inv) => inv.status !== 'CANCELLED')
+    .reduce((sum, inv) => sum + toNumber(inv.balanceDue), 0);
+
+  const openingBal = customer.openingBalance ? toNumber(customer.openingBalance) : 0;
+  const isOpeningDebit = (customer.balanceType || 'Dr.') === 'Dr.';
+  const netOutstanding = isOpeningDebit
+    ? totalInvoiceBalance + openingBal
+    : totalInvoiceBalance - openingBal;
+
   return (
     <DashboardLayout>
       <PageHeader
         title={customer.name}
-        description="Comprehensive customer profile, billing address, quotations, invoices, and accounting history."
+        description="Comprehensive customer profile, quotations history, tax invoices, and payment transactions ledger."
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'Customers', href: '/customers' },
@@ -240,6 +281,11 @@ export default function CustomerDetailPage() {
                 <Badge status={customer.isActive ? 'ACTIVE' : 'INACTIVE'} />
               </div>
               <div className="flex items-center gap-3 text-xs text-warm-textMuted mt-1 flex-wrap">
+                {customer.customerCode && (
+                  <span className="font-mono font-semibold bg-warm-input px-2 py-0.5 border border-warm-border/60 text-warm-text">
+                    {customer.customerCode}
+                  </span>
+                )}
                 {customer.accountGroup && (
                   <span className="font-bold text-warm-text uppercase tracking-wider bg-warm-surface px-2 py-0.5 border border-warm-border">
                     {customer.accountGroup.toUpperCase()}
@@ -250,76 +296,122 @@ export default function CustomerDetailPage() {
                     {customer.partyCategory}
                   </span>
                 )}
+                {customer.openingBalance !== null && customer.openingBalance !== undefined && Number(customer.openingBalance) > 0 && (
+                  <span className="font-semibold bg-warm-surface text-warm-text px-2 py-0.5 border border-warm-border">
+                    Opening Bal: {formatCurrency(Number(customer.openingBalance))} ({customer.balanceType || 'Dr.'})
+                  </span>
+                )}
                 <span>Added on {formatDate(customer.createdAt)}</span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <button
               type="button"
               onClick={() => setActiveTab('quotations')}
-              className="flex items-center gap-2 text-xs font-semibold text-warm-text bg-warm-input hover:bg-warm-input/80 px-3 py-2 border border-warm-border/60 transition-colors cursor-pointer"
+              className={cn(
+                'flex items-center gap-2 text-xs font-semibold px-3 py-2 border transition-colors cursor-pointer',
+                activeTab === 'quotations'
+                  ? 'bg-warm-accent text-white border-warm-accent'
+                  : 'text-warm-text bg-warm-input hover:bg-warm-input/80 border-warm-border/60'
+              )}
             >
-              <FileSpreadsheet className="w-4 h-4 text-warm-accent" />
-              <span>{customer.quotationCount ?? quotations.length}</span>
-              <span className="text-warm-textMuted">quotations</span>
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>{quotations.length}</span>
+              <span className={activeTab === 'quotations' ? 'text-white/80' : 'text-warm-textMuted'}>quotations</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('invoices')}
-              className="flex items-center gap-2 text-xs font-semibold text-warm-text bg-warm-input hover:bg-warm-input/80 px-3 py-2 border border-warm-border/60 transition-colors cursor-pointer"
+              className={cn(
+                'flex items-center gap-2 text-xs font-semibold px-3 py-2 border transition-colors cursor-pointer',
+                activeTab === 'invoices'
+                  ? 'bg-warm-accent text-white border-warm-accent'
+                  : 'text-warm-text bg-warm-input hover:bg-warm-input/80 border-warm-border/60'
+              )}
             >
-              <FileText className="w-4 h-4 text-warm-accent" />
-              <span>{customer.invoiceCount ?? invoices.length}</span>
-              <span className="text-warm-textMuted">invoices</span>
+              <FileText className="w-4 h-4" />
+              <span>{invoices.length}</span>
+              <span className={activeTab === 'invoices' ? 'text-white/80' : 'text-warm-textMuted'}>invoices</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('transactions')}
+              className={cn(
+                'flex items-center gap-2 text-xs font-semibold px-3 py-2 border transition-colors cursor-pointer',
+                activeTab === 'transactions'
+                  ? 'bg-warm-accent text-white border-warm-accent'
+                  : 'text-warm-text bg-warm-input hover:bg-warm-input/80 border-warm-border/60'
+              )}
+            >
+              <Receipt className="w-4 h-4" />
+              <span>{payments.length}</span>
+              <span className={activeTab === 'transactions' ? 'text-white/80' : 'text-warm-textMuted'}>transactions</span>
             </button>
           </div>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex items-center border-b border-warm-border/70 gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveTab('profile')}
-            className={cn(
-              'px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors cursor-pointer',
-              activeTab === 'profile'
-                ? 'border-warm-accent text-warm-accent bg-warm-surface'
-                : 'border-transparent text-warm-textMuted hover:text-warm-text'
-            )}
-          >
-            Profile &amp; Details
-          </button>
+        <div className="border-b border-warm-border/70 overflow-x-auto">
+          <div className="flex items-center gap-2 min-w-max pb-px">
+            <button
+              type="button"
+              onClick={() => setActiveTab('profile')}
+              className={cn(
+                'px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors cursor-pointer whitespace-nowrap shrink-0',
+                activeTab === 'profile'
+                  ? 'border-warm-accent text-warm-accent bg-warm-surface'
+                  : 'border-transparent text-warm-textMuted hover:text-warm-text'
+              )}
+            >
+              Profile &amp; Details
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('quotations')}
-            className={cn(
-              'px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors flex items-center gap-2 cursor-pointer',
-              activeTab === 'quotations'
-                ? 'border-warm-accent text-warm-accent bg-warm-surface'
-                : 'border-transparent text-warm-textMuted hover:text-warm-text'
-            )}
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Quotations ({quotations.length})</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('quotations')}
+              className={cn(
+                'px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0',
+                activeTab === 'quotations'
+                  ? 'border-warm-accent text-warm-accent bg-warm-surface'
+                  : 'border-transparent text-warm-textMuted hover:text-warm-text'
+              )}
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
+              <span>Quotations ({quotations.length})</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('invoices')}
-            className={cn(
-              'px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors flex items-center gap-2 cursor-pointer',
-              activeTab === 'invoices'
-                ? 'border-warm-accent text-warm-accent bg-warm-surface'
-                : 'border-transparent text-warm-textMuted hover:text-warm-text'
-            )}
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Invoices ({invoices.length})</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('invoices')}
+              className={cn(
+                'px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0',
+                activeTab === 'invoices'
+                  ? 'border-warm-accent text-warm-accent bg-warm-surface'
+                  : 'border-transparent text-warm-textMuted hover:text-warm-text'
+              )}
+            >
+              <FileText className="w-3.5 h-3.5 shrink-0" />
+              <span>Invoices ({invoices.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('transactions')}
+              className={cn(
+                'px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0',
+                activeTab === 'transactions'
+                  ? 'border-warm-accent text-warm-accent bg-warm-surface'
+                  : 'border-transparent text-warm-textMuted hover:text-warm-text'
+              )}
+            >
+              <Receipt className="w-3.5 h-3.5 shrink-0" />
+              <span>Transactions &amp; Ledger ({payments.length})</span>
+            </button>
+          </div>
         </div>
 
         {/* Tab 1: Profile & Details */}
@@ -448,21 +540,21 @@ export default function CustomerDetailPage() {
                 onAction={() => router.push(`/quotations/new?customerId=${customer.id}`)}
               />
             ) : (
-              <Table>
+              <Table className="min-w-[800px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Quotation #</TableHead>
-                    <TableHead>Subject / Inquiry</TableHead>
-                    <TableHead>Date &amp; Validity</TableHead>
-                    <TableHead className="text-right">Grand Total</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="min-w-[140px]">Quotation #</TableHead>
+                    <TableHead className="min-w-[180px]">Subject / Inquiry</TableHead>
+                    <TableHead className="min-w-[130px]">Date &amp; Validity</TableHead>
+                    <TableHead className="min-w-[120px] text-right">Grand Total</TableHead>
+                    <TableHead className="min-w-[100px] text-center">Status</TableHead>
+                    <TableHead className="min-w-[130px] text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {quotations.map((q) => (
                     <TableRow key={q.id}>
-                      <TableCell>
+                      <TableCell className="min-w-[140px]">
                         <Link
                           href={`/quotations/${q.id}`}
                           className="font-bold text-warm-text hover:text-warm-accent transition-colors"
@@ -470,7 +562,7 @@ export default function CustomerDetailPage() {
                           {q.quotationNumber}
                         </Link>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="min-w-[180px]">
                         <p className="text-xs text-warm-text truncate max-w-[220px]">
                           {q.subject || '—'}
                         </p>
@@ -480,7 +572,7 @@ export default function CustomerDetailPage() {
                           </p>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="min-w-[130px]">
                         <p className="text-xs font-semibold text-warm-text">
                           {formatDate(q.quotationDate)}
                         </p>
@@ -488,15 +580,15 @@ export default function CustomerDetailPage() {
                           {q.validUntil ? `Valid: ${formatDate(q.validUntil)}` : 'No expiry'}
                         </p>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="min-w-[120px] text-right">
                         <span className="font-semibold text-warm-text tabular-nums">
                           {formatCurrency(Number(q.grandTotal))}
                         </span>
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="min-w-[100px] text-center">
                         <QuotationStatusBadge status={q.status} />
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="min-w-[130px] text-right">
                         <div className="inline-flex items-center justify-end gap-1.5">
                           <Link
                             href={`/quotations/${q.id}`}
@@ -552,21 +644,21 @@ export default function CustomerDetailPage() {
                 onAction={() => router.push(`/invoices/new?customerId=${customer.id}`)}
               />
             ) : (
-              <Table>
+              <Table className="min-w-[720px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Invoice #</TableHead>
-                    <TableHead>Issue &amp; Due Date</TableHead>
-                    <TableHead className="text-right">Grand Total</TableHead>
-                    <TableHead className="text-right">Balance Due</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="min-w-[140px]">Invoice #</TableHead>
+                    <TableHead className="min-w-[130px]">Issue &amp; Due Date</TableHead>
+                    <TableHead className="min-w-[120px] text-right">Grand Total</TableHead>
+                    <TableHead className="min-w-[120px] text-right">Balance Due</TableHead>
+                    <TableHead className="min-w-[100px] text-center">Status</TableHead>
+                    <TableHead className="min-w-[110px] text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {invoices.map((inv) => (
                     <TableRow key={inv.id}>
-                      <TableCell>
+                      <TableCell className="min-w-[140px]">
                         <Link
                           href={`/invoices/${inv.id}`}
                           className="font-bold text-warm-text hover:text-warm-accent transition-colors"
@@ -579,7 +671,7 @@ export default function CustomerDetailPage() {
                           </span>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="min-w-[130px]">
                         <p className="text-xs font-semibold text-warm-text">
                           {formatDate(inv.issueDate)}
                         </p>
@@ -587,12 +679,12 @@ export default function CustomerDetailPage() {
                           Due: {formatDate(inv.dueDate)}
                         </p>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="min-w-[120px] text-right">
                         <span className="font-semibold text-warm-text tabular-nums">
                           {formatCurrency(toNumber(inv.grandTotal))}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="min-w-[120px] text-right">
                         {inv.status === 'CANCELLED' ? (
                           <span className="text-warm-textSubtle text-xs font-normal">
                             —
@@ -608,10 +700,10 @@ export default function CustomerDetailPage() {
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="min-w-[100px] text-center">
                         <InvoiceStatusBadge status={inv.status} />
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="min-w-[110px] text-right">
                         <Link
                           href={`/invoices/${inv.id}`}
                           className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-warm-text bg-warm-input/50 hover:bg-warm-accent hover:text-white border border-warm-border/60 transition-colors"
@@ -619,6 +711,201 @@ export default function CustomerDetailPage() {
                           <Eye className="w-3.5 h-3.5" />
                           <span>View</span>
                         </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        )}
+
+        {/* Tab 4: Transactions & Ledger History */}
+        {activeTab === 'transactions' && (
+          <div className="space-y-6">
+            {/* Financial Ledger Metric Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-warm-surface border border-warm-border/60 p-4 shadow-warm flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-warm-textSubtle">
+                    Total Invoiced
+                  </p>
+                  <p className="mt-1 text-xl font-bold text-warm-text tabular-nums">
+                    {formatCurrency(totalInvoiced)}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-warm-textMuted">
+                    Across {invoices.filter((i) => i.status !== 'CANCELLED').length} active invoices
+                  </p>
+                </div>
+                <div className="p-2.5 bg-warm-input border border-warm-border/60 text-warm-textMuted">
+                  <FileText className="w-5 h-5" />
+                </div>
+              </div>
+
+              <div className="bg-warm-surface border border-warm-border/60 p-4 shadow-warm flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-warm-textSubtle">
+                    Total Paid / Collected
+                  </p>
+                  <p className="mt-1 text-xl font-bold text-emerald-700 tabular-nums">
+                    {formatCurrency(totalPaid)}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-warm-textMuted">
+                    Across {payments.length} payment receipts
+                  </p>
+                </div>
+                <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+              </div>
+
+              <div className="bg-warm-surface border border-warm-border/60 p-4 shadow-warm flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-warm-textSubtle">
+                    Opening Balance
+                  </p>
+                  <p className="mt-1 text-xl font-bold text-warm-text tabular-nums">
+                    {customer.openingBalance ? `${formatCurrency(openingBal)} ${customer.balanceType || 'Dr.'}` : '₹0.00'}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-warm-textMuted">
+                    Initial balance on record
+                  </p>
+                </div>
+                <div className="p-2.5 bg-warm-input border border-warm-border/60 text-warm-textMuted">
+                  <Landmark className="w-5 h-5" />
+                </div>
+              </div>
+
+              <div className="bg-warm-surface border border-warm-border/60 p-4 shadow-warm flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-warm-textSubtle">
+                    Net Outstanding
+                  </p>
+                  <p
+                    className={cn(
+                      'mt-1 text-xl font-bold tabular-nums',
+                      netOutstanding > 0 ? 'text-red-700' : 'text-emerald-700'
+                    )}
+                  >
+                    {formatCurrency(Math.max(0, netOutstanding))}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-warm-textMuted">
+                    {netOutstanding > 0 ? 'Pending collection' : 'Fully settled'}
+                  </p>
+                </div>
+                <div
+                  className={cn(
+                    'p-2.5 border',
+                    netOutstanding > 0
+                      ? 'bg-red-50 border-red-200 text-red-700'
+                      : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                  )}
+                >
+                  <CreditCard className="w-5 h-5" />
+                </div>
+              </div>
+            </div>
+
+            {/* Transactions Header */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h4 className="text-sm font-bold text-warm-text">
+                  Payment &amp; Transaction History for {customer.name}
+                </h4>
+              </div>
+            </div>
+
+            {/* Transactions Table / Empty State */}
+            {isLoadingRelations ? (
+              <div className="bg-warm-surface border border-warm-border/60 p-8">
+                <LoadingState message="Loading payment transactions..." />
+              </div>
+            ) : payments.length === 0 ? (
+              <EmptyState
+                icon={<Receipt className="w-6 h-6" />}
+                title="No payment transactions found"
+                description={`No payment transactions have been recorded for ${customer.name} yet.`}
+                actionLabel="View Customer Invoices"
+                onAction={() => setActiveTab('invoices')}
+              />
+            ) : (
+              <Table className="min-w-[850px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[120px]">Payment Date</TableHead>
+                    <TableHead className="min-w-[140px]">Payment Method</TableHead>
+                    <TableHead className="min-w-[150px]">Invoice Reference</TableHead>
+                    <TableHead className="min-w-[140px]">Txn / Ref #</TableHead>
+                    <TableHead className="min-w-[180px]">Narration / Notes</TableHead>
+                    <TableHead className="min-w-[130px] text-right">Amount Received</TableHead>
+                    <TableHead className="min-w-[90px] text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {payments.map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell className="min-w-[120px]">
+                        <p className="text-xs font-semibold text-warm-text">
+                          {formatDate(p.paymentDate)}
+                        </p>
+                      </TableCell>
+                      <TableCell className="min-w-[140px]">
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium bg-warm-input border border-warm-border/60 text-warm-text">
+                          <CreditCard className="w-3 h-3 text-warm-accent" />
+                          {formatPaymentMethod(p.paymentMethod)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="min-w-[150px]">
+                        {p.invoice ? (
+                          <div>
+                            <Link
+                              href={`/invoices/${p.invoice.id}`}
+                              className="font-bold text-xs text-warm-text hover:text-warm-accent transition-colors block"
+                            >
+                              {p.invoice.invoiceNumber}
+                            </Link>
+                            <span className="text-[10px] text-warm-textMuted">
+                              Total: {formatCurrency(toNumber(p.invoice.grandTotal))}
+                            </span>
+                          </div>
+                        ) : p.invoiceId ? (
+                          <Link
+                            href={`/invoices/${p.invoiceId}`}
+                            className="font-bold text-xs text-warm-text hover:text-warm-accent transition-colors"
+                          >
+                            View Invoice
+                          </Link>
+                        ) : (
+                          <span className="text-warm-textSubtle text-xs">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="min-w-[140px]">
+                        <span className="text-xs font-mono text-warm-text break-all">
+                          {p.referenceNumber || '—'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="min-w-[180px]">
+                        <p className="text-xs text-warm-textMuted line-clamp-2" title={p.notes || ''}>
+                          {p.notes || '—'}
+                        </p>
+                      </TableCell>
+                      <TableCell className="min-w-[130px] text-right">
+                        <span className="font-bold text-xs text-emerald-700 tabular-nums">
+                          +{formatCurrency(toNumber(p.amount))}
+                        </span>
+                      </TableCell>
+                      <TableCell className="min-w-[90px] text-right">
+                        {p.invoice?.id || p.invoiceId ? (
+                          <Link
+                            href={`/invoices/${p.invoice?.id || p.invoiceId}`}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-warm-text bg-warm-input/50 hover:bg-warm-accent hover:text-white border border-warm-border/60 transition-colors"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Invoice</span>
+                          </Link>
+                        ) : (
+                          <span className="text-warm-textSubtle text-xs">—</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

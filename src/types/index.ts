@@ -77,6 +77,7 @@ export type CustomerType = 'INDIVIDUAL' | 'BUSINESS';
 
 export interface Customer {
   id: string;
+  customerCode?: string | null;
   name: string;
   email?: string | null;
   phone?: string | null;
@@ -109,6 +110,7 @@ export interface Customer {
 }
 
 export interface CustomerPayload {
+  customerCode?: string;
   name: string;
   email?: string;
   phone?: string;

@@ -325,8 +325,8 @@ export default function QuotationsPage() {
 
         {/* Filter Bar */}
         <div className="bg-warm-surface border border-warm-border/70 p-4 shadow-warm flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
-            <div className="relative flex-1 max-w-sm">
+          <div className="flex flex-wrap items-center gap-3 flex-1 w-full sm:w-auto min-w-0">
+            <div className="relative flex-1 min-w-[180px] max-w-sm w-full">
               <Search className="w-4 h-4 text-warm-textMuted absolute left-3 top-1/2 -translate-y-1/2" />
               <Input
                 type="text"
@@ -340,7 +340,7 @@ export default function QuotationsPage() {
               />
             </div>
 
-            <div className="w-44">
+            <div className="w-full sm:w-44">
               <Select
                 value={statusFilter}
                 onChange={(e) => {
@@ -520,7 +520,7 @@ export default function QuotationsPage() {
                               setMenuAnchor({
                                 q,
                                 top: openUpwards ? rect.top - 4 : rect.bottom + 4,
-                                right: window.innerWidth - rect.right,
+                                right: Math.max(8, window.innerWidth - rect.right),
                                 openUpwards
                               });
                             }}
@@ -783,7 +783,7 @@ export default function QuotationsPage() {
               type="text"
               value={reasonInput}
               onChange={(e) => setReasonInput(e.target.value)}
-              placeholder="e.g. Price too high, chosen other vendor..."
+              placeholder="Reason for rejection (optional)"
             />
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" size="sm" onClick={() => setRejectTarget(null)}>
@@ -816,7 +816,7 @@ export default function QuotationsPage() {
               type="text"
               value={reasonInput}
               onChange={(e) => setReasonInput(e.target.value)}
-              placeholder="e.g. Requirement changed by customer..."
+              placeholder="Reason for cancellation (optional)"
             />
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" size="sm" onClick={() => setCancelTarget(null)}>

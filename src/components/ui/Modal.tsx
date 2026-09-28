@@ -55,7 +55,7 @@ export function Modal({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 sm:p-6 overflow-y-auto">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-warm-text/40 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
@@ -69,7 +69,7 @@ export function Modal({
       <div
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          'relative w-full bg-warm-surface rounded-none shadow-warmLg border border-warm-border/80 z-10 overflow-hidden transform transition-all animate-in zoom-in-95 duration-200',
+          'relative w-full max-w-[calc(100vw-1rem)] my-auto bg-warm-surface rounded-none shadow-warmLg border border-warm-border/80 z-10 max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden transform transition-all animate-in zoom-in-95 duration-200',
           maxWidths[maxWidth]
         )}
       >

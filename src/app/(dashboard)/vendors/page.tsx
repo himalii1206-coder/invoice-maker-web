@@ -113,7 +113,7 @@ export default function VendorsPage() {
           title="Vendors & Suppliers"
           description="Manage supplier profiles, statutory GST details, payment terms and inward purchases."
           actions={
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <Link href="/purchases/new">
                 <Button variant="outline" size="sm" leftIcon={<Receipt className="w-4 h-4" />}>
                   + New Purchase Bill

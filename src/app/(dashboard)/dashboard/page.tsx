@@ -120,8 +120,8 @@ export default function DashboardPage() {
         title={`Welcome back, ${user?.firstName || 'Business Owner'}!`}
         description={`Operations overview, live sales metrics, and invoice performance for ${company?.name || 'your business'}.`}
         actions={
-          <div className="flex items-center gap-2">
-            <div className="w-48">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="w-full sm:w-48">
               <Select
                 value={financialYear}
                 options={financialYearOptions}
@@ -134,6 +134,7 @@ export default function DashboardPage() {
               onClick={() => fetchDashboardData(true)}
               isLoading={isRefreshing}
               leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+              className="flex-1 sm:flex-none justify-center"
             >
               Refresh
             </Button>
@@ -311,7 +312,7 @@ export default function DashboardPage() {
                       })}
                     </div>
 
-                    <div className="grid grid-cols-3 gap-3 text-center pt-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center pt-2">
                       <div className="p-3 bg-warm-input/40 border border-warm-border/50">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle block">
                           Avg. Monthly Sales

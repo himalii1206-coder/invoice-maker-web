@@ -34,11 +34,18 @@ select::placeholder {
   opacity: 1 !important;
 }
 
+html {
+  max-width: 100vw;
+  overflow-x: clip;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: var(--warm-bg);
   color: var(--warm-text);
   min-height: 100vh;
+  max-width: 100vw;
+  overflow-x: clip;
   -webkit-font-smoothing: antialiased;
 }
 

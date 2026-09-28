@@ -270,9 +270,9 @@ export default function InvoiceDetailPage() {
       />
 
       {invoice.quotations && invoice.quotations.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 mb-5 bg-purple-50/80 border border-purple-200">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 mb-5 bg-purple-50/80 border border-purple-200">
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+            <div className="w-7 h-7 bg-purple-100 text-purple-700 flex items-center justify-center font-bold shrink-0">
               <ArrowRightLeft className="w-3.5 h-3.5" />
             </div>
             <div>
@@ -286,7 +286,7 @@ export default function InvoiceDetailPage() {
               </p>
             </div>
           </div>
-          <Link href={`/quotations/${invoice.quotations[0].id}`}>
+          <Link href={`/quotations/${invoice.quotations[0].id}`} className="shrink-0">
             <Button
               size="sm"
               variant="outline"
@@ -314,21 +314,24 @@ export default function InvoiceDetailPage() {
       )}
 
       {invoice.status === 'OVERDUE' && (
-        <div className="flex items-start gap-3 p-4 mb-5 bg-red-50 border border-red-200">
-          <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="text-xs font-semibold text-red-900">
-              Payment overdue since {formatDate(invoice.dueDate)}
-            </p>
-            <p className="text-[11px] text-red-800 mt-0.5">
-              {formatCurrency(balanceDue)} is still outstanding.
-            </p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 mb-5 bg-red-50 border border-red-200">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-red-900">
+                Payment overdue since {formatDate(invoice.dueDate)}
+              </p>
+              <p className="text-[11px] text-red-800 mt-0.5">
+                {formatCurrency(balanceDue)} is still outstanding.
+              </p>
+            </div>
           </div>
           <Button
             size="sm"
             variant="danger"
             onClick={() => setEmailMode('reminder')}
             leftIcon={<BellRing className="w-3.5 h-3.5" />}
+            className="shrink-0"
           >
             Send Reminder
           </Button>

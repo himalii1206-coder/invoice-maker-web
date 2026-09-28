@@ -107,8 +107,8 @@ export default function AnalyticsPage() {
           { label: 'Analytics' }
         ]}
         actions={
-          <div className="flex items-center gap-2">
-            <div className="w-48">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="w-full sm:w-48">
               <Select
                 value={financialYear}
                 options={financialYearOptions}
@@ -121,6 +121,7 @@ export default function AnalyticsPage() {
               onClick={() => fetchAnalytics(true)}
               isLoading={isRefreshing}
               leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+              className="flex-1 sm:flex-none justify-center"
             >
               Refresh
             </Button>

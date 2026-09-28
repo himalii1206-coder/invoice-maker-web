@@ -128,6 +128,26 @@ export const invoicesApi = {
     return data.data ?? [];
   },
 
+  async listAllPayments(params: {
+    customerId?: string;
+    invoiceId?: string;
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  } = {}): Promise<{ payments: InvoicePayment[]; meta: PaginationMeta; summary?: { totalReceived: number } }> {
+    const { data } = await api.get<
+      ApiResponse<{ payments: InvoicePayment[]; summary?: { totalReceived: number } }>
+    >('/payments', { params: clean(params) });
+
+    return {
+      payments: data.data?.payments ?? [],
+      meta: (data.meta as PaginationMeta) ?? EMPTY_META,
+      summary: data.data?.summary
+    };
+  },
+
   async recordPayment(invoiceId: string, payload: PaymentPayload): Promise<InvoicePayment> {
     const { data } = await api.post<ApiResponse<InvoicePayment>>(
       `/invoices/${invoiceId}/payments`,

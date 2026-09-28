@@ -83,7 +83,7 @@ export function ThemeSelector() {
             onClick={() => setIsOpen(false)}
           />
 
-          <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-warm-surface border border-warm-border shadow-warmLg z-50 p-4 space-y-3.5 animate-in fade-in zoom-in-95 duration-150 rounded-none">
+          <div className="absolute -right-20 sm:right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-xs bg-warm-surface border border-warm-border shadow-warmLg z-50 p-4 space-y-3.5 animate-in fade-in zoom-in-95 duration-150 rounded-none">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-warm-border/60 pb-2.5">
               <div className="flex items-center gap-2">

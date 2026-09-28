@@ -138,28 +138,36 @@ export function PdfPreviewModal({ isOpen, onClose, invoice }: PdfPreviewModalPro
         className="relative w-full max-w-5xl h-[92vh] max-h-[920px] bg-warm-surface shadow-warmLg border border-warm-border z-10 flex flex-col overflow-hidden transform transition-all animate-in zoom-in-95 duration-200"
       >
         {/* Header Toolbar */}
-        <div className="px-5 py-3.5 bg-warm-surface text-warm-text flex flex-wrap items-center justify-between gap-3 border-b border-warm-border">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-warm-accent-light border border-warm-accent/20 flex items-center justify-center text-warm-accent shadow-xs">
+        <div className="px-4 sm:px-5 py-3.5 bg-warm-surface text-warm-text flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-warm-border">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 bg-warm-accent-light border border-warm-accent/20 flex items-center justify-center text-warm-accent shadow-xs shrink-0">
               <FileText className="w-5 h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-warm-text tracking-tight">
-                  Invoice Preview: {invoice.invoiceNumber}
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <h3 className="text-sm sm:text-base font-bold text-warm-text tracking-tight truncate">
+                  Invoice: {invoice.invoiceNumber}
                 </h3>
-                <span className="px-2 py-0.5 text-[11px] font-semibold bg-warm-accent-light text-warm-accent border border-warm-accent/30">
+                <span className="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold bg-warm-accent-light text-warm-accent border border-warm-accent/30 shrink-0">
                   1-Page A4 GST
                 </span>
               </div>
-              <p className="text-xs text-warm-textMuted mt-0.5">
+              <p className="text-xs text-warm-textMuted mt-0.5 truncate">
                 Billed to: <span className="text-warm-text font-semibold">{customerName}</span>
               </p>
             </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="sm:hidden p-1.5 text-warm-textMuted hover:text-warm-text hover:bg-warm-input transition-colors cursor-pointer shrink-0 ml-auto"
+              title="Close Preview"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <Button
               type="button"
               variant="outline"
@@ -167,7 +175,7 @@ export function PdfPreviewModal({ isOpen, onClose, invoice }: PdfPreviewModalPro
               onClick={handlePrint}
               disabled={loading || !pdfUrl}
               leftIcon={<Printer className="w-4 h-4 text-warm-accent" />}
-              className="bg-warm-input border-warm-border text-warm-text hover:bg-warm-accent-light hover:text-warm-accent hover:border-warm-accent/40 font-medium whitespace-nowrap"
+              className="bg-warm-input border-warm-border text-warm-text hover:bg-warm-accent-light hover:text-warm-accent hover:border-warm-accent/40 font-medium whitespace-nowrap flex-1 sm:flex-none justify-center"
             >
               Print
             </Button>
@@ -178,7 +186,7 @@ export function PdfPreviewModal({ isOpen, onClose, invoice }: PdfPreviewModalPro
               onClick={handleDownload}
               disabled={loading || !pdfBlob}
               leftIcon={<Download className="w-4 h-4" />}
-              className="bg-warm-accent hover:bg-warm-accent-hover text-white shadow-xs font-semibold whitespace-nowrap"
+              className="bg-warm-accent hover:bg-warm-accent-hover text-white shadow-xs font-semibold whitespace-nowrap flex-1 sm:flex-none justify-center"
             >
               Download PDF
             </Button>
@@ -188,7 +196,7 @@ export function PdfPreviewModal({ isOpen, onClose, invoice }: PdfPreviewModalPro
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 text-warm-textMuted hover:text-warm-text hover:bg-warm-input transition-colors cursor-pointer"
+              className="hidden sm:block p-1.5 text-warm-textMuted hover:text-warm-text hover:bg-warm-input transition-colors cursor-pointer"
               title="Close Preview"
             >
               <X className="w-5 h-5" />

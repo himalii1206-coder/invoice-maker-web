@@ -192,15 +192,15 @@ export default function CustomersPage() {
 
     return (
       <div>
-        <Table>
+        <Table className="min-w-[940px]">
           <TableHeader>
             <TableRow>
-              <TableHead>Customer</TableHead>
-              <TableHead className="hidden md:table-cell">Contact</TableHead>
-              <TableHead className="hidden lg:table-cell">Location &amp; GSTIN</TableHead>
-              <TableHead className="hidden sm:table-cell text-right">Opening Balance</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="min-w-[220px]">Customer</TableHead>
+              <TableHead className="min-w-[170px]">Contact</TableHead>
+              <TableHead className="min-w-[170px]">Location &amp; GSTIN</TableHead>
+              <TableHead className="min-w-[140px] text-right">Opening Balance</TableHead>
+              <TableHead className="min-w-[100px] text-center">Status</TableHead>
+              <TableHead className="min-w-[140px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
 
@@ -208,7 +208,7 @@ export default function CustomersPage() {
             {customers.map((customer) => (
               <TableRow key={customer.id}>
                 {/* Customer Info */}
-                <TableCell>
+                <TableCell className="min-w-[220px]">
                   <div className="space-y-1">
                     <Link
                       href={`/customers/${customer.id}`}
@@ -216,35 +216,37 @@ export default function CustomersPage() {
                     >
                       {customer.name}
                     </Link>
-                    <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-warm-textMuted">
-                      {customer.contactPerson && (
-                        <span>{customer.contactPerson}</span>
-                      )}
-                      {customer.contactPerson && customer.partyCategory && (
-                        <span>•</span>
-                      )}
-                      {customer.partyCategory && (
-                        <span className="px-1.5 py-0.2 bg-warm-input text-warm-text text-[10px] font-medium border border-warm-border/60">
-                          {customer.partyCategory}
-                        </span>
-                      )}
-                    </div>
+                    {(customer.contactPerson || customer.partyCategory) && (
+                      <div className="flex items-center gap-1.5 text-[11px] text-warm-textMuted whitespace-nowrap">
+                        {customer.contactPerson && (
+                          <span className="truncate max-w-[150px]">{customer.contactPerson}</span>
+                        )}
+                        {customer.contactPerson && customer.partyCategory && (
+                          <span className="shrink-0 text-warm-textSubtle">•</span>
+                        )}
+                        {customer.partyCategory && (
+                          <span className="shrink-0 px-1.5 py-0.5 bg-warm-input text-warm-text text-[10px] font-medium border border-warm-border/60">
+                            {customer.partyCategory}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </TableCell>
 
                 {/* Contact */}
-                <TableCell className="hidden md:table-cell">
+                <TableCell className="min-w-[180px]">
                   <div className="space-y-1 text-xs text-warm-textMuted">
                     {customer.phone && (
-                      <p className="flex items-center gap-1.5">
+                      <p className="flex items-center gap-1.5 whitespace-nowrap">
                         <Phone className="w-3.5 h-3.5 shrink-0 text-warm-accent" />
                         <span className="font-medium text-warm-text">{customer.phone}</span>
                       </p>
                     )}
                     {customer.email && (
-                      <p className="flex items-center gap-1.5">
+                      <p className="flex items-center gap-1.5 whitespace-nowrap">
                         <Mail className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate max-w-[200px]">{customer.email}</span>
+                        <span className="truncate max-w-[170px]">{customer.email}</span>
                       </p>
                     )}
                     {!customer.phone && !customer.email && <span>—</span>}
@@ -252,12 +254,12 @@ export default function CustomersPage() {
                 </TableCell>
 
                 {/* Location & GSTIN */}
-                <TableCell className="hidden lg:table-cell">
+                <TableCell className="min-w-[170px]">
                   <div className="space-y-1 text-xs">
                     {(customer.city || customer.state) ? (
-                      <p className="flex items-center gap-1 text-warm-text font-medium">
+                      <p className="flex items-center gap-1 text-warm-text font-medium whitespace-nowrap">
                         <MapPin className="w-3.5 h-3.5 text-warm-accent shrink-0" />
-                        <span>
+                        <span className="truncate max-w-[150px]">
                           {[customer.city, customer.state].filter(Boolean).join(', ')}
                         </span>
                       </p>
@@ -265,18 +267,18 @@ export default function CustomersPage() {
                       <span className="text-warm-textMuted">—</span>
                     )}
                     {customer.gstin ? (
-                      <p className="text-[11px] text-warm-textMuted">
+                      <p className="text-[11px] text-warm-textMuted whitespace-nowrap">
                         GST: {customer.gstin}
                       </p>
                     ) : (
-                      <span className="text-[10px] text-warm-textSubtle uppercase">Unregistered</span>
+                      <span className="text-[10px] text-warm-textSubtle uppercase whitespace-nowrap">Unregistered</span>
                     )}
                   </div>
                 </TableCell>
 
                 {/* Opening Balance */}
-                <TableCell className="hidden sm:table-cell text-right">
-                  <div className="text-xs">
+                <TableCell className="min-w-[140px] text-right">
+                  <div className="text-xs whitespace-nowrap">
                     {customer.openingBalance !== null && customer.openingBalance !== undefined && Number(customer.openingBalance) > 0 ? (
                       <span className="font-semibold text-warm-text tabular-nums">
                         {formatCurrency(Number(customer.openingBalance))}{' '}
@@ -291,24 +293,24 @@ export default function CustomersPage() {
                 </TableCell>
 
                 {/* Status */}
-                <TableCell>
+                <TableCell className="min-w-[100px] text-center">
                   <Badge status={customer.isActive ? 'ACTIVE' : 'INACTIVE'} />
                 </TableCell>
 
                 {/* Actions */}
-                <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-1">
+                <TableCell className="min-w-[140px] text-right">
+                  <div className="flex items-center justify-end gap-1 shrink-0">
                     <Link
                       href={`/customers/${customer.id}`}
                       title="View details"
-                      className="p-1.5 text-warm-textMuted hover:text-warm-accent hover:bg-warm-accentLight transition-colors inline-flex items-center"
+                      className="p-1.5 text-warm-textMuted hover:text-warm-accent hover:bg-warm-accentLight transition-colors inline-flex items-center shrink-0"
                     >
                       <Eye className="w-4 h-4" />
                     </Link>
                     <Link
                       href={`/customers/${customer.id}/edit`}
                       title="Edit customer"
-                      className="p-1.5 text-warm-textMuted hover:text-warm-accent hover:bg-warm-accentLight transition-colors inline-flex items-center"
+                      className="p-1.5 text-warm-textMuted hover:text-warm-accent hover:bg-warm-accentLight transition-colors inline-flex items-center shrink-0"
                     >
                       <Pencil className="w-4 h-4" />
                     </Link>
@@ -316,7 +318,7 @@ export default function CustomersPage() {
                       title={customer.isActive ? 'Deactivate' : 'Activate'}
                       disabled={togglingId === customer.id}
                       onClick={() => handleToggleStatus(customer)}
-                      className="p-1.5 text-warm-textMuted hover:text-warm-accent hover:bg-warm-accentLight transition-colors disabled:opacity-50"
+                      className="p-1.5 text-warm-textMuted hover:text-warm-accent hover:bg-warm-accentLight transition-colors disabled:opacity-50 shrink-0"
                     >
                       {customer.isActive ? (
                         <Ban className="w-4 h-4" />
@@ -327,7 +329,7 @@ export default function CustomersPage() {
                     <button
                       title="Delete customer"
                       onClick={() => setDeleting(customer)}
-                      className="p-1.5 text-warm-textMuted hover:text-red-600 hover:bg-red-50 transition-colors"
+                      className="p-1.5 text-warm-textMuted hover:text-red-600 hover:bg-red-50 transition-colors shrink-0"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -437,22 +439,24 @@ export default function CustomersPage() {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <Select
-              className="h-9 text-xs"
-              options={[
-                { value: 'createdAt:desc', label: 'Newest first' },
-                { value: 'createdAt:asc', label: 'Oldest first' },
-                { value: 'name:asc', label: 'Account Head (A–Z)' },
-                { value: 'name:desc', label: 'Account Head (Z–A)' },
-                { value: 'openingBalance:desc', label: 'Opening Balance (High to Low)' },
-                { value: 'openingBalance:asc', label: 'Opening Balance (Low to High)' },
-                { value: 'updatedAt:desc', label: 'Recently updated' },
-                { value: 'city:asc', label: 'City (A–Z)' }
-              ]}
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortValue)}
-            />
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <div className="w-full sm:w-auto flex-1">
+              <Select
+                className="h-9 text-xs"
+                options={[
+                  { value: 'createdAt:desc', label: 'Newest first' },
+                  { value: 'createdAt:asc', label: 'Oldest first' },
+                  { value: 'name:asc', label: 'Account Head (A–Z)' },
+                  { value: 'name:desc', label: 'Account Head (Z–A)' },
+                  { value: 'openingBalance:desc', label: 'Opening Balance (High to Low)' },
+                  { value: 'openingBalance:asc', label: 'Opening Balance (Low to High)' },
+                  { value: 'updatedAt:desc', label: 'Recently updated' },
+                  { value: 'city:asc', label: 'City (A–Z)' }
+                ]}
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortValue)}
+              />
+            </div>
 
             {hasFilters && (
               <Button variant="ghost" size="sm" onClick={resetFilters}>

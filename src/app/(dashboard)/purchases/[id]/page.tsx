@@ -277,7 +277,7 @@ export default function PurchaseBillDetailPage() {
 
           {/* Logistics & Inward References Strip */}
           {(bill.poNumber || bill.grnNumber || bill.transporterName || bill.vehicleNumber || bill.lrNumber) && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-3 bg-warm-input/40 border border-warm-border/50 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-3 bg-warm-input/40 border border-warm-border/50 text-xs">
               {bill.poNumber && (
                 <div>
                   <span className="text-[10px] text-warm-textSubtle block uppercase">Purchase Order (PO)</span>

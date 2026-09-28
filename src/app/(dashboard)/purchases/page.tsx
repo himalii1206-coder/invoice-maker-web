@@ -153,7 +153,7 @@ export default function PurchasesPage() {
           title="Purchase Bills"
           description="Track raw material & merchandise procurement, inward vendor invoices, and GST Input Tax Credit (ITC)."
           actions={
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <Link href="/vendors">
                 <Button variant="outline" size="sm" leftIcon={<Truck className="w-4 h-4" />}>
                   Vendors Directory

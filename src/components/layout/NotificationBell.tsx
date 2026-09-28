@@ -145,7 +145,7 @@ export function NotificationBell() {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
 
-          <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-warm-surface shadow-warmLg border border-warm-border/80 z-50 animate-in fade-in zoom-in-95 duration-150 rounded-none">
+          <div className="absolute -right-12 sm:right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 max-w-sm bg-warm-surface shadow-warmLg border border-warm-border/80 z-50 animate-in fade-in zoom-in-95 duration-150 rounded-none">
             <div className="px-4 py-3 border-b border-warm-border/50 flex items-center justify-between gap-2">
               <span className="text-xs font-bold text-warm-text uppercase tracking-wider">
                 Notifications

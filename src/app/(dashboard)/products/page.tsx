@@ -343,22 +343,24 @@ export default function ProductsPage() {
             )}
           </p>
 
-          <div className="flex items-center gap-2">
-            <Select
-              className="h-9 text-xs"
-              options={[
-                { value: 'createdAt:desc', label: 'Newest first' },
-                { value: 'createdAt:asc', label: 'Oldest first' },
-                { value: 'name:asc', label: 'Product Name (A–Z)' },
-                { value: 'name:desc', label: 'Product Name (Z–A)' },
-                { value: 'price:asc', label: 'Price (low to high)' },
-                { value: 'price:desc', label: 'Price (high to low)' },
-                { value: 'category:asc', label: 'Category (A–Z)' },
-                { value: 'productCode:asc', label: 'Product Code (A–Z)' }
-              ]}
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortValue)}
-            />
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <div className="w-full sm:w-auto flex-1">
+              <Select
+                className="h-9 text-xs"
+                options={[
+                  { value: 'createdAt:desc', label: 'Newest first' },
+                  { value: 'createdAt:asc', label: 'Oldest first' },
+                  { value: 'name:asc', label: 'Product Name (A–Z)' },
+                  { value: 'name:desc', label: 'Product Name (Z–A)' },
+                  { value: 'price:asc', label: 'Price (low to high)' },
+                  { value: 'price:desc', label: 'Price (high to low)' },
+                  { value: 'category:asc', label: 'Category (A–Z)' },
+                  { value: 'productCode:asc', label: 'Product Code (A–Z)' }
+                ]}
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortValue)}
+              />
+            </div>
 
             {hasFilters && (
               <Button variant="ghost" size="sm" onClick={resetFilters}>

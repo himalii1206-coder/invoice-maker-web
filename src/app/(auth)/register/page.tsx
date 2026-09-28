@@ -460,11 +460,11 @@ export default function RegisterPage() {
         </div>
 
         {/* Step Progress Stepper */}
-        <div className="bg-warm-surface border border-warm-border/80 p-3 flex items-center justify-between gap-2 shadow-2xs">
+        <div className="bg-warm-surface border border-warm-border/80 p-2 sm:p-3 flex items-center justify-between gap-1.5 sm:gap-2 shadow-2xs">
           {[
-            { step: 1, label: 'Owner Account', icon: User },
-            { step: 2, label: 'Business & GST', icon: Building2 },
-            { step: 3, label: 'Bank & Invoicing', icon: Landmark }
+            { step: 1, label: 'Owner Account', shortLabel: 'Account', icon: User },
+            { step: 2, label: 'Business & GST', shortLabel: 'Business', icon: Building2 },
+            { step: 3, label: 'Bank & Invoicing', shortLabel: 'Bank', icon: Landmark }
           ].map((item) => {
             const Icon = item.icon;
             const isActive = currentStep === item.step;
@@ -473,12 +473,12 @@ export default function RegisterPage() {
             return (
               <div
                 key={item.step}
-                className={`flex items-center gap-2 px-2.5 py-1.5 flex-1 transition-all ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1.5 flex-1 min-w-0 transition-all ${
                   isActive
                     ? 'bg-warm-accent text-white font-semibold shadow-2xs'
                     : isCompleted
                       ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/60'
-                      : 'text-warm-textMuted opacity-60'
+                      : 'text-warm-textMuted opacity-70 bg-warm-input/40'
                 }`}
               >
                 <div
@@ -492,8 +492,11 @@ export default function RegisterPage() {
                 >
                   {isCompleted ? <Check className="w-3 h-3" /> : item.step}
                 </div>
-                <div className="hidden sm:block text-left truncate">
-                  <p className="text-[11px] leading-tight truncate">{item.label}</p>
+                <div className="text-left truncate min-w-0">
+                  <p className="text-[10px] sm:text-[11px] font-semibold leading-tight truncate">
+                    <span className="sm:hidden">{item.shortLabel}</span>
+                    <span className="hidden sm:inline">{item.label}</span>
+                  </p>
                 </div>
               </div>
             );

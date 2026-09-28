@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 
 export function Table({ className, children, ...props }: TableHTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="w-full overflow-x-auto rounded-none border border-warm-border/60 bg-warm-surface shadow-warm">
+    <div className="w-full min-w-0 overflow-x-auto rounded-none border border-warm-border/60 bg-warm-surface shadow-warm">
       <table className={cn('w-full text-left text-sm text-warm-text border-collapse', className)} {...props}>
         {children}
       </table>
@@ -15,7 +15,7 @@ export function Table({ className, children, ...props }: TableHTMLAttributes<HTM
 
 export function TableHeader({ className, children, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
   return (
-    <thead className={cn('bg-warm-input/70 border-b border-warm-border/80 text-xs font-semibold uppercase tracking-wider text-warm-textMuted select-none', className)} {...props}>
+    <thead className={cn('bg-warm-input border-b border-warm-border/80 text-xs font-semibold uppercase tracking-wider text-warm-textMuted select-none sticky top-0 z-10', className)} {...props}>
       {children}
     </thead>
   );

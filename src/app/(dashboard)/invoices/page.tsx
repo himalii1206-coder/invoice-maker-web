@@ -537,7 +537,7 @@ export default function InvoicesPage() {
                           setMenuAnchor({
                             invoice,
                             top: openUpwards ? rect.top - 4 : rect.bottom + 4,
-                            right: window.innerWidth - rect.right,
+                            right: Math.max(8, window.innerWidth - rect.right),
                             openUpwards
                           });
                         }}
@@ -749,7 +749,7 @@ export default function InvoicesPage() {
             />
           </div>
 
-          <div className="lg:col-span-4 flex items-center justify-end gap-2.5">
+          <div className="lg:col-span-4 flex flex-wrap items-center justify-start sm:justify-end gap-2.5">
             <label className="flex items-center gap-2 cursor-pointer select-none px-3 py-2 bg-warm-input/60 border border-warm-border/60 hover:bg-warm-input transition-colors">
               <input
                 type="checkbox"
