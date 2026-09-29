@@ -271,6 +271,10 @@ export function ProductFormModal({ isOpen, onClose, product, onSaved }: ProductF
   useEffect(() => {
     if (!isOpen) return;
 
+    if (!product) {
+      refreshUser().catch(() => null);
+    }
+
     reset(
       product
         ? {
@@ -312,7 +316,7 @@ export function ProductFormModal({ isOpen, onClose, product, onSaved }: ProductF
         toast.success('Product added successfully');
       }
       onSaved();
-      refreshUser().catch(() => null);
+      await refreshUser().catch(() => null);
       onClose();
     } catch (error: any) {
       const message = apiErrorMessage(error, 'Could not save product');

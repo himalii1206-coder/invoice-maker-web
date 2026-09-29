@@ -20,6 +20,7 @@ export interface QuotationSelectProps {
   placeholder?: string;
   allowClear?: boolean;
   customerId?: string; // Optional filter by customer
+  availableOnly?: boolean; // Filter only quotations available for conversion
 }
 
 export function QuotationSelect({
@@ -33,7 +34,8 @@ export function QuotationSelect({
   disabled,
   placeholder = 'Select a quotation to populate details...',
   allowClear = true,
-  customerId
+  customerId,
+  availableOnly = true
 }: QuotationSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -64,6 +66,8 @@ export function QuotationSelect({
         const { quotations: rows } = await quotationsApi.list({
           search: debouncedSearch,
           customerId: customerId || undefined,
+          availableForInvoice: availableOnly,
+          includeId: value || undefined,
           limit: 20,
           sortBy: 'quotationDate',
           sortOrder: 'desc'
@@ -80,7 +84,7 @@ export function QuotationSelect({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, debouncedSearch, customerId]);
+  }, [isOpen, debouncedSearch, customerId, availableOnly, value]);
 
   useEffect(() => {
     if (!isOpen) return;

@@ -171,6 +171,8 @@ export interface QuotationListParams {
   limit?: number;
   search?: string;
   status?: QuotationStatus | '';
+  availableForInvoice?: boolean;
+  includeId?: string;
   customerId?: string;
   dateFrom?: string;
   dateTo?: string;
