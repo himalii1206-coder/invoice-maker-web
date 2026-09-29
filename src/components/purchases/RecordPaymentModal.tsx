@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/Button';
 import { purchaseBillsApi } from '@/lib/purchases';
 import { PurchaseBill, PaymentMethod } from '@/types/purchase';
 import { formatCurrency } from '@/lib/utils';
-import { DollarSign, Calendar, Landmark, Hash, FileText } from 'lucide-react';
+import { IndianRupee, Calendar, Landmark, Hash, FileText } from 'lucide-react';
 
 const paymentSchema = z.object({
   amount: z.coerce
@@ -126,7 +126,7 @@ export function RecordPaymentModal({
             type="number"
             step="0.01"
             max={balanceDue}
-            leftIcon={<DollarSign className="w-4 h-4" />}
+            leftIcon={<IndianRupee className="w-4 h-4" />}
             error={errors.amount?.message}
             {...register('amount')}
           />

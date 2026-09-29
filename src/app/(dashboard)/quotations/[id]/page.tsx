@@ -72,9 +72,9 @@ export default function QuotationDetailPage() {
   const [reasonInput, setReasonInput] = useState('');
   const [showMoreActions, setShowMoreActions] = useState(false);
 
-  const fetchQuotation = useCallback(async () => {
+  const fetchQuotation = useCallback(async (showLoader = false) => {
     if (!quotationId) return;
-    setIsLoading(true);
+    if (showLoader) setIsLoading(true);
     try {
       const data = await quotationsApi.getById(quotationId);
       setQuotation(data);
@@ -87,7 +87,7 @@ export default function QuotationDetailPage() {
   }, [quotationId]);
 
   useEffect(() => {
-    fetchQuotation();
+    fetchQuotation(true);
   }, [fetchQuotation]);
 
   if (isLoading) {
@@ -131,18 +131,6 @@ export default function QuotationDetailPage() {
       .join(', ')
   ].filter(Boolean);
 
-  // Populated commercial / reference pills
-  const referencePills = [
-    quotation.inquiryNumber && { label: 'Inquiry No', value: quotation.inquiryNumber },
-    quotation.inquiryDate && { label: 'Inquiry Date', value: formatDate(quotation.inquiryDate) },
-    quotation.referenceNumber && { label: 'Ref No', value: quotation.referenceNumber },
-    quotation.paymentTerms && { label: 'Payment Terms', value: quotation.paymentTerms },
-    Number(quotation.forwardingPackagingAmount) > 0 && {
-      label: 'Pkg / Fwd',
-      value: formatCurrency(Number(quotation.forwardingPackagingAmount))
-    }
-  ].filter(Boolean) as { label: string; value: string }[];
-
   const handlePdf = async (mode: 'print' | 'download') => {
     setBusyAction(mode);
     try {
@@ -163,9 +151,19 @@ export default function QuotationDetailPage() {
   const handleSend = async () => {
     setBusyAction('send');
     try {
-      await quotationsApi.send(quotation.id);
+      const updated = await quotationsApi.send(quotation.id);
       toast.success(`Quotation ${quotation.quotationNumber} marked as Sent`);
-      fetchQuotation();
+      setQuotation((prev) =>
+        prev
+          ? {
+              ...prev,
+              ...updated,
+              status: 'SENT',
+              sentAt: updated?.sentAt || new Date().toISOString()
+            }
+          : updated
+      );
+      fetchQuotation(false);
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Failed to mark as sent'));
     } finally {
@@ -176,9 +174,19 @@ export default function QuotationDetailPage() {
   const handleAccept = async () => {
     setBusyAction('accept');
     try {
-      await quotationsApi.accept(quotation.id);
+      const updated = await quotationsApi.accept(quotation.id);
       toast.success(`Quotation ${quotation.quotationNumber} marked as Accepted`);
-      fetchQuotation();
+      setQuotation((prev) =>
+        prev
+          ? {
+              ...prev,
+              ...updated,
+              status: 'ACCEPTED',
+              acceptedAt: updated?.acceptedAt || new Date().toISOString()
+            }
+          : updated
+      );
+      fetchQuotation(false);
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Failed to accept quotation'));
     } finally {
@@ -189,11 +197,22 @@ export default function QuotationDetailPage() {
   const handleReject = async () => {
     setBusyAction('reject');
     try {
-      await quotationsApi.reject(quotation.id, reasonInput);
+      const updated = await quotationsApi.reject(quotation.id, reasonInput);
       toast.success(`Quotation ${quotation.quotationNumber} marked as Rejected`);
       setRejectDialogOpen(false);
+      setQuotation((prev) =>
+        prev
+          ? {
+              ...prev,
+              ...updated,
+              status: 'REJECTED',
+              rejectedAt: updated?.rejectedAt || new Date().toISOString(),
+              rejectionReason: reasonInput
+            }
+          : updated
+      );
       setReasonInput('');
-      fetchQuotation();
+      fetchQuotation(false);
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Failed to reject quotation'));
     } finally {
@@ -204,11 +223,22 @@ export default function QuotationDetailPage() {
   const handleCancel = async () => {
     setBusyAction('cancel');
     try {
-      await quotationsApi.cancel(quotation.id, reasonInput);
+      const updated = await quotationsApi.cancel(quotation.id, reasonInput);
       toast.success(`Quotation ${quotation.quotationNumber} Cancelled`);
       setCancelDialogOpen(false);
+      setQuotation((prev) =>
+        prev
+          ? {
+              ...prev,
+              ...updated,
+              status: 'CANCELLED',
+              cancelledAt: updated?.cancelledAt || new Date().toISOString(),
+              cancellationReason: reasonInput
+            }
+          : updated
+      );
       setReasonInput('');
-      fetchQuotation();
+      fetchQuotation(false);
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Failed to cancel quotation'));
     } finally {
@@ -262,7 +292,6 @@ export default function QuotationDetailPage() {
       {/* Top Header */}
       <PageHeader
         title={`Quotation ${quotation.quotationNumber}`}
-        description={`Created on ${formatDate(quotation.quotationDate)} for ${quotation.billingName}`}
         breadcrumbs={[
           { label: 'Sales', href: '/quotations' },
           { label: 'Quotations', href: '/quotations' },
@@ -286,7 +315,7 @@ export default function QuotationDetailPage() {
             )}
 
             {/* Convert to Invoice */}
-            {isAccepted && (
+            {(isAccepted || (isSent && !quotation.isExpired)) && (
               <Button
                 size="sm"
                 onClick={() => setConvertDialogOpen(true)}
@@ -374,6 +403,17 @@ export default function QuotationDetailPage() {
                         <span>Print Quotation</span>
                       </button>
 
+                      {isDraft && (
+                        <Link
+                          href={`/quotations/${quotation.id}/edit`}
+                          onClick={() => setShowMoreActions(false)}
+                          className="w-full text-left px-3.5 py-2 text-xs text-warm-text hover:bg-warm-input flex items-center gap-2 transition-colors"
+                        >
+                          <Pencil className="w-3.5 h-3.5 text-warm-textMuted" />
+                          <span>Edit Quotation</span>
+                        </Link>
+                      )}
+
                       {isSent && (
                         <button
                           onClick={() => {
@@ -400,7 +440,7 @@ export default function QuotationDetailPage() {
                       </button>
                     </div>
 
-                    {(isDraft || isSent || isAccepted) && (
+                    {(isSent || isAccepted || quotation.status === 'EXPIRED') && (
                       <div className="py-1">
                         <button
                           onClick={() => {
@@ -502,7 +542,7 @@ export default function QuotationDetailPage() {
       {/* ---------------------------------------------------------------------- */}
       {/* 1. Quick Glance Metric Summary Bar */}
       {/* ---------------------------------------------------------------------- */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-6">
         <div className="bg-warm-surface border border-warm-border/70 shadow-warm p-4">
           <div className="flex items-center justify-between gap-2">
             <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle">
@@ -530,36 +570,6 @@ export default function QuotationDetailPage() {
           </p>
           <p className="text-[11px] text-warm-textMuted mt-0.5">
             Issued {formatDate(quotation.quotationDate)}
-          </p>
-        </div>
-
-        <div className="bg-warm-surface border border-warm-border/70 shadow-warm p-4">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle">
-              Items &amp; Scope
-            </p>
-            <Package className="w-4 h-4 text-warm-accent" />
-          </div>
-          <p className="text-sm font-bold text-warm-text mt-1.5 truncate">
-            {quotation.items.length} Line Item{quotation.items.length === 1 ? '' : 's'}
-          </p>
-          <p className="text-[11px] text-warm-textMuted mt-0.5 truncate">
-            {quotation.subject || 'Standard Commercial Quotation'}
-          </p>
-        </div>
-
-        <div className="bg-warm-surface border border-warm-border/70 shadow-warm p-4">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle">
-              Tax Regime
-            </p>
-            <Layers className="w-4 h-4 text-warm-accent" />
-          </div>
-          <p className="text-xs font-bold text-warm-text mt-1.5 truncate">
-            {quotation.isIgst ? 'Inter-State (IGST)' : 'Intra-State (CGST+SGST)'}
-          </p>
-          <p className="text-[11px] text-warm-textMuted mt-0.5 truncate">
-            POS: {quotation.placeOfSupply || quotation.billingState || '—'}
           </p>
         </div>
       </div>
@@ -647,21 +657,70 @@ export default function QuotationDetailPage() {
                 </div>
               </div>
 
-              {/* Populated commercial reference pills */}
-              {referencePills.length > 0 && (
-                <div className="px-4 py-2.5 border-t border-warm-border/50 bg-warm-input/20 flex flex-wrap items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle mr-1">
-                    Terms:
-                  </span>
-                  {referencePills.map((pill, i) => (
-                    <span
-                      key={i}
-                      className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-warm-surface border border-warm-border text-[11px]"
-                    >
-                      <span className="text-warm-textMuted">{pill.label}:</span>
-                      <span className="font-semibold text-warm-text">{pill.value}</span>
-                    </span>
-                  ))}
+              {/* Commercial & Reference Details */}
+              {(quotation.inquiryNumber ||
+                quotation.inquiryDate ||
+                quotation.referenceNumber ||
+                quotation.paymentTerms ||
+                Number(quotation.forwardingPackagingAmount) > 0) && (
+                <div className="border-t border-warm-border/60 bg-warm-input/15 px-4 py-3.5 sm:px-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileText className="w-3.5 h-3.5 text-warm-accent" />
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-warm-text">
+                      Inquiry &amp; Commercial Terms
+                    </h4>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-3 pt-0.5 text-xs">
+                    {quotation.inquiryNumber && (
+                      <div className="space-y-0.5">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-warm-textMuted">
+                          Inquiry No
+                        </span>
+                        <p className="font-semibold text-warm-text text-xs">
+                          {quotation.inquiryNumber}
+                          {quotation.inquiryDate && (
+                            <span className="block text-[11px] font-normal text-warm-textMuted">
+                              Dated {formatDate(quotation.inquiryDate)}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    )}
+
+                    {quotation.referenceNumber && (
+                      <div className="space-y-0.5">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-warm-textMuted">
+                          Ref No
+                        </span>
+                        <p className="font-semibold text-warm-text text-xs">
+                          {quotation.referenceNumber}
+                        </p>
+                      </div>
+                    )}
+
+                    {quotation.paymentTerms && (
+                      <div className="space-y-0.5">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-warm-textMuted">
+                          Payment Terms
+                        </span>
+                        <p className="font-semibold text-warm-text text-xs">
+                          {quotation.paymentTerms}
+                        </p>
+                      </div>
+                    )}
+
+                    {Number(quotation.forwardingPackagingAmount) > 0 && (
+                      <div className="space-y-0.5">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-warm-textMuted">
+                          Pkg / Fwd Charges
+                        </span>
+                        <p className="font-semibold text-warm-text text-xs">
+                          {formatCurrency(Number(quotation.forwardingPackagingAmount))}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -742,15 +801,15 @@ export default function QuotationDetailPage() {
             </div>
 
             {/* Terms and Notes */}
-            {(quotation.termsAndConditions || quotation.notes) && (
+            {(quotation.terms || quotation.termsAndConditions || quotation.notes) && (
               <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-4 space-y-3.5">
-                {quotation.termsAndConditions && (
+                {(quotation.terms || quotation.termsAndConditions) && (
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-wider text-warm-accent mb-1">
                       Terms &amp; Conditions
                     </p>
                     <p className="text-xs text-warm-textMuted leading-relaxed whitespace-pre-line bg-warm-input/20 p-2.5 border border-warm-border/40">
-                      {quotation.termsAndConditions}
+                      {quotation.terms || quotation.termsAndConditions}
                     </p>
                   </div>
                 )}
@@ -801,6 +860,12 @@ export default function QuotationDetailPage() {
                     {quotation.validUntil ? formatDate(quotation.validUntil) : '—'}
                   </dd>
                 </div>
+                {quotation.paymentTerms && (
+                  <div className="flex items-center justify-between">
+                    <dt className="text-warm-textMuted text-[11px]">Payment Terms</dt>
+                    <dd className="font-semibold text-warm-text">{quotation.paymentTerms}</dd>
+                  </div>
+                )}
                 {quotation.financialYear && (
                   <div className="flex items-center justify-between">
                     <dt className="text-warm-textMuted text-[11px]">FY</dt>

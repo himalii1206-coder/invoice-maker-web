@@ -100,7 +100,7 @@ const customerSchema = z.object({
     z.literal(''),
     z.string().regex(IFSC_REGEX, 'Invalid IFSC code format (11 characters, e.g. HDFC0001234)')
   ]),
-  isActive: z.enum(['true', 'false'])
+  isActive: z.enum(['true', 'false']).optional().default('true')
 });
 
 type CustomerFormData = z.infer<typeof customerSchema>;
@@ -265,7 +265,7 @@ export function CustomerForm({ customer, isEdit: isEditProp = false, onSuccess }
           ? parseFloat(String(values.openingBalance)) || 0
           : 0,
       openingBalanceDate: values.openingBalanceDate || undefined,
-      isActive: values.isActive === 'true'
+      isActive: values.isActive !== undefined ? values.isActive === 'true' : true
     };
 
     try {
@@ -385,7 +385,7 @@ export function CustomerForm({ customer, isEdit: isEditProp = false, onSuccess }
           <span>Contact Information</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <Input
             label="Mobile Number"
             required={requirePhone}
@@ -587,18 +587,6 @@ export function CustomerForm({ customer, isEdit: isEditProp = false, onSuccess }
             error={errors.ifscCode?.message}
             {...register('ifscCode')}
           />
-
-          <div className="md:col-span-2">
-            <Select
-              label="Status"
-              options={[
-                { value: 'true', label: 'Active (Available on new invoices)' },
-                { value: 'false', label: 'Inactive (Hidden from new invoices)' }
-              ]}
-              error={errors.isActive?.message}
-              {...register('isActive')}
-            />
-          </div>
         </div>
       </div>
 

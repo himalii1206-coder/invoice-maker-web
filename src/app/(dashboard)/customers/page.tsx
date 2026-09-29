@@ -26,6 +26,7 @@ import { customersApi, apiErrorMessage } from '@/lib/customers';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Customer, CustomerListParams, PaginationMeta } from '@/types/index';
 import { formatDate, formatCurrency, cn } from '@/lib/utils';
+import { normalizeStateName } from '@/lib/geo';
 import {
   Users,
   Plus,
@@ -219,16 +220,16 @@ export default function CustomersPage() {
                     {(customer.contactPerson || customer.partyCategory) && (
                       <div className="flex items-center gap-1.5 text-[11px] text-warm-textMuted whitespace-nowrap">
                         {customer.contactPerson && (
-                          <span className="truncate max-w-[150px]">{customer.contactPerson}</span>
+                          <span className="truncate text-[11px] max-w-[150px]">{customer.contactPerson}</span>
                         )}
-                        {customer.contactPerson && customer.partyCategory && (
+                        {/* {customer.contactPerson && customer.partyCategory && (
                           <span className="shrink-0 text-warm-textSubtle">•</span>
-                        )}
-                        {customer.partyCategory && (
-                          <span className="shrink-0 px-1.5 py-0.5 bg-warm-input text-warm-text text-[10px] font-medium border border-warm-border/60">
+                        )} */}
+                        {/* {customer.partyCategory && (
+                          <span className="shrink-0 px-1.5 py-0.5 bg-warm-input text-warm-text text-[11px] font-medium border border-warm-border/60">
                             {customer.partyCategory}
                           </span>
-                        )}
+                        )} */}
                       </div>
                     )}
                   </div>
@@ -257,7 +258,7 @@ export default function CustomersPage() {
                 <TableCell className="min-w-[170px]">
                   <div className="space-y-1 text-xs">
                     {customer.gstin ? (
-                      <p className="font-mono text-xs text-warm-text font-medium whitespace-nowrap">
+                      <p className="text-xs text-warm-text font-medium whitespace-nowrap">
                         GST: <span className="font-semibold">{customer.gstin}</span>
                       </p>
                     ) : (
@@ -269,7 +270,7 @@ export default function CustomersPage() {
                       <p className="flex items-center gap-1 text-xs text-warm-text font-medium whitespace-nowrap">
                         <MapPin className="w-3.5 h-3.5 text-warm-accent shrink-0" />
                         <span className="truncate max-w-[150px]">
-                          {[customer.city, customer.state].filter(Boolean).join(', ')}
+                          {[customer.city, normalizeStateName(customer.state)].filter(Boolean).join(', ')}
                         </span>
                       </p>
                     ) : (

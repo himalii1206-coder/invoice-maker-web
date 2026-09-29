@@ -88,6 +88,7 @@ export interface Quotation {
 
   paymentTerms?: string | null;
   notes?: string | null;
+  terms?: string | null;
   termsAndConditions?: string | null;
 
   // Financials
@@ -159,6 +160,7 @@ export interface QuotationPayload {
   placeOfSupply?: string | null;
   paymentTerms?: string | null;
   notes?: string | null;
+  terms?: string | null;
   termsAndConditions?: string | null;
 
   forwardingPackagingAmount?: number;

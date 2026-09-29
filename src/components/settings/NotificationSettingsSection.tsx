@@ -22,8 +22,7 @@ const EVENT_ORDER: NotificationEvent[] = [
   'PAYMENT_RECEIVED',
   'INVOICE_OVERDUE',
   'INVOICE_PAID',
-  'CUSTOMER_ADDED',
-  'NOTE_ISSUED'
+  'CUSTOMER_ADDED'
 ];
 
 export function NotificationSettingsSection({

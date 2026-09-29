@@ -17,8 +17,6 @@ export interface InvoiceTotalsProps {
   extraCharges?: number;
   /** Settlement rows, shown only on a saved invoice. */
   amountPaid?: number;
-  creditNoteTotal?: number;
-  debitNoteTotal?: number;
   balanceDue?: number;
   className?: string;
 }
@@ -30,8 +28,6 @@ export function InvoiceTotals({
   currency,
   extraCharges,
   amountPaid,
-  creditNoteTotal,
-  debitNoteTotal,
   balanceDue,
   className
 }: InvoiceTotalsProps) {
@@ -177,24 +173,6 @@ export function InvoiceTotals({
               <span className="text-xs text-warm-textMuted">Amount Paid</span>
               <span className="text-xs font-semibold text-emerald-700 tabular-nums">
                 {formatCurrency(amountPaid)}
-              </span>
-            </div>
-          )}
-
-          {creditNoteTotal !== undefined && creditNoteTotal > 0 && (
-            <div className="flex items-center justify-between gap-4 py-1.5">
-              <span className="text-xs text-warm-textMuted">Credit Notes</span>
-              <span className="text-xs font-semibold text-warm-textMuted tabular-nums">
-                -{formatCurrency(creditNoteTotal)}
-              </span>
-            </div>
-          )}
-
-          {debitNoteTotal !== undefined && debitNoteTotal > 0 && (
-            <div className="flex items-center justify-between gap-4 py-1.5">
-              <span className="text-xs text-warm-textMuted">Debit Notes</span>
-              <span className="text-xs font-semibold text-warm-textMuted tabular-nums">
-                {formatCurrency(debitNoteTotal)}
               </span>
             </div>
           )}

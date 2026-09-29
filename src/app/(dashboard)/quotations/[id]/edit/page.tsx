@@ -24,8 +24,8 @@ export default function EditQuotationPage() {
     quotationsApi
       .getById(quotationId)
       .then((data) => {
-        if (data.status === 'CONVERTED') {
-          toast.info('Converted quotations cannot be edited');
+        if (data.status !== 'DRAFT') {
+          toast.info(`Only draft quotations can be edited. This quotation is ${data.status.toLowerCase()}.`);
           router.push(`/quotations/${data.id}`);
           return;
         }

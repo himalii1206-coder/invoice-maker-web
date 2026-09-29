@@ -35,7 +35,7 @@ import {
   Eye,
   Pencil,
   Trash2,
-  DollarSign,
+  IndianRupee,
   TrendingUp,
   AlertCircle,
   Truck,
@@ -198,7 +198,7 @@ export default function PurchasesPage() {
               label="Amount Payable"
               value={metrics.outstandingPayables}
               hint={`Paid: ${formatCurrency(metrics.totalPaid)}`}
-              icon={<DollarSign className="w-4 h-4" />}
+              icon={<IndianRupee className="w-4 h-4" />}
               tone="warning"
               isLoading={isLoading}
             />

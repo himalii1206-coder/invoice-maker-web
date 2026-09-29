@@ -22,6 +22,10 @@ export interface CustomerSelectProps {
   /** Adds an "All customers" choice - used by the list filter, not the form. */
   allowClear?: boolean;
   clearLabel?: string;
+  /** Exclude a customer ID from the dropdown list */
+  excludeId?: string;
+  /** Exclude multiple customer IDs from the dropdown list */
+  excludeIds?: string[];
 }
 
 export function CustomerSelect({
@@ -35,7 +39,9 @@ export function CustomerSelect({
   disabled,
   placeholder = 'Select a customer',
   allowClear = false,
-  clearLabel = 'All customers'
+  clearLabel = 'All customers',
+  excludeId,
+  excludeIds
 }: CustomerSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -56,6 +62,8 @@ export function CustomerSelect({
     }
   }, [value, initialLabel]);
 
+  const excludeIdsKey = excludeIds?.join(',') || '';
+
   // Load matches only while the dropdown is open.
   useEffect(() => {
     if (!isOpen) return;
@@ -67,11 +75,16 @@ export function CustomerSelect({
       try {
         const { customers: rows } = await customersApi.list({
           search: debouncedSearch,
-          limit: 20,
+          limit: 50,
           sortBy: 'name',
           sortOrder: 'asc'
         });
-        if (!cancelled) setCustomers(rows);
+        const filtered = rows.filter((c) => {
+          if (excludeId && c.id === excludeId) return false;
+          if (excludeIds && excludeIds.includes(c.id)) return false;
+          return true;
+        });
+        if (!cancelled) setCustomers(filtered);
       } catch {
         if (!cancelled) setCustomers([]);
       } finally {
@@ -83,7 +96,7 @@ export function CustomerSelect({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, debouncedSearch]);
+  }, [isOpen, debouncedSearch, excludeId, excludeIdsKey]);
 
   // Close on outside click or Escape.
   useEffect(() => {

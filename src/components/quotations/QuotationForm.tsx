@@ -112,7 +112,7 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
         customPaymentTerms: isPreset ? '' : quotation.paymentTerms || '',
         forwardingPackagingAmount: String(quotation.forwardingPackagingAmount ?? 0),
         notes: quotation.notes || '',
-        termsAndConditions: quotation.termsAndConditions || ''
+        termsAndConditions: quotation.terms || quotation.termsAndConditions || ''
       };
     }
 
@@ -208,6 +208,7 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
     }
 
     const fullAddr = [customer.address, customer.factoryAddress].filter(Boolean).join('\n');
+    const cleanState = normalizeStateName(customer.state || '');
     setForm((prev) => ({
       ...prev,
       customerId: customer.id,
@@ -217,9 +218,9 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
       billingGstin: formatGstin(customer.gstin || ''),
       billingAddress: fullAddr || customer.address || '',
       billingCity: customer.city || '',
-      billingState: customer.state || '',
+      billingState: cleanState,
       billingPostalCode: customer.postalCode || '',
-      placeOfSupply: customer.state || prev.placeOfSupply || company?.state || ''
+      placeOfSupply: cleanState || normalizeStateName(prev.placeOfSupply) || normalizeStateName(company?.state || '')
     }));
   };
 
@@ -359,14 +360,15 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
       billingGstin: form.billingGstin.trim() || null,
       billingAddress: form.billingAddress.trim() || null,
       billingCity: form.billingCity.trim() || null,
-      billingState: form.billingState.trim() || null,
+      billingState: normalizeStateName(form.billingState) || null,
       billingCountry: form.billingCountry.trim() || 'India',
       billingPostalCode: form.billingPostalCode.trim() || null,
 
-      placeOfSupply: form.placeOfSupply.trim() || null,
+      placeOfSupply: normalizeStateName(form.placeOfSupply) || null,
       paymentTerms: resolvePaymentTerms() || null,
       forwardingPackagingAmount: parseFloat(form.forwardingPackagingAmount) || 0,
       notes: form.notes.trim() || null,
+      terms: form.termsAndConditions.trim() || null,
       termsAndConditions: form.termsAndConditions.trim() || null,
       status: isEdit && quotation && submitStatus === 'DRAFT' ? quotation.status : submitStatus,
 
@@ -543,13 +545,13 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
           <div>
             <label className="block text-xs font-semibold text-warm-text mb-1">State</label>
             <Select
-              value={form.billingState}
+              value={normalizeStateName(form.billingState)}
               onChange={(e) => {
-                const st = e.target.value;
+                const st = normalizeStateName(e.target.value);
                 setForm((prev) => ({
                   ...prev,
                   billingState: st,
-                  placeOfSupply: prev.placeOfSupply || st
+                  placeOfSupply: prev.placeOfSupply ? normalizeStateName(prev.placeOfSupply) : st
                 }));
               }}
               options={[
@@ -636,10 +638,10 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
               Place of Supply (GST)
             </label>
             <Select
-              value={form.placeOfSupply}
-              onChange={(e) => setForm((prev) => ({ ...prev, placeOfSupply: e.target.value }))}
+              value={normalizeStateName(form.placeOfSupply)}
+              onChange={(e) => setForm((prev) => ({ ...prev, placeOfSupply: normalizeStateName(e.target.value) }))}
               options={[
-                { value: '', label: form.billingState ? `Auto (${form.billingState})` : 'Select Supply State' },
+                { value: '', label: form.billingState ? `Auto (${normalizeStateName(form.billingState)})` : 'Select Supply State' },
                 ...INDIAN_STATES.map((s) => ({ value: s.name, label: `${s.code} - ${s.name}` }))
               ]}
               helperText={

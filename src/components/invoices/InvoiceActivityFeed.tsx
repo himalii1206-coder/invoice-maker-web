@@ -18,7 +18,6 @@ import {
   Download,
   Mail,
   BellRing,
-  StickyNote,
   History,
   Loader2
 } from 'lucide-react';
@@ -47,7 +46,6 @@ const ACTION_STYLES: Record<
   PDF_DOWNLOADED: { Icon: Download, className: 'bg-warm-input text-warm-textMuted' },
   EMAIL_SENT: { Icon: Mail, className: 'bg-blue-50 text-blue-600' },
   REMINDER_SENT: { Icon: BellRing, className: 'bg-amber-50 text-amber-600' },
-  NOTE_LINKED: { Icon: StickyNote, className: 'bg-warm-input text-warm-textMuted' },
   DELETED: { Icon: Trash2, className: 'bg-red-50 text-red-600' }
 };
 

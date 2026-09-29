@@ -6,7 +6,7 @@ import { InvoiceStatus } from '@/types/invoice';
 import {
   FileEdit,
   CheckCircle2,
-  CircleDollarSign,
+  IndianRupee,
   AlertTriangle,
   Clock,
   Ban
@@ -48,7 +48,7 @@ export const INVOICE_STATUS_STYLES: Record<
     label: 'Partially Paid',
     className: 'bg-amber-50/90 text-amber-800 border-amber-200 font-semibold',
     iconClassName: 'text-amber-600',
-    Icon: CircleDollarSign
+    Icon: IndianRupee
   },
   PAID: {
     label: 'Paid',

@@ -19,7 +19,7 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
-  role: 'OWNER' | 'ADMIN' | 'ACCOUNTANT' | 'STAFF' | 'MEMBER';
+  role: 'OWNER' | 'ADMIN' | 'ACCOUNTANT' | 'STAFF';
   /**
    * Role within the business currently being worked in. An invited
    * collaborator's membership role, which can differ from `role`.
@@ -42,9 +42,6 @@ export interface Company {
   gstin?: string;
   pan?: string;
   logoUrl?: string;
-  invoicePrefix?: string;
-  nextInvoiceNumber?: number;
-  defaultTaxRate?: number;
   bankName?: string;
   accountNumber?: string;
   ifscCode?: string;

@@ -36,10 +36,6 @@ export const NOTIFICATION_EVENT_LABELS: Record<
   CUSTOMER_ADDED: {
     label: 'Customer Added',
     description: 'When a new customer profile is registered'
-  },
-  NOTE_ISSUED: {
-    label: 'Credit / Debit Note Issued',
-    description: 'When an adjustment note is generated'
   }
 };
 

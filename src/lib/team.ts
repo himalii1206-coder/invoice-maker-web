@@ -1,7 +1,7 @@
 import { api } from './api';
 import { ApiResponse } from '@/types/index';
 
-export type TeamRole = 'OWNER' | 'ADMIN' | 'ACCOUNTANT' | 'STAFF' | 'MEMBER';
+export type TeamRole = 'OWNER' | 'ADMIN' | 'ACCOUNTANT' | 'STAFF';
 export type MemberStatus = 'INVITED' | 'ACTIVE' | 'SUSPENDED';
 
 /** Roles that can actually be handed out; OWNER is never assignable. */
@@ -45,8 +45,7 @@ export const ROLE_LABELS: Record<TeamRole, string> = {
   OWNER: 'Owner',
   ADMIN: 'Admin',
   ACCOUNTANT: 'Accountant',
-  STAFF: 'Staff',
-  MEMBER: 'Staff'
+  STAFF: 'Staff'
 };
 
 export const ROLE_DESCRIPTIONS: Record<AssignableRole, string> = {

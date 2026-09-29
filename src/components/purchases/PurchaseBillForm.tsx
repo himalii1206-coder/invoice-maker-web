@@ -6,7 +6,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '@/context/AuthContext';
 import { computeTotals } from '@/lib/gst';
 import { formatCurrency } from '@/lib/utils';
-import { INDIAN_STATES } from '@/lib/geo';
+import { INDIAN_STATES, normalizeStateName } from '@/lib/geo';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -20,14 +20,12 @@ import { StateCityFields } from '@/components/common/StateCityFields';
 import {
   Building2,
   Calendar,
-  CreditCard,
-  FileText,
   Plus,
   Truck,
   ShieldCheck,
   Receipt,
   ArrowLeft,
-  DollarSign,
+  IndianRupee,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
@@ -97,12 +95,12 @@ export function PurchaseBillForm({ initialBill, isEditing = false }: PurchaseBil
   const [vendorEmail, setVendorEmail] = useState(initialBill?.vendorEmail ?? '');
   const [vendorAddress, setVendorAddress] = useState(initialBill?.vendorAddress ?? '');
   const [vendorCity, setVendorCity] = useState(initialBill?.vendorCity ?? '');
-  const [vendorState, setVendorState] = useState(initialBill?.vendorState ?? '24-Gujarat');
+  const [vendorState, setVendorState] = useState(normalizeStateName(initialBill?.vendorState) || 'Gujarat');
   const [vendorPostalCode, setVendorPostalCode] = useState(initialBill?.vendorPostalCode ?? '');
 
   // GST & ITC
   const [placeOfSupply, setPlaceOfSupply] = useState(
-    initialBill?.placeOfSupply ?? company?.state ?? '24-Gujarat'
+    normalizeStateName(initialBill?.placeOfSupply || company?.state) || 'Gujarat'
   );
   const [isReverseCharge, setIsReverseCharge] = useState(initialBill?.isReverseCharge ?? false);
   const [itcEligibility, setItcEligibility] = useState<ItcEligibility>(initialBill?.itcEligibility ?? 'INPUTS');
@@ -151,7 +149,7 @@ export function PurchaseBillForm({ initialBill, isEditing = false }: PurchaseBil
 
   // Compute GST interstate status automatically
   const isIgst = useMemo(() => {
-    const compCode = extractStateCode(company?.state ?? '24-Gujarat');
+    const compCode = extractStateCode(company?.state || 'Gujarat');
     const venCode = extractStateCode(vendorState || placeOfSupply);
     return Boolean(compCode && venCode && compCode !== venCode);
   }, [company?.state, vendorState, placeOfSupply]);
@@ -206,7 +204,7 @@ export function PurchaseBillForm({ initialBill, isEditing = false }: PurchaseBil
       setVendorEmail(v.email ?? '');
       setVendorAddress(v.address ?? '');
       setVendorCity(v.city ?? '');
-      setVendorState(v.state ?? '24-Gujarat');
+      setVendorState(normalizeStateName(v.state) || 'Gujarat');
       setVendorPostalCode(v.postalCode ?? '');
       if (v.paymentTerms) setPaymentTerms(v.paymentTerms);
     }

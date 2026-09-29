@@ -225,14 +225,15 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
           });
           setItems(itemsFromInvoice(invoice.items));
         } else {
-          setForm({
+          setForm((prev) => ({
             ...EMPTY_FORM,
-            issueDate: toDateInput(defaultsData.issueDate),
-            dueDate: toDateInput(defaultsData.dueDate),
-            notes: defaultsData.notes ?? '',
-            terms: defaultsData.terms ?? ''
-          });
-          setItems([createEmptyItem(defaultsData.defaultTaxRate, defaultsData.defaultUnit)]);
+            ...prev,
+            issueDate: prev.issueDate || toDateInput(defaultsData.issueDate),
+            dueDate: prev.dueDate || toDateInput(defaultsData.dueDate),
+            notes: prev.notes || defaultsData.notes || '',
+            terms: prev.terms || defaultsData.terms || ''
+          }));
+          setItems((prev) => (prev.length > 0 ? prev : [createEmptyItem(defaultsData.defaultTaxRate, defaultsData.defaultUnit)]));
         }
       } catch (error) {
         if (!cancelled) toast.error(apiErrorMessage(error, 'Could not load the invoice form'));
@@ -258,10 +259,10 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
    * customer's own state. Mirrors the server so the preview cannot disagree.
    */
   const buyerState = useMemo(() => {
-    if (form.placeOfSupply) return stripStateCode(form.placeOfSupply);
-    if (form.hasDifferentConsignee && form.shippingState) return form.shippingState;
-    if (selectedCustomer?.state) return selectedCustomer.state;
-    if (isEdit && invoice?.billingState) return invoice.billingState;
+    if (form.placeOfSupply) return normalizeStateName(form.placeOfSupply);
+    if (form.hasDifferentConsignee && form.shippingState) return normalizeStateName(form.shippingState);
+    if (selectedCustomer?.state) return normalizeStateName(selectedCustomer.state);
+    if (isEdit && invoice?.billingState) return normalizeStateName(invoice.billingState);
     return null;
   }, [form.placeOfSupply, form.hasDifferentConsignee, form.shippingState, selectedCustomer, isEdit, invoice]);
 
@@ -298,6 +299,24 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
       hasAutoLoadedRef.current = true;
       setImportFromQuotation(true);
       handleQuotationChange(qId, null);
+    }
+  }, [searchParams, isEdit]);
+
+  // Handle auto-load from URL query (?customerId=...)
+  useEffect(() => {
+    const cId = searchParams.get('customerId');
+    const qId = searchParams.get('quotationId');
+    if (cId && !qId && !isEdit && !selectedCustomer) {
+      customersApi
+        .getById(cId)
+        .then((cust) => {
+          if (cust) {
+            handleCustomerChange(cust.id, cust);
+          }
+        })
+        .catch(() => {
+          // Silent fallback if customer could not be found
+        });
     }
   }, [searchParams, isEdit]);
 
@@ -409,7 +428,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
       paymentTerms: targetQuotation.paymentTerms || prev.paymentTerms,
       extraCharges: targetQuotation.forwardingPackagingAmount ? String(targetQuotation.forwardingPackagingAmount) : prev.extraCharges,
       notes: targetQuotation.notes || defaults?.notes || prev.notes || '',
-      terms: targetQuotation.termsAndConditions || defaults?.terms || prev.terms || ''
+      terms: targetQuotation.terms || targetQuotation.termsAndConditions || defaults?.terms || prev.terms || ''
     }));
 
     if (targetQuotation.customerId) {
@@ -443,12 +462,33 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
     const customer = typeof customerIdOrCustomer === 'string' ? maybeCustomer : customerIdOrCustomer;
     const customerId = typeof customerIdOrCustomer === 'string' ? customerIdOrCustomer : customer?.id ?? '';
     setSelectedCustomer(customer ?? null);
-    setForm((prev) => ({
-      ...prev,
-      customerId,
-      customerName: customer?.name ?? '',
-      placeOfSupply: customer?.state ? `${customer.state}` : prev.placeOfSupply
-    }));
+
+    if (form.consigneeCustomerId && form.consigneeCustomerId === customerId) {
+      setSelectedConsigneeCustomer(null);
+    }
+
+    setForm((prev) => {
+      const isConsigneeSame = prev.consigneeCustomerId && prev.consigneeCustomerId === customerId;
+      return {
+        ...prev,
+        customerId,
+        customerName: customer?.name ?? '',
+        placeOfSupply: customer?.state ? normalizeStateName(customer.state) : prev.placeOfSupply,
+        ...(isConsigneeSame
+          ? {
+              consigneeCustomerId: '',
+              shippingName: '',
+              shippingAddress: '',
+              shippingCity: '',
+              shippingState: '',
+              shippingPostalCode: '',
+              shippingGstin: '',
+              shippingPhone: '',
+              shippingEmail: ''
+            }
+          : {})
+      };
+    });
     if (customerId) {
       setFieldErrors((prev) => {
         const next = { ...prev };
@@ -508,7 +548,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
         shippingName: customer.name,
         shippingAddress: customer.address || customer.factoryAddress || '',
         shippingCity: customer.city || '',
-        shippingState: customer.state || '',
+        shippingState: normalizeStateName(customer.state || ''),
         shippingPostalCode: customer.postalCode || '',
         shippingGstin: customer.gstin || '',
         shippingPhone: customer.phone || '',
@@ -1065,6 +1105,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                   value={form.consigneeCustomerId}
                   initialLabel={selectedConsigneeCustomer?.name || form.shippingName}
                   onChange={handleConsigneeCustomerChange}
+                  excludeId={form.customerId}
                   disabled={isLocked}
                 />
               </div>
@@ -1141,9 +1182,9 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
                   label="State"
                   required
                   options={shippingStateOptions}
-                  value={form.shippingState}
+                  value={normalizeStateName(form.shippingState)}
                   onChange={(e) => {
-                    const val = e.target.value;
+                    const val = normalizeStateName(e.target.value);
                     setForm((prev) => ({ ...prev, shippingState: val }));
                     if (val.trim()) {
                       setFieldErrors((prev) => {

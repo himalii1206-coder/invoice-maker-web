@@ -162,56 +162,67 @@ export default function InvoicesPage() {
   // Data
   // ---------------------------------------------------------------------------
 
-  const fetchInvoices = useCallback(async () => {
-    setIsLoading(true);
-    const [sortBy, sortOrder] = sort.split(':') as [
-      NonNullable<InvoiceListParams['sortBy']>,
-      'asc' | 'desc'
-    ];
+  const updateInvoiceInList = (id: string, updates: Partial<InvoiceListRow>) => {
+    setInvoices((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...updates } : item))
+    );
+  };
 
-    try {
-      const result = await invoicesApi.list({
-        page,
-        limit: PAGE_SIZE,
-        search: debouncedSearch,
-        billType: billType || undefined,
-        status: status || undefined,
-        customerId,
-        financialYear,
-        month,
-        year,
-        dateFrom,
-        dateTo,
-        onlyOutstanding: onlyOutstanding ? 'true' : '',
-        sortBy,
-        sortOrder
-      });
+  const fetchInvoices = useCallback(
+    async (showLoader = true) => {
+      if (showLoader) setIsLoading(true);
+      const [sortBy, sortOrder] = sort.split(':') as [
+        NonNullable<InvoiceListParams['sortBy']>,
+        'asc' | 'desc'
+      ];
 
-      setInvoices(result.invoices);
-      setMeta(result.meta);
-      setSummary(result.summary);
-    } catch (error) {
-      toast.error(apiErrorMessage(error, 'Could not load invoices'));
-      setInvoices([]);
-      setMeta(EMPTY_META);
-      setSummary(EMPTY_SUMMARY);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [
-    page,
-    debouncedSearch,
-    billType,
-    status,
-    customerId,
-    financialYear,
-    month,
-    year,
-    dateFrom,
-    dateTo,
-    onlyOutstanding,
-    sort
-  ]);
+      try {
+        const result = await invoicesApi.list({
+          page,
+          limit: PAGE_SIZE,
+          search: debouncedSearch,
+          billType: billType || undefined,
+          status: status || undefined,
+          customerId,
+          financialYear,
+          month,
+          year,
+          dateFrom,
+          dateTo,
+          onlyOutstanding: onlyOutstanding ? 'true' : '',
+          sortBy,
+          sortOrder
+        });
+
+        setInvoices(result.invoices);
+        setMeta(result.meta);
+        setSummary(result.summary);
+      } catch (error) {
+        toast.error(apiErrorMessage(error, 'Could not load invoices'));
+        if (showLoader) {
+          setInvoices([]);
+          setMeta(EMPTY_META);
+          setSummary(EMPTY_SUMMARY);
+        }
+      } finally {
+        if (showLoader) setIsLoading(false);
+      }
+    },
+    [
+      page,
+      debouncedSearch,
+      billType,
+      status,
+      customerId,
+      financialYear,
+      month,
+      year,
+      dateFrom,
+      dateTo,
+      onlyOutstanding,
+      sort
+    ]
+  );
 
   // Stat cards follow the year filter but ignore search and pagination, so they
   // keep describing the business rather than the current page.
@@ -227,7 +238,7 @@ export default function InvoicesPage() {
   }, [financialYear]);
 
   useEffect(() => {
-    fetchInvoices();
+    fetchInvoices(true);
   }, [fetchInvoices]);
 
   useEffect(() => {
@@ -324,11 +335,17 @@ export default function InvoicesPage() {
     if (!cancelling) return;
 
     setIsActionBusy(true);
+    const target = cancelling;
     try {
-      await invoicesApi.cancel(cancelling.id);
-      toast.success(`Invoice ${cancelling.invoiceNumber} cancelled`);
+      await invoicesApi.cancel(target.id);
+      toast.success(`Invoice ${target.invoiceNumber} cancelled`);
       setCancelling(null);
-      fetchInvoices();
+      updateInvoiceInList(target.id, {
+        status: 'CANCELLED',
+        cancelledAt: new Date().toISOString()
+      });
+      // Silent background refresh for list counts & stats
+      fetchInvoices(false);
       fetchStats();
     } catch (error) {
       toast.error(apiErrorMessage(error, 'Could not cancel the invoice'));
@@ -341,16 +358,19 @@ export default function InvoicesPage() {
     if (!deleting) return;
 
     setIsActionBusy(true);
+    const target = deleting;
     try {
-      await invoicesApi.remove(deleting.id);
+      await invoicesApi.remove(target.id);
       toast.success('Draft invoice deleted');
       setDeleting(null);
+      setInvoices((prev) => prev.filter((item) => item.id !== target.id));
+      setMeta((prev) => ({ ...prev, total: Math.max(0, prev.total - 1) }));
 
       // Stepping back avoids landing on a page that no longer exists.
       if (invoices.length === 1 && page > 1) {
         setPage((p) => p - 1);
       } else {
-        fetchInvoices();
+        fetchInvoices(false);
       }
       fetchStats();
     } catch (error) {
@@ -756,7 +776,6 @@ export default function InvoicesPage() {
                 { value: 'dueDate:asc', label: 'Due date (soonest)' },
                 { value: 'grandTotal:desc', label: 'Amount (high to low)' },
                 { value: 'grandTotal:asc', label: 'Amount (low to high)' },
-                { value: 'balanceDue:desc', label: 'Balance (high to low)' },
                 { value: 'invoiceNumber:desc', label: 'Bill number' },
                 { value: 'billingName:asc', label: 'Customer (A–Z)' }
               ]}

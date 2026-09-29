@@ -76,6 +76,7 @@ export default function InvoiceDetailPage() {
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [emailMode, setEmailMode] = useState<'invoice' | 'reminder' | null>(null);
   const [isCancelOpen, setIsCancelOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
   const [showMoreActions, setShowMoreActions] = useState(false);
 
@@ -86,24 +87,29 @@ export default function InvoiceDetailPage() {
   }, [searchParams]);
 
   // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Data Loading
   // ---------------------------------------------------------------------------
 
-  const load = useCallback(async () => {
-    if (!invoiceId) return;
+  const load = useCallback(
+    async (showSpinner = false) => {
+      if (!invoiceId) return;
+      if (showSpinner) setIsLoading(true);
 
-    try {
-      setInvoice(await invoicesApi.getById(invoiceId));
-    } catch (error) {
-      toast.error(apiErrorMessage(error, 'Could not load the invoice'));
-      setNotFound(true);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [invoiceId]);
+      try {
+        setInvoice(await invoicesApi.getById(invoiceId));
+      } catch (error) {
+        toast.error(apiErrorMessage(error, 'Could not load the invoice'));
+        setNotFound(true);
+      } finally {
+        if (showSpinner) setIsLoading(false);
+      }
+    },
+    [invoiceId]
+  );
 
   useEffect(() => {
-    load();
+    load(true);
   }, [load]);
 
   useEffect(() => {
@@ -114,7 +120,7 @@ export default function InvoiceDetailPage() {
   }, []);
 
   const refresh = useCallback(async () => {
-    await load();
+    await load(false);
     setActivityKey((key) => key + 1);
   }, [load]);
 
@@ -168,9 +174,21 @@ export default function InvoiceDetailPage() {
     withBusy('send', async () => {
       if (!invoice) return;
       try {
-        await invoicesApi.setStatus(invoice.id, 'SENT');
+        const updated = await invoicesApi.setStatus(invoice.id, 'SENT');
         toast.success('Invoice marked as sent');
-        await refresh();
+        setInvoice((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: 'SENT',
+                sentAt: (updated as any)?.sentAt || new Date().toISOString()
+              }
+            : prev
+        );
+        setActivityKey((key) => key + 1);
+        invoicesApi.getById(invoice.id).then((fresh) => {
+          if (fresh) setInvoice(fresh);
+        }).catch(() => {});
       } catch (error) {
         toast.error(apiErrorMessage(error, 'Could not update the invoice'));
       }
@@ -195,20 +213,63 @@ export default function InvoiceDetailPage() {
         await invoicesApi.cancel(invoice.id);
         toast.success('Invoice cancelled');
         setIsCancelOpen(false);
-        await refresh();
+        setInvoice((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: 'CANCELLED',
+                cancelledAt: new Date().toISOString()
+              }
+            : prev
+        );
+        setActivityKey((key) => key + 1);
+        invoicesApi.getById(invoice.id).then((fresh) => {
+          if (fresh) setInvoice(fresh);
+        }).catch(() => {});
       } catch (error) {
         toast.error(apiErrorMessage(error, 'Could not cancel the invoice'));
+      }
+    });
+
+  const handleDelete = () =>
+    withBusy('delete', async () => {
+      if (!invoice) return;
+      try {
+        await invoicesApi.remove(invoice.id);
+        toast.success('Draft invoice deleted');
+        router.push('/invoices');
+      } catch (error) {
+        toast.error(apiErrorMessage(error, 'Could not delete the invoice'));
       }
     });
 
   const handleDeletePayment = () =>
     withBusy('deletePayment', async () => {
       if (!deletingPaymentId) return;
+      const paymentId = deletingPaymentId;
       try {
-        await invoicesApi.deletePayment(deletingPaymentId);
+        await invoicesApi.deletePayment(paymentId);
         toast.success('Payment removed');
         setDeletingPaymentId(null);
-        await refresh();
+        setInvoice((prev) => {
+          if (!prev) return prev;
+          const nextPayments = prev.payments.filter((p) => p.id !== paymentId);
+          const newAmountPaid = nextPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+          const grandTotal = Number(prev.grandTotal);
+          const newBalanceDue = Math.max(0, grandTotal - newAmountPaid);
+          const newStatus = newBalanceDue <= 0 ? 'PAID' : newAmountPaid > 0 ? 'PARTIALLY_PAID' : 'SENT';
+          return {
+            ...prev,
+            payments: nextPayments,
+            amountPaid: newAmountPaid,
+            balanceDue: newBalanceDue,
+            status: newStatus
+          };
+        });
+        setActivityKey((key) => key + 1);
+        invoicesApi.getById(invoice!.id).then((fresh) => {
+          if (fresh) setInvoice(fresh);
+        }).catch(() => {});
       } catch (error) {
         toast.error(apiErrorMessage(error, 'Could not remove the payment'));
       }
@@ -274,20 +335,20 @@ export default function InvoiceDetailPage() {
     invoice.shippingCountry
   ].filter(Boolean) as string[];
 
-  // Populated logistics badges
-  const referencePills = [
-    invoice.poNumber && { label: 'PO / Order No', value: invoice.poNumber },
-    invoice.orderDate && { label: 'Order Date', value: formatDate(invoice.orderDate) },
-    invoice.challanNo && { label: 'Challan No', value: invoice.challanNo },
-    invoice.challanDate && { label: 'Challan Date', value: formatDate(invoice.challanDate) },
-    invoice.dcNo && { label: 'D.C. No', value: invoice.dcNo },
-    invoice.dcDate && { label: 'D.C. Date', value: formatDate(invoice.dcDate) },
-    invoice.modeOfDispatch && { label: 'Dispatch Via', value: invoice.modeOfDispatch },
-    invoice.lhNo && { label: 'LH / LR No', value: invoice.lhNo },
-    invoice.lhDate && { label: 'LR Date', value: formatDate(invoice.lhDate) },
-    invoice.paymentTerms && { label: 'Terms', value: invoice.paymentTerms },
-    invoice.reference && { label: 'Ref', value: invoice.reference }
-  ].filter(Boolean) as { label: string; value: string }[];
+  // Check if any transport / logistics / dispatch fields are populated
+  const hasLogistics = Boolean(
+    invoice.poNumber ||
+      invoice.orderDate ||
+      invoice.challanNo ||
+      invoice.challanDate ||
+      invoice.dcNo ||
+      invoice.dcDate ||
+      invoice.modeOfDispatch ||
+      invoice.lhNo ||
+      invoice.lhDate ||
+      invoice.paymentTerms ||
+      invoice.reference
+  );
 
   return (
     <DashboardLayout>
@@ -421,7 +482,7 @@ export default function InvoiceDetailPage() {
                       </button>
                     </div>
 
-                    {!isCancelled && (
+                    {!isCancelled && !isDraft && (
                       <div className="py-1">
                         <button
                           onClick={() => {
@@ -432,6 +493,21 @@ export default function InvoiceDetailPage() {
                         >
                           <Ban className="w-3.5 h-3.5 text-red-500" />
                           <span>Cancel Invoice</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {isDraft && (
+                      <div className="py-1">
+                        <button
+                          onClick={() => {
+                            setShowMoreActions(false);
+                            setIsDeleteOpen(true);
+                          }}
+                          className="w-full text-left px-3.5 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors font-medium"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                          <span>Delete Draft</span>
                         </button>
                       </div>
                     )}
@@ -736,21 +812,114 @@ export default function InvoiceDetailPage() {
                 )}
               </div>
 
-              {/* Populated logistics & reference pills */}
-              {referencePills.length > 0 && (
-                <div className="px-4 py-2.5 border-t border-warm-border/50 bg-warm-input/20 flex flex-wrap items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle mr-1">
-                    Logistics:
-                  </span>
-                  {referencePills.map((pill, i) => (
-                    <span
-                      key={i}
-                      className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-warm-surface border border-warm-border text-[11px]"
-                    >
-                      <span className="text-warm-textMuted">{pill.label}:</span>
-                      <span className="font-semibold text-warm-text">{pill.value}</span>
-                    </span>
-                  ))}
+              {/* Logistics & Dispatch Details */}
+              {hasLogistics && (
+                <div className="border-t border-warm-border/60 bg-warm-input/15 px-4 py-3.5 sm:px-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Truck className="w-3.5 h-3.5 text-warm-accent" />
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-warm-text">
+                      Transport, Dispatch &amp; Reference Details
+                    </h4>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-3 pt-0.5 text-xs">
+                    {invoice.poNumber && (
+                      <div className="space-y-0.5">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-warm-textMuted">
+                          PO / Order No
+                        </span>
+                        <p className="font-semibold text-warm-text text-xs">
+                          {invoice.poNumber}
+                          {invoice.orderDate && (
+                            <span className="block text-[11px] font-normal text-warm-textMuted">
+                              Dated {formatDate(invoice.orderDate)}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    )}
+
+                    {invoice.challanNo && (
+                      <div className="space-y-0.5">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-warm-textMuted">
+                          Challan No
+                        </span>
+                        <p className="font-semibold text-warm-text text-xs">
+                          {invoice.challanNo}
+                          {invoice.challanDate && (
+                            <span className="block text-[11px] font-normal text-warm-textMuted">
+                              Dated {formatDate(invoice.challanDate)}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    )}
+
+                    {invoice.dcNo && (
+                      <div className="space-y-0.5">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-warm-textMuted">
+                          D.C. No
+                        </span>
+                        <p className="font-semibold text-warm-text text-xs">
+                          {invoice.dcNo}
+                          {invoice.dcDate && (
+                            <span className="block text-[11px] font-normal text-warm-textMuted">
+                              Dated {formatDate(invoice.dcDate)}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    )}
+
+                    {invoice.lhNo && (
+                      <div className="space-y-0.5">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-warm-textMuted">
+                          LH / LR No
+                        </span>
+                        <p className="font-semibold text-warm-text text-xs">
+                          {invoice.lhNo}
+                          {invoice.lhDate && (
+                            <span className="block text-[11px] font-normal text-warm-textMuted">
+                              Dated {formatDate(invoice.lhDate)}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    )}
+
+                    {invoice.modeOfDispatch && (
+                      <div className="space-y-0.5">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-warm-textMuted">
+                          Dispatch Via
+                        </span>
+                        <p className="font-semibold text-warm-text text-xs">
+                          {invoice.modeOfDispatch}
+                        </p>
+                      </div>
+                    )}
+
+                    {invoice.paymentTerms && (
+                      <div className="space-y-0.5">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-warm-textMuted">
+                          Payment Terms
+                        </span>
+                        <p className="font-semibold text-warm-text text-xs">
+                          {invoice.paymentTerms}
+                        </p>
+                      </div>
+                    )}
+
+                    {invoice.reference && (
+                      <div className="space-y-0.5">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-warm-textMuted">
+                          Reference
+                        </span>
+                        <p className="font-semibold text-warm-text text-xs">
+                          {invoice.reference}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -871,8 +1040,6 @@ export default function InvoiceDetailPage() {
               isIgst={invoice.isIgst}
               isReverseCharge={invoice.isReverseCharge}
               amountPaid={amountPaid}
-              creditNoteTotal={toNumber(invoice.creditNoteTotal)}
-              debitNoteTotal={toNumber(invoice.debitNoteTotal)}
               balanceDue={balanceDue}
             />
 
@@ -1060,6 +1227,18 @@ export default function InvoiceDetailPage() {
         message="The invoice stays on record with its number intact, but stops counting towards what your customers owe you. This cannot be undone."
         confirmLabel="Cancel Invoice"
         cancelLabel="Keep Invoice"
+      />
+
+      <ConfirmDialog
+        isOpen={isDeleteOpen}
+        onClose={() => setIsDeleteOpen(false)}
+        onConfirm={handleDelete}
+        isLoading={busyAction === 'delete'}
+        isDanger
+        title={`Delete draft ${invoice.invoiceNumber}?`}
+        message={`Draft ${invoice.invoiceNumber} will be permanently removed. This cannot be undone.`}
+        confirmLabel="Delete Draft"
+        cancelLabel="Keep Draft"
       />
 
       <ConfirmDialog

@@ -461,7 +461,7 @@ export default function CustomerDetailPage() {
                 <span>Contact Information</span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <DetailItem label="Mob No." value={customer.phone} />
                 <DetailItem label="Email ID" value={customer.email} />
                 <DetailItem label="Contact Person" value={customer.contactPerson} />

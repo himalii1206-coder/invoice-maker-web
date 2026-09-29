@@ -96,7 +96,7 @@ const customerSchema = z.object({
     z.literal(''),
     z.string().regex(IFSC_REGEX, 'Invalid IFSC code format (11 characters, e.g. HDFC0001234)')
   ]),
-  isActive: z.enum(['true', 'false'])
+  isActive: z.enum(['true', 'false']).optional().default('true')
 });
 
 type CustomerFormData = z.infer<typeof customerSchema>;
@@ -209,7 +209,7 @@ export function CustomerFormModal({ isOpen, onClose, customer, onSaved }: Custom
           ? parseFloat(String(values.openingBalance)) || 0
           : 0,
       openingBalanceDate: values.openingBalanceDate || undefined,
-      isActive: values.isActive === 'true'
+      isActive: values.isActive !== undefined ? values.isActive === 'true' : true
     };
 
     try {
@@ -295,16 +295,6 @@ export function CustomerFormModal({ isOpen, onClose, customer, onSaved }: Custom
               ]}
               error={errors.partyCategory?.message}
               {...register('partyCategory')}
-            />
-
-            <Select
-              label="Status"
-              options={[
-                { value: 'true', label: 'Active' },
-                { value: 'false', label: 'Inactive' }
-              ]}
-              error={errors.isActive?.message}
-              {...register('isActive')}
             />
           </div>
         </div>

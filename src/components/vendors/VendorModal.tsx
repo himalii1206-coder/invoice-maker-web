@@ -104,7 +104,7 @@ export function VendorModal({ isOpen, onClose, vendor, onSuccess }: VendorModalP
       pan: '',
       address: '',
       city: '',
-      state: '24-Gujarat',
+      state: 'Gujarat',
       country: 'India',
       postalCode: '',
       bankName: '',
@@ -137,7 +137,7 @@ export function VendorModal({ isOpen, onClose, vendor, onSuccess }: VendorModalP
         pan: vendor.pan ?? '',
         address: vendor.address ?? '',
         city: vendor.city ?? '',
-        state: vendor.state ?? '24-Gujarat',
+        state: vendor.state ?? 'Gujarat',
         country: vendor.country ?? 'India',
         postalCode: vendor.postalCode ?? '',
         bankName: vendor.bankName ?? '',
@@ -164,7 +164,7 @@ export function VendorModal({ isOpen, onClose, vendor, onSuccess }: VendorModalP
         pan: '',
         address: '',
         city: '',
-        state: '24-Gujarat',
+        state: 'Gujarat',
         country: 'India',
         postalCode: '',
         bankName: '',
@@ -320,7 +320,7 @@ export function VendorModal({ isOpen, onClose, vendor, onSuccess }: VendorModalP
             </div>
 
             <StateCityFields
-              stateValue={selectedState || '24-Gujarat'}
+              stateValue={selectedState || 'Gujarat'}
               cityValue={selectedCity || ''}
               onStateChange={(st) => setValue('state', st, { shouldValidate: true })}
               onCityChange={(ct) => setValue('city', ct, { shouldValidate: true })}

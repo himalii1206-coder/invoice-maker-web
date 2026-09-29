@@ -82,11 +82,11 @@ export function StateCityFields({
         const info = await lookupPincode(clean);
         if (info) {
           if (info.state) {
-            // Find matched state with code
+            // Find matched state with canonical name
             const matched = INDIAN_STATES.find(
               (s) => s.name.toLowerCase() === info.state.toLowerCase()
             );
-            onStateChange(matched ? `${matched.code}-${matched.name}` : info.state);
+            onStateChange(matched ? matched.name : normalizeStateName(info.state));
           }
           if (info.city) {
             onCityChange(info.city);
@@ -101,17 +101,15 @@ export function StateCityFields({
   const stateOptions = [
     { value: '', label: 'Select State / UT' },
     ...INDIAN_STATES.map((s) => ({
-      value: `${s.code}-${s.name}`,
+      value: s.name,
       label: `${s.code} - ${s.name}${s.isUnionTerritory ? ' (UT)' : ''}`
     }))
   ];
 
-  // Match current stateValue with option format if simple name was provided
+  // Match current stateValue with clean state name
   const normalizedSelectedState = (() => {
     if (!stateValue) return '';
-    const clean = normalizeStateName(stateValue).toLowerCase();
-    const found = INDIAN_STATES.find((s) => s.name.toLowerCase() === clean);
-    return found ? `${found.code}-${found.name}` : stateValue;
+    return normalizeStateName(stateValue);
   })();
 
   const filteredCities = useMemo(() => {
@@ -194,7 +192,7 @@ export function StateCityFields({
           disabled={disabled}
           error={stateError}
           onChange={(e) => {
-            onStateChange(e.target.value);
+            onStateChange(normalizeStateName(e.target.value));
           }}
         />
       </div>

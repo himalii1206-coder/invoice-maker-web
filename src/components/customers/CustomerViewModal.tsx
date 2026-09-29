@@ -136,7 +136,7 @@ export function CustomerViewModal({
               <Phone className="w-3.5 h-3.5" />
               Contact Information
             </h5>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Mob No." value={customer.phone} />
               <Field label="Email ID" value={customer.email} />
               <Field label="Contact Person" value={customer.contactPerson} />

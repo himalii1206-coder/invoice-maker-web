@@ -18,9 +18,6 @@ export type InvoiceStatus =
 
 export type PaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'UPI' | 'CHEQUE' | 'CARD' | 'OTHER';
 
-export type NoteType = 'CREDIT' | 'DEBIT';
-export type NoteStatus = 'DRAFT' | 'ISSUED' | 'CANCELLED';
-
 export type NumberResetMode = 'NEVER' | 'YEARLY' | 'MONTHLY' | 'FINANCIAL_YEAR';
 
 export type ActivityAction =
@@ -36,7 +33,6 @@ export type ActivityAction =
   | 'PDF_DOWNLOADED'
   | 'EMAIL_SENT'
   | 'REMINDER_SENT'
-  | 'NOTE_LINKED'
   | 'DELETED';
 
 export interface InvoiceCustomerRef {
@@ -101,15 +97,6 @@ export interface InvoicePayment {
   };
 }
 
-export interface LinkedNoteRef {
-  id: string;
-  noteType: NoteType;
-  noteNumber: string;
-  noteDate: string;
-  status: NoteStatus;
-  grandTotal: Decimalish;
-  reason?: string | null;
-}
 
 /** Row shape returned by the list endpoint. */
 export interface InvoiceListRow {
@@ -147,8 +134,6 @@ export interface InvoiceListRow {
   roundOff: Decimalish;
   grandTotal: Decimalish;
   amountPaid: Decimalish;
-  creditNoteTotal: Decimalish;
-  debitNoteTotal: Decimalish;
   balanceDue: Decimalish;
   sentAt?: string | null;
   paidAt?: string | null;
@@ -194,7 +179,6 @@ export interface Invoice extends InvoiceListRow {
   terms?: string | null;
   internalNotes?: string | null;
   cancelledReason?: string | null;
-  viewedAt?: string | null;
   billingEmail?: string | null;
   billingPhone?: string | null;
   billingAddress?: string | null;
@@ -209,7 +193,6 @@ export interface Invoice extends InvoiceListRow {
   shippingPostalCode?: string | null;
   items: InvoiceItem[];
   payments: InvoicePayment[];
-  notesDocs: LinkedNoteRef[];
 }
 
 export interface InvoiceItemPayload {
@@ -434,16 +417,14 @@ export type NotificationEvent =
   | 'INVOICE_PAID'
   | 'INVOICE_OVERDUE'
   | 'PAYMENT_RECEIVED'
-  | 'CUSTOMER_ADDED'
-  | 'NOTE_ISSUED';
+  | 'CUSTOMER_ADDED';
 
 export interface InvoiceSettings {
   id: string;
   companyId: string;
   invoicePrefix: string;
   invoiceSuffix?: string | null;
-  creditNotePrefix: string;
-  debitNotePrefix: string;
+  quotationPrefix?: string;
   numberSeparator: string;
   numberPadding: number;
   startNumber: number;

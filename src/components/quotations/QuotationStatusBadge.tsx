@@ -95,11 +95,6 @@ export function QuotationStatusBadge({
     >
       {showIcon && <Icon className={size === 'sm' ? 'w-3 h-3 shrink-0' : 'w-3.5 h-3.5 shrink-0'} />}
       <span>{config.label}</span>
-      {isConvertedWithInvoice && convertedInvoiceNumber && (
-        <span className="font-bold text-[10px] pl-1 border-l border-purple-300/80 group-hover:border-purple-300 group-hover:text-white">
-          → {convertedInvoiceNumber}
-        </span>
-      )}
     </span>
   );
 

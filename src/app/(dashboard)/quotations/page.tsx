@@ -133,8 +133,14 @@ export default function QuotationsPage() {
     };
   }, []);
 
-  const fetchQuotations = useCallback(async () => {
-    setIsLoading(true);
+  const updateQuotationInList = (id: string, updates: Partial<Quotation>) => {
+    setQuotations((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...updates } : item))
+    );
+  };
+
+  const fetchQuotations = useCallback(async (showLoader = true) => {
+    if (showLoader) setIsLoading(true);
     try {
       const params: QuotationListParams = {
         page,
@@ -157,15 +163,23 @@ export default function QuotationsPage() {
   }, [page, debouncedSearch, statusFilter]);
 
   useEffect(() => {
-    fetchQuotations();
+    fetchQuotations(true);
   }, [fetchQuotations]);
 
   // Handle actions
   const handleSend = async (q: Quotation) => {
     try {
-      await quotationsApi.send(q.id);
+      const updated = await quotationsApi.send(q.id);
       toast.success(`Quotation ${q.quotationNumber} marked as Sent`);
-      fetchQuotations();
+      updateQuotationInList(q.id, {
+        status: 'SENT',
+        sentAt: updated?.sentAt || new Date().toISOString()
+      });
+      setSummary((prev) => ({
+        ...prev,
+        draftCount: Math.max(0, prev.draftCount - 1),
+        sentCount: prev.sentCount + 1
+      }));
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Failed to send quotation'));
     }
@@ -173,9 +187,17 @@ export default function QuotationsPage() {
 
   const handleAccept = async (q: Quotation) => {
     try {
-      await quotationsApi.accept(q.id);
+      const updated = await quotationsApi.accept(q.id);
       toast.success(`Quotation ${q.quotationNumber} marked as Accepted`);
-      fetchQuotations();
+      updateQuotationInList(q.id, {
+        status: 'ACCEPTED',
+        acceptedAt: updated?.acceptedAt || new Date().toISOString()
+      });
+      setSummary((prev) => ({
+        ...prev,
+        sentCount: Math.max(0, prev.sentCount - 1),
+        acceptedCount: prev.acceptedCount + 1
+      }));
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Failed to accept quotation'));
     }
@@ -183,13 +205,23 @@ export default function QuotationsPage() {
 
   const handleRejectSubmit = async () => {
     if (!rejectTarget) return;
+    const target = rejectTarget;
     setActionInProgress(true);
     try {
-      await quotationsApi.reject(rejectTarget.id, reasonInput);
-      toast.success(`Quotation ${rejectTarget.quotationNumber} marked as Rejected`);
+      const updated = await quotationsApi.reject(target.id, reasonInput);
+      toast.success(`Quotation ${target.quotationNumber} marked as Rejected`);
       setRejectTarget(null);
       setReasonInput('');
-      fetchQuotations();
+      updateQuotationInList(target.id, {
+        status: 'REJECTED',
+        rejectedAt: updated?.rejectedAt || new Date().toISOString(),
+        rejectionReason: reasonInput
+      });
+      setSummary((prev) => ({
+        ...prev,
+        sentCount: target.status === 'SENT' ? Math.max(0, prev.sentCount - 1) : prev.sentCount,
+        rejectedCount: prev.rejectedCount + 1
+      }));
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Failed to reject quotation'));
     } finally {
@@ -199,13 +231,25 @@ export default function QuotationsPage() {
 
   const handleCancelSubmit = async () => {
     if (!cancelTarget) return;
+    const target = cancelTarget;
     setActionInProgress(true);
     try {
-      await quotationsApi.cancel(cancelTarget.id, reasonInput);
-      toast.success(`Quotation ${cancelTarget.quotationNumber} Cancelled`);
+      const updated = await quotationsApi.cancel(target.id, reasonInput);
+      toast.success(`Quotation ${target.quotationNumber} Cancelled`);
       setCancelTarget(null);
       setReasonInput('');
-      fetchQuotations();
+      updateQuotationInList(target.id, {
+        status: 'CANCELLED',
+        cancelledAt: updated?.cancelledAt || new Date().toISOString(),
+        cancellationReason: reasonInput
+      });
+      setSummary((prev) => ({
+        ...prev,
+        draftCount: target.status === 'DRAFT' ? Math.max(0, prev.draftCount - 1) : prev.draftCount,
+        sentCount: target.status === 'SENT' ? Math.max(0, prev.sentCount - 1) : prev.sentCount,
+        acceptedCount: target.status === 'ACCEPTED' ? Math.max(0, prev.acceptedCount - 1) : prev.acceptedCount,
+        cancelledCount: prev.cancelledCount + 1
+      }));
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Failed to cancel quotation'));
     } finally {
@@ -240,12 +284,23 @@ export default function QuotationsPage() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
+    const target = deleteTarget;
     setActionInProgress(true);
     try {
-      await quotationsApi.remove(deleteTarget.id);
-      toast.success(`Quotation ${deleteTarget.quotationNumber} deleted`);
+      await quotationsApi.remove(target.id);
+      toast.success(`Quotation ${target.quotationNumber} deleted`);
       setDeleteTarget(null);
-      fetchQuotations();
+      setQuotations((prev) => prev.filter((item) => item.id !== target.id));
+      setSummary((prev) => ({
+        ...prev,
+        totalCount: Math.max(0, prev.totalCount - 1),
+        draftCount: target.status === 'DRAFT' ? Math.max(0, prev.draftCount - 1) : prev.draftCount,
+        totalValue: Math.max(0, prev.totalValue - Number(target.grandTotal || 0))
+      }));
+      setMeta((prev) => ({
+        ...prev,
+        total: Math.max(0, prev.total - 1)
+      }));
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Failed to delete quotation'));
     } finally {
@@ -358,11 +413,6 @@ export default function QuotationsPage() {
               />
             </div>
           </div>
-
-          <div className="text-xs text-warm-textMuted">
-            Showing <span className="font-semibold text-warm-text">{quotations.length}</span> of{' '}
-            <span className="font-semibold text-warm-text">{meta.total}</span>
-          </div>
         </div>
 
         {/* Main Quotations Table */}
@@ -409,11 +459,6 @@ export default function QuotationsPage() {
                           >
                             {q.quotationNumber}
                           </Link>
-                          {q.inquiryNumber && (
-                            <span className="inline-block text-[10px] font-semibold text-warm-textMuted bg-warm-input px-1.5 py-0.5 border border-warm-border/50">
-                              Inq: {q.inquiryNumber}
-                            </span>
-                          )}
                           {q.status === 'CONVERTED' && (q.convertedInvoice?.invoiceNumber || q.convertedInvoiceId) && (
                             <Link
                               href={`/invoices/${q.convertedInvoice?.id || q.convertedInvoiceId}`}
@@ -502,6 +547,17 @@ export default function QuotationsPage() {
                             <Eye className="w-3.5 h-3.5" />
                             <span>View</span>
                           </Link>
+
+                          {/* Edit */}
+                          {q.status === 'DRAFT' && (
+                            <Link
+                              href={`/quotations/${q.id}/edit`}
+                              title="Edit Quotation"
+                              className="p-1 text-warm-textMuted hover:text-warm-accent hover:bg-warm-accentLight border border-warm-border/60 transition-colors cursor-pointer"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Link>
+                          )}
 
                           {/* Preview PDF */}
                           <button
@@ -659,7 +715,7 @@ export default function QuotationsPage() {
               </>
             )}
 
-            {menuAnchor.q.status === 'ACCEPTED' && (
+            {(menuAnchor.q.status === 'ACCEPTED' || (menuAnchor.q.status === 'SENT' && !menuAnchor.q.isExpired)) && (
               <button
                 type="button"
                 onClick={() => {
@@ -715,7 +771,7 @@ export default function QuotationsPage() {
               <div className="h-px bg-warm-border/60 my-1" />
             )}
 
-            {(menuAnchor.q.status === 'DRAFT' || menuAnchor.q.status === 'SENT' || menuAnchor.q.status === 'ACCEPTED') && (
+            {(menuAnchor.q.status === 'SENT' || menuAnchor.q.status === 'ACCEPTED') && (
               <button
                 type="button"
                 onClick={() => {

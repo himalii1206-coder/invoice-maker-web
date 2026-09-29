@@ -361,13 +361,48 @@ const DEFAULT_CITIES_BY_STATE: Record<string, string[]> = {
 const citiesCache = new Map<string, string[]>();
 
 /**
- * Normalizes state name for matching (removes code prefix if "24-Gujarat").
+ * Normalizes state name for matching & storage (e.g. "24-Gujarat", "24 - Gujarat", "24", "gujarat" -> "Gujarat").
  */
-export function normalizeStateName(stateString: string): string {
+export function normalizeStateName(stateString?: string | null): string {
   if (!stateString) return '';
   const trimmed = stateString.trim();
-  const match = trimmed.match(/^\d{2}\s*-\s*(.+)$/);
-  return match ? match[1].trim() : trimmed;
+  if (!trimmed) return '';
+
+  // Strip leading code patterns like "24-", "24 - ", "24 – ", "24 "
+  const match = trimmed.match(/^\d{2}\s*[-–—]?\s*(.+)$/);
+  const candidate = match ? match[1].trim() : trimmed;
+
+  // Match against known Indian states
+  const found = INDIAN_STATES.find(
+    (s) =>
+      s.name.toLowerCase() === candidate.toLowerCase() ||
+      s.code === candidate ||
+      s.code === trimmed
+  );
+
+  return found ? found.name : candidate;
+}
+
+/**
+ * Returns the 2-digit GST state code for a given state name or code.
+ */
+export function getStateCode(stateString?: string | null): string {
+  if (!stateString) return '';
+  const clean = normalizeStateName(stateString).toLowerCase();
+  const found = INDIAN_STATES.find(
+    (s) => s.name.toLowerCase() === clean || s.code === stateString?.trim()
+  );
+  return found ? found.code : '';
+}
+
+/**
+ * Formats a state with its 2-digit code for clean UI display (e.g. "24 - Gujarat").
+ */
+export function formatStateWithCode(stateString?: string | null): string {
+  if (!stateString) return '';
+  const clean = normalizeStateName(stateString);
+  const code = getStateCode(clean);
+  return code ? `${code} - ${clean}` : clean;
 }
 
 /**

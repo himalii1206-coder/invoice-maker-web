@@ -21,7 +21,7 @@ import {
   Pencil,
   Trash2,
   Printer,
-  DollarSign,
+  IndianRupee,
   Building2,
   Calendar,
   Truck,
@@ -150,20 +150,6 @@ export default function PurchaseBillDetailPage() {
   const taxableAmount = Number(bill.taxableAmount) || 0;
   const isPaid = bill.status === 'PAID' || (balanceDue === 0 && grandTotal > 0);
   const isCancelled = bill.status === 'CANCELLED';
-
-  // Populated logistics badges
-  const referencePills = [
-    bill.vendorInvoiceNumber && { label: 'Supplier Inv No', value: bill.vendorInvoiceNumber },
-    bill.poNumber && { label: 'PO No', value: bill.poNumber },
-    bill.poDate && { label: 'PO Date', value: formatDate(bill.poDate) },
-    bill.grnNumber && { label: 'GRN No', value: bill.grnNumber },
-    bill.grnDate && { label: 'GRN Date', value: formatDate(bill.grnDate) },
-    bill.transporterName && { label: 'Transporter', value: bill.transporterName },
-    bill.vehicleNumber && { label: 'Vehicle', value: bill.vehicleNumber },
-    bill.lrNumber && { label: 'LR / Bilty', value: bill.lrNumber },
-    bill.lrDate && { label: 'LR Date', value: formatDate(bill.lrDate) },
-    bill.paymentTerms && { label: 'Terms', value: bill.paymentTerms }
-  ].filter(Boolean) as { label: string; value: string }[];
 
   return (
     <DashboardLayout>
@@ -410,21 +396,118 @@ export default function PurchaseBillDetailPage() {
                 </div>
               </div>
 
-              {/* Populated logistics & reference pills */}
-              {referencePills.length > 0 && (
-                <div className="px-4 py-2.5 border-t border-warm-border/50 bg-warm-input/20 flex flex-wrap items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle mr-1">
-                    Logistics:
-                  </span>
-                  {referencePills.map((pill, i) => (
-                    <span
-                      key={i}
-                      className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-warm-surface border border-warm-border text-[11px]"
-                    >
-                      <span className="text-warm-textMuted">{pill.label}:</span>
-                      <span className="font-semibold text-warm-text">{pill.value}</span>
-                    </span>
-                  ))}
+              {/* Logistics & Reference Details */}
+              {(bill.vendorInvoiceNumber ||
+                bill.poNumber ||
+                bill.poDate ||
+                bill.grnNumber ||
+                bill.grnDate ||
+                bill.transporterName ||
+                bill.vehicleNumber ||
+                bill.lrNumber ||
+                bill.lrDate ||
+                bill.paymentTerms) && (
+                <div className="border-t border-warm-border/60 bg-warm-input/15 px-4 py-3.5 sm:px-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Truck className="w-3.5 h-3.5 text-warm-accent" />
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-warm-text">
+                      Inward, Transport &amp; Reference Details
+                    </h4>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-3 pt-0.5 text-xs">
+                    {bill.vendorInvoiceNumber && (
+                      <div className="space-y-0.5">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-warm-textMuted">
+                          Supplier Inv No
+                        </span>
+                        <p className="font-semibold text-warm-text text-xs">
+                          {bill.vendorInvoiceNumber}
+                        </p>
+                      </div>
+                    )}
+
+                    {bill.poNumber && (
+                      <div className="space-y-0.5">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-warm-textMuted">
+                          PO No
+                        </span>
+                        <p className="font-semibold text-warm-text text-xs">
+                          {bill.poNumber}
+                          {bill.poDate && (
+                            <span className="block text-[11px] font-normal text-warm-textMuted">
+                              Dated {formatDate(bill.poDate)}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    )}
+
+                    {bill.grnNumber && (
+                      <div className="space-y-0.5">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-warm-textMuted">
+                          GRN No
+                        </span>
+                        <p className="font-semibold text-warm-text text-xs">
+                          {bill.grnNumber}
+                          {bill.grnDate && (
+                            <span className="block text-[11px] font-normal text-warm-textMuted">
+                              Dated {formatDate(bill.grnDate)}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    )}
+
+                    {bill.lrNumber && (
+                      <div className="space-y-0.5">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-warm-textMuted">
+                          LR / Bilty No
+                        </span>
+                        <p className="font-semibold text-warm-text text-xs">
+                          {bill.lrNumber}
+                          {bill.lrDate && (
+                            <span className="block text-[11px] font-normal text-warm-textMuted">
+                              Dated {formatDate(bill.lrDate)}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    )}
+
+                    {bill.transporterName && (
+                      <div className="space-y-0.5">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-warm-textMuted">
+                          Transporter
+                        </span>
+                        <p className="font-semibold text-warm-text text-xs">
+                          {bill.transporterName}
+                        </p>
+                      </div>
+                    )}
+
+                    {bill.vehicleNumber && (
+                      <div className="space-y-0.5">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-warm-textMuted">
+                          Vehicle No
+                        </span>
+                        <p className="font-semibold text-warm-text text-xs">
+                          {bill.vehicleNumber}
+                        </p>
+                      </div>
+                    )}
+
+                    {bill.paymentTerms && (
+                      <div className="space-y-0.5">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-warm-textMuted">
+                          Payment Terms
+                        </span>
+                        <p className="font-semibold text-warm-text text-xs">
+                          {bill.paymentTerms}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
