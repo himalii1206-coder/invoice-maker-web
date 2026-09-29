@@ -25,7 +25,7 @@ import {
 import { customersApi, apiErrorMessage } from '@/lib/customers';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Customer, CustomerListParams, PaginationMeta } from '@/types/index';
-import { formatDate, formatCurrency } from '@/lib/utils';
+import { formatDate, formatCurrency, cn } from '@/lib/utils';
 import {
   Users,
   Plus,
@@ -197,8 +197,8 @@ export default function CustomersPage() {
             <TableRow>
               <TableHead className="min-w-[220px]">Customer</TableHead>
               <TableHead className="min-w-[170px]">Contact</TableHead>
-              <TableHead className="min-w-[170px]">Location &amp; GSTIN</TableHead>
-              <TableHead className="min-w-[140px] text-right">Opening Balance</TableHead>
+              <TableHead className="min-w-[170px]">GSTIN &amp; Location</TableHead>
+              <TableHead className="min-w-[140px] text-right">Balance</TableHead>
               <TableHead className="min-w-[100px] text-center">Status</TableHead>
               <TableHead className="min-w-[140px] text-right">Actions</TableHead>
             </TableRow>
@@ -253,43 +253,79 @@ export default function CustomersPage() {
                   </div>
                 </TableCell>
 
-                {/* Location & GSTIN */}
+                {/* GSTIN & Location */}
                 <TableCell className="min-w-[170px]">
                   <div className="space-y-1 text-xs">
+                    {customer.gstin ? (
+                      <p className="font-mono text-xs text-warm-text font-medium whitespace-nowrap">
+                        GST: <span className="font-semibold">{customer.gstin}</span>
+                      </p>
+                    ) : (
+                      <p className="text-xs text-warm-textMuted font-medium whitespace-nowrap">
+                        Unregistered
+                      </p>
+                    )}
                     {(customer.city || customer.state) ? (
-                      <p className="flex items-center gap-1 text-warm-text font-medium whitespace-nowrap">
+                      <p className="flex items-center gap-1 text-xs text-warm-text font-medium whitespace-nowrap">
                         <MapPin className="w-3.5 h-3.5 text-warm-accent shrink-0" />
                         <span className="truncate max-w-[150px]">
                           {[customer.city, customer.state].filter(Boolean).join(', ')}
                         </span>
                       </p>
                     ) : (
-                      <span className="text-warm-textMuted">—</span>
-                    )}
-                    {customer.gstin ? (
-                      <p className="text-[11px] text-warm-textMuted whitespace-nowrap">
-                        GST: {customer.gstin}
-                      </p>
-                    ) : (
-                      <span className="text-[10px] text-warm-textSubtle uppercase whitespace-nowrap">Unregistered</span>
+                      <span className="text-warm-textMuted text-xs">—</span>
                     )}
                   </div>
                 </TableCell>
 
-                {/* Opening Balance */}
+                {/* Balance */}
                 <TableCell className="min-w-[140px] text-right">
-                  <div className="text-xs whitespace-nowrap">
-                    {customer.openingBalance !== null && customer.openingBalance !== undefined && Number(customer.openingBalance) > 0 ? (
-                      <span className="font-semibold text-warm-text tabular-nums">
-                        {formatCurrency(Number(customer.openingBalance))}{' '}
-                        <span className="text-[10px] text-warm-textMuted font-normal">
-                          ({customer.balanceType || 'Dr.'})
-                        </span>
-                      </span>
-                    ) : (
-                      <span className="text-warm-textMuted">₹0.00</span>
-                    )}
-                  </div>
+                  {(() => {
+                    let balanceVal = 0;
+                    let balType: 'Receivable' | 'Payable' = 'Receivable';
+
+                    if (customer.currentBalance !== undefined && customer.currentBalance !== null) {
+                      balanceVal = Number(customer.currentBalance);
+                      balType = (customer.currentBalanceType === 'PAYABLE' || customer.currentBalanceType === 'Payable')
+                        ? 'Payable'
+                        : 'Receivable';
+                    } else {
+                      const opBal = customer.openingBalance !== null && customer.openingBalance !== undefined
+                        ? Number(customer.openingBalance)
+                        : 0;
+                      balanceVal = Math.abs(opBal);
+                      const isCredit = customer.balanceType && (
+                        customer.balanceType.toUpperCase().startsWith('CR') ||
+                        customer.balanceType.toLowerCase() === 'credit' ||
+                        customer.balanceType.toLowerCase() === 'payable'
+                      );
+                      balType = isCredit ? 'Payable' : 'Receivable';
+                    }
+
+                    if (balanceVal <= 0) {
+                      return (
+                        <div className="text-xs whitespace-nowrap">
+                          <span className="font-semibold text-warm-textMuted tabular-nums">₹0.00</span>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-0.5 text-xs whitespace-nowrap">
+                        <p className="font-bold text-warm-text tabular-nums text-sm">
+                          {formatCurrency(balanceVal)}
+                        </p>
+                        <p
+                          className={cn(
+                            'text-[11px] font-semibold',
+                            balType === 'Receivable' ? 'text-amber-700' : 'text-blue-700'
+                          )}
+                        >
+                          {balType}
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </TableCell>
 
                 {/* Status */}
@@ -448,8 +484,8 @@ export default function CustomersPage() {
                   { value: 'createdAt:asc', label: 'Oldest first' },
                   { value: 'name:asc', label: 'Account Head (A–Z)' },
                   { value: 'name:desc', label: 'Account Head (Z–A)' },
-                  { value: 'openingBalance:desc', label: 'Opening Balance (High to Low)' },
-                  { value: 'openingBalance:asc', label: 'Opening Balance (Low to High)' },
+                  { value: 'openingBalance:desc', label: 'Balance (High to Low)' },
+                  { value: 'openingBalance:asc', label: 'Balance (Low to High)' },
                   { value: 'updatedAt:desc', label: 'Recently updated' },
                   { value: 'city:asc', label: 'City (A–Z)' }
                 ]}

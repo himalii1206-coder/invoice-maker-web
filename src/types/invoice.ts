@@ -156,7 +156,12 @@ export interface InvoiceListRow {
   createdAt: string;
   updatedAt: string;
   customerId: string;
+  consigneeCustomerId?: string | null;
+  shippingName?: string | null;
+  shippingState?: string | null;
+  shippingGstin?: string | null;
   customer: InvoiceCustomerRef;
+  consigneeCustomer?: InvoiceCustomerRef | null;
   quotations?: Array<{
     id: string;
     quotationNumber: string;
@@ -196,6 +201,12 @@ export interface Invoice extends InvoiceListRow {
   billingCity?: string | null;
   billingCountry?: string | null;
   billingPostalCode?: string | null;
+  shippingEmail?: string | null;
+  shippingPhone?: string | null;
+  shippingAddress?: string | null;
+  shippingCity?: string | null;
+  shippingCountry?: string | null;
+  shippingPostalCode?: string | null;
   items: InvoiceItem[];
   payments: InvoicePayment[];
   notesDocs: LinkedNoteRef[];
@@ -215,6 +226,16 @@ export interface InvoiceItemPayload {
 
 export interface InvoicePayload {
   customerId: string;
+  consigneeCustomerId?: string | null;
+  shippingName?: string;
+  shippingEmail?: string;
+  shippingPhone?: string;
+  shippingGstin?: string;
+  shippingAddress?: string;
+  shippingCity?: string;
+  shippingState?: string;
+  shippingCountry?: string;
+  shippingPostalCode?: string;
   quotationId?: string | null;
   invoiceNumber?: string;
   billType?: string;

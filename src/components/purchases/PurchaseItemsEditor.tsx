@@ -55,12 +55,15 @@ export const createEmptyPurchaseItem = (taxRate: number): PurchaseEditorItem => 
 };
 
 const CATEGORY_OPTIONS: Array<{ value: ItemCategory; label: string }> = [
-  { value: 'GOODS', label: 'Goods / Merchandise' },
+  { value: 'GOODS', label: 'Goods' },
   { value: 'RAW_MATERIAL', label: 'Raw Material' },
-  { value: 'CAPITAL_ASSET', label: 'Capital Asset (Machinery / Equipment)' },
-  { value: 'SERVICE', label: 'Inward Service' },
-  { value: 'EXPENSE', label: 'Business Expense' }
+  { value: 'CAPITAL_ASSET', label: 'Capital Asset' },
+  { value: 'SERVICE', label: 'Service' },
+  { value: 'EXPENSE', label: 'Expense' }
 ];
+
+const cellInput =
+  'w-full h-8 px-2 bg-warm-input text-warm-text placeholder:text-warm-placeholder text-xs rounded-none border border-warm-border/60 transition-colors focus:outline-none focus:ring-1 focus:ring-warm-accent focus:border-warm-accent disabled:opacity-60 tabular-nums';
 
 export function PurchaseItemsEditor({
   items,
@@ -70,62 +73,78 @@ export function PurchaseItemsEditor({
   defaultTaxRate,
   gstRates,
   units,
-  disabled,
+  disabled = false,
   errors = {}
 }: PurchaseItemsEditorProps) {
-  const updateItem = (index: number, patch: Partial<PurchaseEditorItem>) => {
-    const next = [...items];
-    next[index] = { ...next[index], ...patch };
-    onChange(next);
+  const patch = (index: number, changes: Partial<PurchaseEditorItem>) => {
+    onChange(items.map((item, i) => (i === index ? { ...item, ...changes } : item)));
   };
+
+  const defaultUnit = units[0] ?? 'PCS';
 
   const addItem = () => {
     onChange([...items, createEmptyPurchaseItem(defaultTaxRate)]);
   };
 
   const removeItem = (index: number) => {
-    if (items.length <= 1) return;
+    if (items.length <= 1) {
+      onChange([createEmptyPurchaseItem(defaultTaxRate)]);
+      return;
+    }
     onChange(items.filter((_, i) => i !== index));
   };
 
-  const moveItem = (index: number, direction: 'up' | 'down') => {
-    const target = direction === 'up' ? index - 1 : index + 1;
+  const move = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
     if (target < 0 || target >= items.length) return;
+
     const next = [...items];
-    const [row] = next.splice(index, 1);
-    next.splice(target, 0, row);
+    const moved = next[index];
+    const swapped = next[target];
+    if (!moved || !swapped) return;
+
+    next[index] = swapped;
+    next[target] = moved;
     onChange(next);
   };
 
   const handleProductSelect = (index: number, product: Product) => {
-    updateItem(index, {
+    patch(index, {
       productId: product.id,
       name: product.name,
       description: product.description ?? '',
       hsnSacCode: product.hsnSacCode ?? '',
-      unit: product.unit || 'PCS',
+      unit: product.unit || defaultUnit,
       unitPrice: String(toNumber(product.price)),
       taxRate: String(toNumber(product.taxRate ?? defaultTaxRate))
     });
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 pb-2 border-b border-warm-border/60">
         <div>
           <h3 className="text-xs font-bold uppercase tracking-wider text-warm-text">
-            Line Items (Goods, Raw Materials & Services)
+            Line Items ({items.length})
           </h3>
           <p className="text-[11px] text-warm-textMuted mt-0.5">
-            GST calculation: <span className="font-semibold text-warm-accent">{isIgst ? 'Interstate (IGST)' : 'Intrastate (CGST + SGST 50/50)'}</span>
-            {isReverseCharge && <span className="ml-2 font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 border border-amber-200">RCM ACTIVE</span>}
+            GST Regime:{' '}
+            <span className="font-semibold text-warm-accent">
+              {isIgst ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST 50/50)'}
+            </span>
+            {isReverseCharge && (
+              <span className="ml-2 font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 border border-amber-300 text-[10px]">
+                RCM ACTIVE
+              </span>
+            )}
           </p>
         </div>
+
         <Button
           type="button"
           size="sm"
           variant="outline"
-          leftIcon={<Plus className="w-4 h-4" />}
+          leftIcon={<Plus className="w-3.5 h-3.5" />}
           onClick={addItem}
           disabled={disabled}
           className="shrink-0"
@@ -134,250 +153,256 @@ export function PurchaseItemsEditor({
         </Button>
       </div>
 
-      <div className="space-y-3">
-        {items.map((item, index) => {
-          const line = computeLine(
-            {
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              discountPercent: item.discountPercent,
-              taxRate: item.taxRate
-            },
-            isIgst,
-            { isReverseCharge }
-          );
+      <div className="bg-warm-surface border border-warm-border/70 shadow-warm overflow-x-auto">
+        <table className="w-full min-w-[840px] text-left border-collapse">
+          <thead className="bg-warm-input/70 border-b border-warm-border/80">
+            <tr className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle">
+              <th className="py-2 px-2 w-8 text-center">#</th>
+              <th className="py-2 px-2 min-w-[220px]">Item &amp; Description</th>
+              <th className="py-2 px-2 w-[85px]">Category</th>
+              <th className="py-2 px-2 w-[90px]">HSN/SAC</th>
+              <th className="py-2 px-2 w-[75px] text-right">Qty</th>
+              <th className="py-2 px-2 w-[80px]">Unit</th>
+              <th className="py-2 px-2 w-[100px] text-right">Rate (₹)</th>
+              <th className="py-2 px-2 w-[75px] text-right">Disc %</th>
+              <th className="py-2 px-2 w-[85px] text-right">GST %</th>
+              <th className="py-2 px-2 w-[105px] text-right">Amount (₹)</th>
+              <th className="py-2 px-2 w-12 text-center">Action</th>
+            </tr>
+          </thead>
 
-          const rowError = errors[index];
+          <tbody className="divide-y divide-warm-border/40">
+            {items.map((item, index) => {
+              const line = computeLine(
+                {
+                  quantity: item.quantity,
+                  unitPrice: item.unitPrice,
+                  discountPercent: item.discountPercent,
+                  taxRate: item.taxRate
+                },
+                isIgst,
+                {
+                  gstEnabled: true,
+                  isReverseCharge
+                }
+              );
 
-          return (
-            <div
-              key={item.key}
-              className={cn(
-                'p-4 bg-warm-input/30 border border-warm-border/60 transition-all rounded-none',
-                rowError && 'border-red-400 bg-red-50/20'
-              )}
-            >
-              {/* Top Bar of Row */}
-              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 sm:gap-3 mb-3">
-                <div className="flex items-center gap-2 flex-1 min-w-0 w-full sm:w-auto">
-                  <span className="w-5 h-5 flex items-center justify-center bg-warm-accent text-white text-[10px] font-bold rounded-full shrink-0">
-                    {index + 1}
-                  </span>
-                  <div className="w-full sm:w-64 min-w-0">
-                    <ProductPicker
-                      value={item.name}
-                      onTextChange={(val) => updateItem(index, { name: val })}
-                      onSelect={(prod) => handleProductSelect(index, prod)}
+              const rowError = errors[index];
+
+              return (
+                <tr
+                  key={item.key}
+                  className={cn(
+                    'hover:bg-warm-input/20 transition-colors',
+                    rowError && 'bg-red-50/40'
+                  )}
+                >
+                  {/* # and Reorder */}
+                  <td className="py-2 px-1 text-center align-top pt-2.5">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span className="text-[11px] font-bold text-warm-textMuted">
+                        {index + 1}
+                      </span>
+                      <div className="flex flex-col">
+                        <button
+                          type="button"
+                          onClick={() => move(index, -1)}
+                          disabled={disabled || index === 0}
+                          className="text-warm-textMuted hover:text-warm-text disabled:opacity-20 cursor-pointer"
+                          title="Move up"
+                        >
+                          <ChevronUp className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => move(index, 1)}
+                          disabled={disabled || index === items.length - 1}
+                          className="text-warm-textMuted hover:text-warm-text disabled:opacity-20 cursor-pointer"
+                          title="Move down"
+                        >
+                          <ChevronDown className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Name & Description */}
+                  <td className="py-2 px-2 align-top">
+                    <div className="space-y-1">
+                      <ProductPicker
+                        value={item.name}
+                        disabled={disabled}
+                        error={Boolean(rowError)}
+                        placeholder="Select or enter item name *"
+                        onTextChange={(value) =>
+                          patch(index, { name: value, productId: null })
+                        }
+                        onSelect={(product) => handleProductSelect(index, product)}
+                      />
+                      <input
+                        type="text"
+                        value={item.description}
+                        disabled={disabled}
+                        onChange={(e) => patch(index, { description: e.target.value })}
+                        placeholder="Description / Remarks (optional)"
+                        className={cellInput}
+                      />
+                      {rowError && (
+                        <p className="text-[10px] font-medium text-red-600">{rowError}</p>
+                      )}
+                    </div>
+                  </td>
+
+                  {/* Category */}
+                  <td className="py-2 px-2 align-top">
+                    <select
+                      value={item.category}
                       disabled={disabled}
+                      onChange={(e) =>
+                        patch(index, { category: e.target.value as ItemCategory })
+                      }
+                      className={cn(cellInput, 'cursor-pointer px-1 text-[11px]')}
+                    >
+                      {CATEGORY_OPTIONS.map((cat) => (
+                        <option key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+
+                  {/* HSN / SAC */}
+                  <td className="py-2 px-2 align-top">
+                    <input
+                      type="text"
+                      value={item.hsnSacCode}
+                      disabled={disabled}
+                      onChange={(e) => patch(index, { hsnSacCode: e.target.value })}
+                      placeholder="HSN/SAC"
+                      className={cellInput}
                     />
-                  </div>
-                </div>
+                  </td>
 
-                <div className="flex items-center gap-1 shrink-0 ml-auto sm:ml-0">
-                  <button
-                    type="button"
-                    onClick={() => moveItem(index, 'up')}
-                    disabled={disabled || index === 0}
-                    className="p-1 text-warm-textSubtle hover:text-warm-text disabled:opacity-30"
-                    title="Move Up"
-                  >
-                    <ChevronUp className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => moveItem(index, 'down')}
-                    disabled={disabled || index === items.length - 1}
-                    className="p-1 text-warm-textSubtle hover:text-warm-text disabled:opacity-30"
-                    title="Move Down"
-                  >
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeItem(index)}
-                    disabled={disabled || items.length <= 1}
-                    className="p-1 text-red-500 hover:text-red-700 disabled:opacity-30 ml-2"
-                    title="Delete Row"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+                  {/* Qty */}
+                  <td className="py-2 px-2 align-top">
+                    <input
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={item.quantity}
+                      disabled={disabled}
+                      onChange={(e) => patch(index, { quantity: e.target.value })}
+                      placeholder="1"
+                      className={cn(cellInput, 'text-right')}
+                    />
+                  </td>
 
-              {/* Item Name, HSN, Category */}
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 mb-3">
-                <div className="sm:col-span-5">
-                  <label className="text-[11px] font-semibold text-warm-textMuted block mb-1">
-                    Item Description / Title *
-                  </label>
-                  <input
-                    type="text"
-                    value={item.name}
-                    onChange={(e) => updateItem(index, { name: e.target.value })}
-                    placeholder="Enter item or raw material description"
-                    disabled={disabled}
-                    className="w-full h-8 px-2.5 bg-warm-surface border border-warm-border text-xs text-warm-text rounded-none focus:outline-none focus:ring-1 focus:ring-warm-accent"
-                  />
-                </div>
+                  {/* Unit */}
+                  <td className="py-2 px-2 align-top">
+                    <select
+                      value={item.unit}
+                      disabled={disabled}
+                      onChange={(e) => patch(index, { unit: e.target.value })}
+                      className={cn(cellInput, 'cursor-pointer px-1 uppercase text-[11px]')}
+                    >
+                      {units.map((u) => (
+                        <option key={u} value={u}>
+                          {u}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
 
-                <div className="sm:col-span-3">
-                  <label className="text-[11px] font-semibold text-warm-textMuted block mb-1">
-                    Item Category
-                  </label>
-                  <select
-                    value={item.category}
-                    onChange={(e) => updateItem(index, { category: e.target.value as ItemCategory })}
-                    disabled={disabled}
-                    className="w-full h-8 px-2 bg-warm-surface border border-warm-border text-xs text-warm-text rounded-none focus:outline-none focus:ring-1 focus:ring-warm-accent"
-                  >
-                    {CATEGORY_OPTIONS.map((cat) => (
-                      <option key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  {/* Rate */}
+                  <td className="py-2 px-2 align-top">
+                    <input
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={item.unitPrice}
+                      disabled={disabled}
+                      onChange={(e) => patch(index, { unitPrice: e.target.value })}
+                      placeholder="0.00"
+                      className={cn(cellInput, 'text-right')}
+                    />
+                  </td>
 
-                <div className="sm:col-span-2">
-                  <label className="text-[11px] font-semibold text-warm-textMuted block mb-1">
-                    HSN / SAC
-                  </label>
-                  <input
-                    type="text"
-                    value={item.hsnSacCode}
-                    onChange={(e) => updateItem(index, { hsnSacCode: e.target.value })}
-                    placeholder="Enter HSN / SAC"
-                    disabled={disabled}
-                    className="w-full h-8 px-2.5 bg-warm-surface border border-warm-border text-xs text-warm-text rounded-none focus:outline-none focus:ring-1 focus:ring-warm-accent"
-                  />
-                </div>
+                  {/* Discount % */}
+                  <td className="py-2 px-2 align-top">
+                    <input
+                      type="number"
+                      step="any"
+                      min="0"
+                      max="100"
+                      value={item.discountPercent}
+                      disabled={disabled}
+                      onChange={(e) => patch(index, { discountPercent: e.target.value })}
+                      placeholder="0"
+                      className={cn(cellInput, 'text-right')}
+                    />
+                  </td>
 
-                <div className="sm:col-span-2">
-                  <label className="text-[11px] font-semibold text-warm-textMuted block mb-1">
-                    Unit
-                  </label>
-                  <select
-                    value={item.unit}
-                    onChange={(e) => updateItem(index, { unit: e.target.value })}
-                    disabled={disabled}
-                    className="w-full h-8 px-2 bg-warm-surface border border-warm-border text-xs text-warm-text rounded-none focus:outline-none focus:ring-1 focus:ring-warm-accent"
-                  >
-                    {units.map((u) => (
-                      <option key={u} value={u}>
-                        {u}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+                  {/* GST % */}
+                  <td className="py-2 px-2 align-top">
+                    <select
+                      value={item.taxRate}
+                      disabled={disabled}
+                      onChange={(e) => patch(index, { taxRate: e.target.value })}
+                      className={cn(cellInput, 'cursor-pointer text-right px-1 text-[11px]')}
+                    >
+                      {gstRates.map((rate) => (
+                        <option key={rate} value={rate}>
+                          {rate}%
+                        </option>
+                      ))}
+                    </select>
+                  </td>
 
-              {/* Numeric Inputs & Line Totals */}
-              <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 items-end pt-2 border-t border-warm-border/40">
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-warm-textMuted block mb-1">
-                    Qty *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.001"
-                    min="0"
-                    value={item.quantity}
-                    onChange={(e) => updateItem(index, { quantity: e.target.value })}
-                    placeholder="1"
-                    disabled={disabled}
-                    className="w-full h-8 px-2 bg-warm-surface border border-warm-border text-xs text-warm-text text-right rounded-none focus:outline-none focus:ring-1 focus:ring-warm-accent"
-                  />
-                </div>
+                  {/* Taxable Amount */}
+                  <td className="py-2 px-2 text-right align-top pt-2.5">
+                    <span className="text-xs font-semibold text-warm-text tabular-nums block">
+                      {formatCurrency(line.taxableAmount)}
+                    </span>
+                    <span className="text-[10px] text-warm-textMuted block">
+                      Tax: {formatCurrency(line.taxAmount)}
+                    </span>
+                  </td>
 
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-warm-textMuted block mb-1">
-                    Purchase Rate (₹) *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={item.unitPrice}
-                    onChange={(e) => updateItem(index, { unitPrice: e.target.value })}
-                    placeholder="0.00"
-                    disabled={disabled}
-                    className="w-full h-8 px-2 bg-warm-surface border border-warm-border text-xs text-warm-text text-right rounded-none focus:outline-none focus:ring-1 focus:ring-warm-accent"
-                  />
-                </div>
+                  {/* Delete Button */}
+                  <td className="py-2 px-2 text-center align-top pt-2.5">
+                    <button
+                      type="button"
+                      onClick={() => removeItem(index)}
+                      disabled={disabled}
+                      className="p-1 text-warm-textMuted hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-30 cursor-pointer"
+                      title="Delete Item"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
 
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-warm-textMuted block mb-1">
-                    Discount (%)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                    value={item.discountPercent}
-                    onChange={(e) => updateItem(index, { discountPercent: e.target.value })}
-                    placeholder="0"
-                    disabled={disabled}
-                    className="w-full h-8 px-2 bg-warm-surface border border-warm-border text-xs text-warm-text text-right rounded-none focus:outline-none focus:ring-1 focus:ring-warm-accent"
-                  />
-                </div>
+        {/* Table Footer */}
+        <div className="p-2.5 bg-warm-input/30 border-t border-warm-border/60 flex flex-wrap items-center justify-between gap-3">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            leftIcon={<Plus className="w-3.5 h-3.5" />}
+            onClick={addItem}
+            disabled={disabled}
+          >
+            Add Line Item
+          </Button>
 
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-warm-textMuted block mb-1">
-                    GST Rate (%)
-                  </label>
-                  <select
-                    value={item.taxRate}
-                    onChange={(e) => updateItem(index, { taxRate: e.target.value })}
-                    disabled={disabled}
-                    className="w-full h-8 px-2 bg-warm-surface border border-warm-border text-xs text-warm-text text-right rounded-none focus:outline-none focus:ring-1 focus:ring-warm-accent"
-                  >
-                    {gstRates.map((r) => (
-                      <option key={r} value={r}>
-                        {r}%
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-warm-textMuted block mb-1">
-                    Tax Amount
-                  </label>
-                  <div className="h-8 px-2 bg-warm-input/60 border border-warm-border/50 text-xs text-warm-text flex items-center justify-end font-semibold">
-                    {formatCurrency(line.taxAmount)}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-warm-accent block mb-1">
-                    Line Total
-                  </label>
-                  <div className="h-8 px-2 bg-warm-accent/10 border border-warm-accent/30 text-xs font-bold text-warm-text flex items-center justify-end">
-                    {formatCurrency(line.total)}
-                  </div>
-                </div>
-              </div>
-
-              {/* Tax Breakup Details for Intrastate / Interstate */}
-              <div className="mt-2 text-[10px] text-warm-textSubtle flex flex-wrap items-center gap-4">
-                <span>Taxable: {formatCurrency(line.taxableAmount)}</span>
-                {isIgst ? (
-                  <span>IGST ({line.igstRate}%): {formatCurrency(line.igstAmount)}</span>
-                ) : (
-                  <>
-                    <span>CGST ({line.cgstRate}%): {formatCurrency(line.cgstAmount)}</span>
-                    <span>SGST ({line.sgstRate}%): {formatCurrency(line.sgstAmount)}</span>
-                  </>
-                )}
-              </div>
-
-              {rowError && (
-                <p className="mt-2 text-xs font-semibold text-red-600">{rowError}</p>
-              )}
-            </div>
-          );
-        })}
+          <span className="text-xs text-warm-textMuted">
+            {items.length} item{items.length === 1 ? '' : 's'} in bill
+          </span>
+        </div>
       </div>
     </div>
   );

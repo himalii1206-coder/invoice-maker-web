@@ -84,29 +84,29 @@ export function QuotationTotals({
           <Row label="Discount" value={discountAmount} negative />
         )}
 
-        {/* CGST */}
-        <Row
-          label={halfRate !== undefined && !isIgst ? `CGST @ ${halfRate}%` : 'CGST'}
-          value={isIgst ? 0 : cgstAmount}
-          muted={isIgst}
-        />
-
-        {/* SGST */}
-        <Row
-          label={halfRate !== undefined && !isIgst ? `SGST @ ${halfRate}%` : 'SGST'}
-          value={isIgst ? 0 : sgstAmount}
-          muted={isIgst}
-        />
-
-        {/* IGST */}
-        <Row
-          label={taxRate !== undefined && isIgst ? `IGST @ ${taxRate}%` : 'IGST'}
-          value={isIgst ? igstAmount : 0}
-          muted={!isIgst}
-        />
+        {/* Tax breakdown: Show IGST for Inter-State, or CGST+SGST for Intra-State */}
+        {isIgst ? (
+          <Row
+            label={taxRate !== undefined ? `IGST @ ${taxRate}%` : 'IGST'}
+            value={igstAmount}
+          />
+        ) : (
+          <>
+            <Row
+              label={halfRate !== undefined ? `CGST @ ${halfRate}%` : 'CGST'}
+              value={cgstAmount}
+            />
+            <Row
+              label={halfRate !== undefined ? `SGST @ ${halfRate}%` : 'SGST'}
+              value={sgstAmount}
+            />
+          </>
+        )}
 
         {/* Forwarding & Packaging */}
-        <Row label="Extra Charges" value={forwardingPackagingAmount} />
+        {forwardingPackagingAmount > 0 && (
+          <Row label="Extra Charges" value={forwardingPackagingAmount} />
+        )}
 
         <div className="my-2 border-t border-dashed border-warm-border/80" />
 

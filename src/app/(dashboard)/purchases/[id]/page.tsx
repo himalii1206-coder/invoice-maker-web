@@ -5,14 +5,16 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'react-toastify';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { LoadingState } from '@/components/ui/LoadingState';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { RecordPaymentModal } from '@/components/purchases/RecordPaymentModal';
 import { purchaseBillsApi } from '@/lib/purchases';
 import { PurchaseBill, PurchaseBillStatus } from '@/types/purchase';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import {
   ArrowLeft,
@@ -31,7 +33,10 @@ import {
   Clock,
   CheckCircle2,
   FileText,
-  Plus
+  Plus,
+  Layers,
+  CreditCard,
+  ChevronDown
 } from 'lucide-react';
 
 const STATUS_VARIANTS: Record<PurchaseBillStatus, 'draft' | 'pending' | 'paid' | 'overdue' | 'neutral'> = {
@@ -45,7 +50,7 @@ const STATUS_VARIANTS: Record<PurchaseBillStatus, 'draft' | 'pending' | 'paid' |
 
 const STATUS_LABELS: Record<PurchaseBillStatus, string> = {
   DRAFT: 'Draft Voucher',
-  RECEIVED: 'Received (Unpaid)',
+  RECEIVED: 'Pending Payment',
   PARTIALLY_PAID: 'Partially Paid',
   PAID: 'Paid in Full',
   OVERDUE: 'Overdue',
@@ -60,6 +65,9 @@ export default function PurchaseBillDetailPage() {
 
   const [bill, setBill] = useState<PurchaseBill | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'details' | 'payments'>('details');
+
+  // Modals & Action states
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -115,51 +123,69 @@ export default function PurchaseBillDetailPage() {
   if (isLoading) {
     return (
       <DashboardLayout>
-        <LoadingState message="Loading purchase bill details..." />
+        <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-8">
+          <LoadingState message="Loading purchase bill details..." />
+        </div>
       </DashboardLayout>
     );
   }
 
-  if (!bill) return null;
+  if (!bill) {
+    return (
+      <DashboardLayout>
+        <EmptyState
+          title="Purchase Bill not found"
+          description="This purchase bill voucher does not exist or has been removed."
+          icon={<Receipt className="w-8 h-8 text-warm-accent" />}
+          actionLabel="Back to Purchase Bills"
+          onAction={() => router.push('/purchases')}
+        />
+      </DashboardLayout>
+    );
+  }
 
   const balanceDue = Number(bill.balanceDue) || 0;
   const amountPaid = Number(bill.amountPaid) || 0;
   const grandTotal = Number(bill.grandTotal) || 0;
+  const taxableAmount = Number(bill.taxableAmount) || 0;
+  const isPaid = bill.status === 'PAID' || (balanceDue === 0 && grandTotal > 0);
+  const isCancelled = bill.status === 'CANCELLED';
+
+  // Populated logistics badges
+  const referencePills = [
+    bill.vendorInvoiceNumber && { label: 'Supplier Inv No', value: bill.vendorInvoiceNumber },
+    bill.poNumber && { label: 'PO No', value: bill.poNumber },
+    bill.poDate && { label: 'PO Date', value: formatDate(bill.poDate) },
+    bill.grnNumber && { label: 'GRN No', value: bill.grnNumber },
+    bill.grnDate && { label: 'GRN Date', value: formatDate(bill.grnDate) },
+    bill.transporterName && { label: 'Transporter', value: bill.transporterName },
+    bill.vehicleNumber && { label: 'Vehicle', value: bill.vehicleNumber },
+    bill.lrNumber && { label: 'LR / Bilty', value: bill.lrNumber },
+    bill.lrDate && { label: 'LR Date', value: formatDate(bill.lrDate) },
+    bill.paymentTerms && { label: 'Terms', value: bill.paymentTerms }
+  ].filter(Boolean) as { label: string; value: string }[];
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-5xl mx-auto">
-        {/* Top Control Bar */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-warm-surface border border-warm-border/70 rounded-none shadow-warm print:hidden">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push('/purchases')}
-              leftIcon={<ArrowLeft className="w-4 h-4" />}
-            >
-              Back to Bills
-            </Button>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-warm-text">
-                  {bill.billNumber}
-                </h2>
-                <Badge variant={STATUS_VARIANTS[bill.status]}>
-                  {STATUS_LABELS[bill.status]}
-                </Badge>
-              </div>
-              <span className="text-xs text-warm-textMuted">
-                Supplier Invoice No: <strong className="text-warm-text">{bill.vendorInvoiceNumber || '—'}</strong>
-              </span>
-            </div>
-          </div>
+      {/* Top Header */}
+      <PageHeader
+        title={`Purchase Bill ${bill.billNumber}`}
+        description={`Inward from ${bill.vendorName} · Invoice Date: ${formatDate(bill.billDate)}`}
+        breadcrumbs={[
+          { label: 'Dashboard', href: '/dashboard' },
+          { label: 'Purchase Bills', href: '/purchases' },
+          { label: bill.billNumber }
+        ]}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={STATUS_VARIANTS[bill.status]}>
+              {STATUS_LABELS[bill.status]}
+            </Badge>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            {balanceDue > 0 && bill.status !== 'CANCELLED' && (
+            {balanceDue > 0 && !isCancelled && (
               <Button
                 size="sm"
-                leftIcon={<DollarSign className="w-4 h-4" />}
+                leftIcon={<Plus className="w-4 h-4" />}
                 onClick={() => setIsPaymentModalOpen(true)}
               >
                 Record Payment
@@ -167,12 +193,12 @@ export default function PurchaseBillDetailPage() {
             )}
 
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               leftIcon={<Printer className="w-4 h-4" />}
               onClick={() => window.print()}
             >
-              Print Voucher
+              Print
             </Button>
 
             <Link href={`/purchases/${bill.id}/edit`}>
@@ -185,375 +211,604 @@ export default function PurchaseBillDetailPage() {
               variant="ghost"
               size="sm"
               onClick={() => setDeleteModalOpen(true)}
-              className="text-red-600 hover:bg-red-50"
+              className="text-red-600 hover:bg-red-50 hover:text-red-700"
             >
               <Trash2 className="w-4 h-4" />
             </Button>
           </div>
+        }
+      />
+
+      {/* ---------------------------------------------------------------------- */}
+      {/* 1. Quick Glance Metric Summary Bar */}
+      {/* ---------------------------------------------------------------------- */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
+        <div className="bg-warm-surface border border-warm-border/70 shadow-warm p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle">
+              Total Bill Amount
+            </p>
+            <Receipt className="w-4 h-4 text-warm-accent" />
+          </div>
+          <p className="text-lg font-bold text-warm-text mt-1 tabular-nums">
+            {formatCurrency(grandTotal)}
+          </p>
+          <p className="text-[11px] text-warm-textMuted mt-0.5">
+            Taxable: {formatCurrency(taxableAmount)}
+          </p>
         </div>
 
-        {/* Printable Purchase Voucher Card */}
-        <div className="bg-warm-surface border border-warm-border/80 shadow-warm p-6 sm:p-8 rounded-none space-y-6">
-          {/* Voucher Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start border-b border-warm-border/70 pb-6 gap-6">
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-warm-accent block mb-1">
-                INWARD PURCHASE BILL / GOODS INWARD VOUCHER
-              </span>
-              <h1 className="text-2xl font-black text-warm-text">
-                {bill.billNumber}
-              </h1>
-              <p className="text-xs text-warm-textMuted mt-1">
-                FY: <span className="font-semibold text-warm-text">{bill.financialYear}</span> | Created on {formatDate(bill.createdAt)}
-              </p>
-            </div>
-
-            <div className="text-left sm:text-right space-y-1">
-              <div className="text-xs">
-                <span className="text-warm-textMuted">Vendor Invoice Date: </span>
-                <strong className="text-warm-text">{formatDate(bill.billDate)}</strong>
-              </div>
-              {bill.dueDate && (
-                <div className="text-xs">
-                  <span className="text-warm-textMuted">Payment Due: </span>
-                  <strong className="text-amber-800">{formatDate(bill.dueDate)}</strong>
-                </div>
-              )}
-              {bill.paymentTerms && (
-                <div className="text-xs text-warm-textMuted">
-                  Terms: <span className="font-medium text-warm-text">{bill.paymentTerms}</span>
-                </div>
-              )}
-            </div>
+        <div className="bg-warm-surface border border-warm-border/70 shadow-warm p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle">
+              Amount Paid
+            </p>
+            <CreditCard className="w-4 h-4 text-emerald-600" />
           </div>
-
-          {/* Supplier & Organization Details */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-4 bg-warm-input/20 border border-warm-border/50">
-            {/* Supplier / Vendor */}
-            <div className="space-y-1.5 text-xs">
-              <div className="flex items-center gap-1.5 text-warm-accent font-bold uppercase text-[10px] tracking-wider mb-1">
-                <Truck className="w-3.5 h-3.5" />
-                <span>Supplier / Inward From:</span>
-              </div>
-              <h3 className="font-bold text-sm text-warm-text">{bill.vendorName}</h3>
-              {bill.vendorGstin && (
-                <p className="text-warm-text">
-                  GSTIN: <span className="font-bold">{bill.vendorGstin}</span>
-                </p>
-              )}
-              {bill.vendorAddress && <p className="text-warm-textMuted">{bill.vendorAddress}</p>}
-              <p className="text-warm-textMuted">
-                {bill.vendorCity ? `${bill.vendorCity}, ` : ''}{bill.vendorState || 'India'}
-                {bill.vendorPostalCode ? ` - ${bill.vendorPostalCode}` : ''}
-              </p>
-              {bill.vendorPhone && (
-                <p className="text-warm-textMuted">Phone: {bill.vendorPhone}</p>
-              )}
-            </div>
-
-            {/* Buyer Company */}
-            <div className="space-y-1.5 text-xs sm:border-l sm:border-warm-border/50 sm:pl-6">
-              <div className="flex items-center gap-1.5 text-warm-accent font-bold uppercase text-[10px] tracking-wider mb-1">
-                <Building2 className="w-3.5 h-3.5" />
-                <span>Billed To / Received By:</span>
-              </div>
-              <h3 className="font-bold text-sm text-warm-text">{company?.name}</h3>
-              {company?.gstin && (
-                <p className="text-warm-text">
-                  GSTIN: <span className="font-bold">{company.gstin}</span>
-                </p>
-              )}
-              {company?.address && <p className="text-warm-textMuted">{company.address}</p>}
-              <p className="text-warm-textMuted">
-                {company?.city ? `${company.city}, ` : ''}{company?.state || 'India'}
-              </p>
-              <div className="pt-1">
-                <Badge variant={bill.isIgst ? 'pending' : 'paid'} className="text-[10px]">
-                  {bill.isIgst ? 'Interstate Supply (IGST)' : 'Intrastate Supply (CGST + SGST)'}
-                </Badge>
-              </div>
-            </div>
-          </div>
-
-          {/* Logistics & Inward References Strip */}
-          {(bill.poNumber || bill.grnNumber || bill.transporterName || bill.vehicleNumber || bill.lrNumber) && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-3 bg-warm-input/40 border border-warm-border/50 text-xs">
-              {bill.poNumber && (
-                <div>
-                  <span className="text-[10px] text-warm-textSubtle block uppercase">Purchase Order (PO)</span>
-                  <span className="font-bold text-warm-text">{bill.poNumber}</span>
-                  {bill.poDate && <span className="text-[10px] text-warm-textMuted block">{formatDate(bill.poDate)}</span>}
-                </div>
-              )}
-              {bill.grnNumber && (
-                <div>
-                  <span className="text-[10px] text-warm-textSubtle block uppercase">GRN / Inward Challan</span>
-                  <span className="font-bold text-warm-text">{bill.grnNumber}</span>
-                  {bill.grnDate && <span className="text-[10px] text-warm-textMuted block">{formatDate(bill.grnDate)}</span>}
-                </div>
-              )}
-              {(bill.transporterName || bill.vehicleNumber) && (
-                <div>
-                  <span className="text-[10px] text-warm-textSubtle block uppercase">Transporter & Vehicle</span>
-                  <span className="font-semibold text-warm-text">{bill.transporterName || '—'}</span>
-                  {bill.vehicleNumber && <span className="text-[10px] text-warm-accent font-semibold block">{bill.vehicleNumber}</span>}
-                </div>
-              )}
-              {bill.lrNumber && (
-                <div>
-                  <span className="text-[10px] text-warm-textSubtle block uppercase">LR / Bilty Details</span>
-                  <span className="font-bold text-warm-text">{bill.lrNumber}</span>
-                  {bill.lrDate && <span className="text-[10px] text-warm-textMuted block">{formatDate(bill.lrDate)}</span>}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Line Items Table */}
-          <div className="overflow-x-auto border border-warm-border/70">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-warm-input/70 border-b border-warm-border/70 text-warm-text uppercase tracking-wider text-[10px] font-bold">
-                <tr>
-                  <th className="p-2.5 w-10 text-center">#</th>
-                  <th className="p-2.5">Item Description & HSN</th>
-                  <th className="p-2.5">Category</th>
-                  <th className="p-2.5 text-right">Qty</th>
-                  <th className="p-2.5 text-right">Unit Rate</th>
-                  <th className="p-2.5 text-right">Disc %</th>
-                  <th className="p-2.5 text-right">Taxable</th>
-                  <th className="p-2.5 text-right">GST Rate</th>
-                  <th className="p-2.5 text-right">GST Amount</th>
-                  <th className="p-2.5 text-right">Line Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-warm-border/50">
-                {bill.items.map((item, idx) => (
-                  <tr key={item.id} className="hover:bg-warm-input/20">
-                    <td className="p-2.5 text-center text-warm-textSubtle">{idx + 1}</td>
-                    <td className="p-2.5">
-                      <span className="font-bold text-warm-text block">{item.name}</span>
-                      {item.hsnSacCode && (
-                        <span className="text-[10px] text-warm-textSubtle">
-                          HSN: {item.hsnSacCode}
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-2.5">
-                      <span className="text-[11px] text-warm-textMuted">{item.category}</span>
-                    </td>
-                    <td className="p-2.5 text-right font-semibold">
-                      {Number(item.quantity)} {item.unit}
-                    </td>
-                    <td className="p-2.5 text-right">
-                      {formatCurrency(item.unitPrice)}
-                    </td>
-                    <td className="p-2.5 text-right text-warm-textMuted">
-                      {Number(item.discountPercent)}%
-                    </td>
-                    <td className="p-2.5 text-right font-semibold">
-                      {formatCurrency(item.taxableAmount)}
-                    </td>
-                    <td className="p-2.5 text-right">
-                      {Number(item.taxRate)}%
-                    </td>
-                    <td className="p-2.5 text-right text-warm-text">
-                      {formatCurrency(item.taxAmount)}
-                    </td>
-                    <td className="p-2.5 text-right font-bold text-warm-text">
-                      {formatCurrency(item.total)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Tax Breakdown & Financial Totals */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
-            <div className="lg:col-span-6 space-y-3 text-xs">
-              <div className="p-3.5 bg-warm-input/30 border border-warm-border/60 space-y-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-warm-accent block">
-                  Statutory ITC & Compliance Details
-                </span>
-                <div className="flex justify-between text-warm-textMuted">
-                  <span>ITC Eligibility:</span>
-                  <span className="font-semibold text-warm-text">{bill.itcEligibility}</span>
-                </div>
-                <div className="flex justify-between text-warm-textMuted">
-                  <span>Reverse Charge (RCM):</span>
-                  <span className="font-semibold text-warm-text">{bill.isReverseCharge ? 'Yes' : 'No'}</span>
-                </div>
-                {bill.notes && (
-                  <div className="pt-2 border-t border-warm-border/40">
-                    <span className="text-[10px] text-warm-textSubtle block font-semibold">Remarks:</span>
-                    <p className="text-warm-text italic">{bill.notes}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="lg:col-span-6 space-y-2 text-xs">
-              <div className="flex justify-between text-warm-textMuted">
-                <span>Taxable Amount:</span>
-                <span className="font-semibold text-warm-text">{formatCurrency(bill.taxableAmount)}</span>
-              </div>
-
-              {bill.isIgst ? (
-                <div className="flex justify-between text-warm-textMuted">
-                  <span>Integrated Tax (IGST){bill.isReverseCharge ? ' [RCM]' : ''}:</span>
-                  <span className="font-semibold text-warm-text">{formatCurrency(bill.igstAmount)}</span>
-                </div>
-              ) : (
-                <>
-                  <div className="flex justify-between text-warm-textMuted">
-                    <span>Central Tax (CGST){bill.isReverseCharge ? ' [RCM]' : ''}:</span>
-                    <span className="font-semibold text-warm-text">{formatCurrency(bill.cgstAmount)}</span>
-                  </div>
-                  <div className="flex justify-between text-warm-textMuted">
-                    <span>State Tax (SGST){bill.isReverseCharge ? ' [RCM]' : ''}:</span>
-                    <span className="font-semibold text-warm-text">{formatCurrency(bill.sgstAmount)}</span>
-                  </div>
-                </>
-              )}
-
-              {bill.isReverseCharge && Number(bill.taxAmount) > 0 && (
-                <div className="p-2 bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-900 leading-snug">
-                  <span className="font-bold">Reverse Charge (₹{formatCurrency(bill.taxAmount).replace('₹', '')}):</span> Tax is payable directly by recipient under RCM and excluded from total bill amount payable to vendor.
-                </div>
-              )}
-
-              {Number(bill.otherCharges) > 0 && (
-                <div className="flex justify-between text-warm-textMuted">
-                  <span>Inward Freight & Charges:</span>
-                  <span className="font-semibold text-warm-text">{formatCurrency(bill.otherCharges)}</span>
-                </div>
-              )}
-
-              {Number(bill.roundOff) !== 0 && (
-                <div className="flex justify-between text-warm-textSubtle">
-                  <span>Round Off:</span>
-                  <span>{Number(bill.roundOff) > 0 ? `+${bill.roundOff}` : bill.roundOff}</span>
-                </div>
-              )}
-
-              <div className="pt-3 border-t-2 border-warm-border flex justify-between items-center text-sm font-bold text-warm-text bg-warm-accentLight/40 p-3">
-                <span>Total Bill Amount:</span>
-                <span className="text-lg text-warm-accent font-bold">{formatCurrency(bill.grandTotal)}</span>
-              </div>
-
-              <div className="flex justify-between items-center pt-2 text-xs">
-                <span className="text-warm-textMuted font-medium">Total Paid to Vendor:</span>
-                <span className="text-emerald-700 font-semibold">{formatCurrency(amountPaid)}</span>
-              </div>
-
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-warm-text font-semibold">Outstanding Balance:</span>
-                <span
-                  className={`font-bold text-sm ${
-                    balanceDue > 0 ? 'text-amber-800' : 'text-warm-text'
-                  }`}
-                >
-                  {formatCurrency(balanceDue)}
-                </span>
-              </div>
-            </div>
-          </div>
+          <p className="text-lg font-bold text-emerald-700 mt-1 tabular-nums">
+            {formatCurrency(amountPaid)}
+          </p>
+          <p className="text-[11px] text-warm-textMuted mt-0.5">
+            {bill.payments.length} disbursement{bill.payments.length === 1 ? '' : 's'} recorded
+          </p>
         </div>
 
-        {/* Payment History / Disbursements Ledger */}
-        <div className="bg-warm-surface border border-warm-border/70 shadow-warm p-6 rounded-none space-y-4 print:hidden">
-          <div className="flex items-center justify-between pb-2 border-b border-warm-border/60">
-            <div className="flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-warm-accent" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-warm-text">
-                Vendor Payments Recorded ({bill.payments.length})
-              </h3>
-            </div>
-            {balanceDue > 0 && bill.status !== 'CANCELLED' && (
-              <Button
-                size="sm"
-                variant="outline"
-                leftIcon={<Plus className="w-3.5 h-3.5" />}
-                onClick={() => setIsPaymentModalOpen(true)}
-              >
-                + Record Payment
-              </Button>
+        <div className="bg-warm-surface border border-warm-border/70 shadow-warm p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle">
+              Balance Payable
+            </p>
+            {isPaid ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            ) : (
+              <Clock className="w-4 h-4 text-amber-600" />
             )}
           </div>
+          <p
+            className={cn(
+              'text-lg font-bold mt-1 tabular-nums',
+              balanceDue > 0 ? 'text-amber-800' : 'text-emerald-700'
+            )}
+          >
+            {formatCurrency(balanceDue)}
+          </p>
+          <p className="text-[11px] text-warm-textMuted mt-0.5">
+            {isPaid ? 'Fully settled' : bill.dueDate ? `Due on ${formatDate(bill.dueDate)}` : 'Payable'}
+          </p>
+        </div>
 
-          {bill.payments.length === 0 ? (
-            <p className="text-xs text-warm-textMuted py-4 text-center">
-              No payments recorded yet for this purchase bill.
+        <div className="bg-warm-surface border border-warm-border/70 shadow-warm p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle">
+              Tax Regime
             </p>
-          ) : (
-            <div className="divide-y divide-warm-border/50">
-              {bill.payments.map((p) => (
-                <div key={p.id} className="py-3 flex items-center justify-between gap-4 text-xs">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-warm-text">
-                        {formatCurrency(p.amount)}
+            <Layers className="w-4 h-4 text-warm-accent" />
+          </div>
+          <p className="text-xs font-bold text-warm-text mt-1.5 truncate">
+            {bill.isIgst ? 'Inter-State (IGST)' : 'Intra-State (CGST+SGST)'}
+          </p>
+          <p className="text-[11px] text-warm-textMuted mt-0.5 truncate">
+            POS: {bill.placeOfSupply || bill.vendorState || '—'}
+          </p>
+        </div>
+      </div>
+
+      {/* ---------------------------------------------------------------------- */}
+      {/* 2. Main Content Tabs */}
+      {/* ---------------------------------------------------------------------- */}
+      <div className="flex items-center border-b border-warm-border/70 mb-5 gap-1">
+        <button
+          onClick={() => setActiveTab('details')}
+          className={cn(
+            'px-4 py-2.5 text-xs font-bold transition-colors border-b-2 flex items-center gap-2',
+            activeTab === 'details'
+              ? 'border-warm-accent text-warm-accent bg-warm-accentLight/30'
+              : 'border-transparent text-warm-textMuted hover:text-warm-text hover:bg-warm-input/40'
+          )}
+        >
+          <FileText className="w-3.5 h-3.5" />
+          <span>Bill Details</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('payments')}
+          className={cn(
+            'px-4 py-2.5 text-xs font-bold transition-colors border-b-2 flex items-center gap-2',
+            activeTab === 'payments'
+              ? 'border-warm-accent text-warm-accent bg-warm-accentLight/30'
+              : 'border-transparent text-warm-textMuted hover:text-warm-text hover:bg-warm-input/40'
+          )}
+        >
+          <CreditCard className="w-3.5 h-3.5" />
+          <span>Disbursements &amp; Payments ({bill.payments.length})</span>
+        </button>
+      </div>
+
+      {/* Tab 1: Details */}
+      {activeTab === 'details' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div className="lg:col-span-2 space-y-5">
+            {/* Supplier & Organization Details */}
+            <div className="bg-warm-surface border border-warm-border/60 shadow-warm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-warm-border/50">
+                {/* Supplier */}
+                <div className="p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <Truck className="w-3.5 h-3.5 text-warm-accent" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-warm-accent">
+                        Supplier (Inward From)
                       </span>
-                      <Badge variant="paid" className="text-[10px]">
-                        {p.paymentMethod}
-                      </Badge>
                     </div>
-                    <p className="text-[11px] text-warm-textMuted">
-                      Paid on {formatDate(p.paymentDate)}
-                      {p.referenceNumber && ` | Ref: ${p.referenceNumber}`}
-                      {p.notes && ` | "${p.notes}"`}
+                    {bill.vendorId && (
+                      <Link
+                        href={`/vendors/${bill.vendorId}`}
+                        className="text-[10px] text-warm-accent hover:underline font-semibold"
+                      >
+                        View Vendor ↗
+                      </Link>
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-bold text-warm-text">{bill.vendorName}</p>
+                    {bill.vendorAddress && (
+                      <p className="text-xs text-warm-textMuted leading-relaxed">
+                        {bill.vendorAddress}
+                      </p>
+                    )}
+                    <p className="text-xs text-warm-textMuted leading-relaxed">
+                      {[bill.vendorCity, bill.vendorState, bill.vendorPostalCode].filter(Boolean).join(', ')}
                     </p>
                   </div>
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-600 hover:bg-red-50 text-xs"
-                    onClick={() => setDeletingPaymentId(p.id)}
-                    title="Delete payment"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    {bill.vendorGstin && (
+                      <span className="inline-flex items-center px-2 py-0.5 bg-warm-input text-warm-text text-[10px] font-semibold border border-warm-border">
+                        GST: {bill.vendorGstin}
+                      </span>
+                    )}
+                    {bill.vendorPhone && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-warm-textMuted">
+                        <Phone className="w-3 h-3" /> {bill.vendorPhone}
+                      </span>
+                    )}
+                    {bill.vendorEmail && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-warm-textMuted">
+                        <Mail className="w-3 h-3" /> {bill.vendorEmail}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              ))}
+
+                {/* Buyer / Inward To */}
+                <div className="p-4 space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-warm-accent" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-warm-accent">
+                      Billed To / Received By
+                    </span>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-bold text-warm-text">{company?.name || 'My Business'}</p>
+                    {company?.address && (
+                      <p className="text-xs text-warm-textMuted leading-relaxed">{company.address}</p>
+                    )}
+                    <p className="text-xs text-warm-textMuted leading-relaxed">
+                      {[company?.city, company?.state, company?.postalCode].filter(Boolean).join(', ')}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    {company?.gstin && (
+                      <span className="inline-flex items-center px-2 py-0.5 bg-warm-input text-warm-text text-[10px] font-semibold border border-warm-border">
+                        GST: {company.gstin}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Populated logistics & reference pills */}
+              {referencePills.length > 0 && (
+                <div className="px-4 py-2.5 border-t border-warm-border/50 bg-warm-input/20 flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle mr-1">
+                    Logistics:
+                  </span>
+                  {referencePills.map((pill, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-warm-surface border border-warm-border text-[11px]"
+                    >
+                      <span className="text-warm-textMuted">{pill.label}:</span>
+                      <span className="font-semibold text-warm-text">{pill.value}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
+
+            {/* Line Items Table */}
+            <div className="bg-warm-surface border border-warm-border/60 shadow-warm">
+              <div className="px-4 py-3 border-b border-warm-border/50 flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-warm-text">
+                  Purchased Items ({bill.items.length})
+                </h3>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[640px] text-left border-collapse">
+                  <thead className="bg-warm-input/40 border-b border-warm-border/60">
+                    <tr className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle">
+                      <th className="py-2.5 px-4 w-10">#</th>
+                      <th className="py-2.5 px-3">Item &amp; Description</th>
+                      <th className="py-2.5 px-3">HSN/SAC</th>
+                      <th className="py-2.5 px-3 text-right">Qty</th>
+                      <th className="py-2.5 px-3">Unit</th>
+                      <th className="py-2.5 px-3 text-right">Rate</th>
+                      <th className="py-2.5 px-3 text-right">GST %</th>
+                      <th className="py-2.5 px-4 text-right">Amount</th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-warm-border/30 text-xs">
+                    {bill.items.map((item, idx) => (
+                      <tr key={item.id || idx} className="hover:bg-warm-input/20 transition-colors">
+                        <td className="py-3 px-4 text-warm-textMuted font-medium">
+                          {idx + 1}
+                        </td>
+                        <td className="py-3 px-3">
+                          <p className="font-semibold text-warm-text">{item.name}</p>
+                          {item.description && (
+                            <p className="text-[11px] text-warm-textMuted mt-0.5 max-w-sm line-clamp-2">
+                              {item.description}
+                            </p>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-warm-text">
+                          {item.hsnSacCode || '—'}
+                        </td>
+                        <td className="py-3 px-3 text-right font-medium text-warm-text tabular-nums">
+                          {Number(item.quantity)}
+                        </td>
+                        <td className="py-3 px-3 text-warm-text uppercase font-medium">
+                          {item.unit || 'PCS'}
+                        </td>
+                        <td className="py-3 px-3 text-right text-warm-text tabular-nums">
+                          {formatCurrency(Number(item.unitPrice))}
+                          {Number(item.discountPercent) > 0 && (
+                            <span className="block text-[10px] text-warm-accent">
+                              -{Number(item.discountPercent)}%
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-right text-warm-text tabular-nums">
+                          {Number(item.taxRate)}%
+                        </td>
+                        <td className="py-3 px-4 text-right font-semibold text-warm-text tabular-nums">
+                          {formatCurrency(Number(item.taxableAmount))}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Compliance & Notes */}
+            <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-4 space-y-3.5">
+              <div className="p-3 bg-warm-input/30 border border-warm-border/50 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-warm-accent" />
+                  <span className="font-bold text-warm-text">ITC Eligibility:</span>
+                  <span className="font-semibold text-warm-accent">{bill.itcEligibility}</span>
+                </div>
+                {bill.isReverseCharge && (
+                  <span className="px-2 py-0.5 bg-amber-100 text-amber-800 font-semibold text-[10px] border border-amber-300">
+                    Reverse Charge (RCM) Applicable
+                  </span>
+                )}
+              </div>
+
+              {bill.terms && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-warm-accent mb-1">
+                    Terms &amp; Conditions
+                  </p>
+                  <p className="text-xs text-warm-textMuted leading-relaxed whitespace-pre-line bg-warm-input/20 p-2.5 border border-warm-border/40">
+                    {bill.terms}
+                  </p>
+                </div>
+              )}
+
+              {bill.notes && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-warm-accent mb-1">
+                    Internal Notes / Remarks
+                  </p>
+                  <p className="text-xs text-warm-textMuted leading-relaxed whitespace-pre-line bg-warm-input/20 p-2.5 border border-warm-border/40">
+                    {bill.notes}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Financial Summary */}
+          <div className="space-y-5">
+            <div className="bg-warm-surface border border-warm-border/60 shadow-warm">
+              <div className="px-4 py-3 border-b border-warm-border/50 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-warm-text tracking-tight">Summary</h3>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-warm-accent">
+                  {bill.isIgst ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}
+                </span>
+              </div>
+
+              <div className="p-4 space-y-1.5 text-xs">
+                <div className="flex justify-between text-warm-textMuted">
+                  <span>Gross Subtotal:</span>
+                  <span className="font-semibold text-warm-text">{formatCurrency(Number(bill.subtotal))}</span>
+                </div>
+
+                {Number(bill.discountAmount) > 0 && (
+                  <div className="flex justify-between text-warm-accent">
+                    <span>Discount:</span>
+                    <span className="font-semibold">-{formatCurrency(Number(bill.discountAmount))}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between text-warm-textMuted">
+                  <span>Taxable Value:</span>
+                  <span className="font-semibold text-warm-text">{formatCurrency(taxableAmount)}</span>
+                </div>
+
+                {/* Show IGST or CGST+SGST only */}
+                {bill.isIgst ? (
+                  <div className="flex justify-between text-warm-textMuted">
+                    <span>Integrated Tax (IGST):</span>
+                    <span className="font-semibold text-warm-text">{formatCurrency(Number(bill.igstAmount))}</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between text-warm-textMuted">
+                      <span>Central Tax (CGST):</span>
+                      <span className="font-semibold text-warm-text">{formatCurrency(Number(bill.cgstAmount))}</span>
+                    </div>
+                    <div className="flex justify-between text-warm-textMuted">
+                      <span>State Tax (SGST):</span>
+                      <span className="font-semibold text-warm-text">{formatCurrency(Number(bill.sgstAmount))}</span>
+                    </div>
+                  </>
+                )}
+
+                {bill.isReverseCharge && Number(bill.taxAmount) > 0 && (
+                  <div className="p-2 bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-900 leading-snug">
+                    <span className="font-bold">Reverse Charge (₹{formatCurrency(Number(bill.taxAmount)).replace('₹', '')}):</span> Payable directly to Govt under RCM. Excluded from vendor total.
+                  </div>
+                )}
+
+                {Number(bill.otherCharges) > 0 && (
+                  <div className="flex justify-between text-warm-textMuted">
+                    <span>Inward Freight &amp; Charges:</span>
+                    <span className="font-semibold text-warm-text">{formatCurrency(Number(bill.otherCharges))}</span>
+                  </div>
+                )}
+
+                {Number(bill.roundOff) !== 0 && (
+                  <div className="flex justify-between text-warm-textSubtle">
+                    <span>Round Off:</span>
+                    <span>{Number(bill.roundOff) > 0 ? `+${bill.roundOff}` : bill.roundOff}</span>
+                  </div>
+                )}
+
+                <div className="mt-3 pt-3 border-t border-warm-border flex items-center justify-between gap-4 bg-warm-accentLight/50 -mx-4 px-4 py-2.5">
+                  <span className="text-sm font-bold text-warm-text">Total Bill Amount</span>
+                  <span className="text-base font-extrabold text-warm-accent tabular-nums">
+                    {formatCurrency(grandTotal)}
+                  </span>
+                </div>
+
+                <div className="pt-2 border-t border-warm-border/50 space-y-1.5">
+                  <div className="flex justify-between text-warm-textMuted">
+                    <span>Total Paid to Vendor:</span>
+                    <span className="font-semibold text-emerald-700">{formatCurrency(amountPaid)}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-1 border-t border-warm-border/40">
+                    <span className="font-bold uppercase tracking-wider text-[11px] text-warm-text">
+                      Outstanding Balance
+                    </span>
+                    <span
+                      className={cn(
+                        'text-sm font-bold tabular-nums',
+                        balanceDue > 0 ? 'text-amber-800' : 'text-emerald-700'
+                      )}
+                    >
+                      {formatCurrency(balanceDue)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Document Metadata Card */}
+            <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-4 space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-warm-accent pb-1 border-b border-warm-border/40">
+                Voucher Specifications
+              </p>
+              <dl className="space-y-1.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <dt className="text-warm-textMuted text-[11px]">Invoice Date</dt>
+                  <dd className="font-semibold text-warm-text">{formatDate(bill.billDate)}</dd>
+                </div>
+                {bill.dueDate && (
+                  <div className="flex items-center justify-between">
+                    <dt className="text-warm-textMuted text-[11px]">Due Date</dt>
+                    <dd className="font-semibold text-warm-text">{formatDate(bill.dueDate)}</dd>
+                  </div>
+                )}
+                {bill.financialYear && (
+                  <div className="flex items-center justify-between">
+                    <dt className="text-warm-textMuted text-[11px]">FY</dt>
+                    <dd className="font-semibold text-warm-text">{bill.financialYear}</dd>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <dt className="text-warm-textMuted text-[11px]">Supply Mode</dt>
+                  <dd className="font-semibold text-warm-text">
+                    {bill.isIgst ? 'Inter-State (IGST)' : 'Intra-State (CGST+SGST)'}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+
+            <Link
+              href="/purchases"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-warm-textMuted hover:text-warm-accent transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Back to Purchase Bills list
+            </Link>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Tab 2: Payments */}
+      {activeTab === 'payments' && (
+        <div className="space-y-5">
+          <div className="bg-warm-surface border border-warm-border/60 shadow-warm">
+            <div className="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-warm-border/50">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-warm-text">
+                  Disbursements &amp; Vendor Payments
+                </h3>
+                <p className="text-[11px] text-warm-textMuted mt-0.5">
+                  Total {formatCurrency(amountPaid)} paid of {formatCurrency(grandTotal)}
+                </p>
+              </div>
+
+              {balanceDue > 0 && !isCancelled && (
+                <Button
+                  size="sm"
+                  onClick={() => setIsPaymentModalOpen(true)}
+                  leftIcon={<Plus className="w-3.5 h-3.5" />}
+                >
+                  Record Payment
+                </Button>
+              )}
+            </div>
+
+            {bill.payments.length === 0 ? (
+              <div className="py-12 text-center space-y-3">
+                <CreditCard className="w-8 h-8 text-warm-textSubtle mx-auto" />
+                <p className="text-xs font-medium text-warm-textMuted">
+                  No disbursement payments recorded for this bill yet.
+                </p>
+                {balanceDue > 0 && !isCancelled && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsPaymentModalOpen(true)}
+                    leftIcon={<Plus className="w-3.5 h-3.5" />}
+                  >
+                    Record First Payment
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-warm-input/50 border-b border-warm-border/60">
+                    <tr className="text-[10px] font-semibold uppercase tracking-wider text-warm-textMuted">
+                      <th className="py-2.5 px-4">Date</th>
+                      <th className="py-2.5 px-3">Method</th>
+                      <th className="py-2.5 px-3">Reference / Notes</th>
+                      <th className="py-2.5 px-4 text-right">Amount</th>
+                      <th className="py-2.5 px-4 text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-warm-border/30">
+                    {bill.payments.map((p) => (
+                      <tr key={p.id} className="hover:bg-warm-input/20 transition-colors">
+                        <td className="py-3 px-4 text-xs font-semibold text-warm-text">
+                          {formatDate(p.paymentDate)}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className="inline-block px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-semibold">
+                            {p.paymentMethod}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-xs text-warm-textMuted">
+                          {p.referenceNumber && (
+                            <span className="font-mono font-medium text-warm-text mr-2">
+                              Ref: {p.referenceNumber}
+                            </span>
+                          )}
+                          {p.notes && <span>{p.notes}</span>}
+                          {!p.referenceNumber && !p.notes && (
+                            <span className="text-warm-textSubtle">—</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right text-xs font-bold text-emerald-700 tabular-nums">
+                          {formatCurrency(Number(p.amount))}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <button
+                            title="Delete Payment"
+                            onClick={() => setDeletingPaymentId(p.id)}
+                            className="p-1 text-warm-textMuted hover:text-red-600 hover:bg-red-50 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Record Payment Modal */}
       {isPaymentModalOpen && (
         <RecordPaymentModal
           isOpen={isPaymentModalOpen}
           onClose={() => setIsPaymentModalOpen(false)}
-          purchaseBill={bill}
           onSuccess={(updated) => setBill(updated)}
+          purchaseBill={bill}
         />
       )}
 
-      {/* Delete Bill Modal */}
-      <ConfirmDialog
-        isOpen={deleteModalOpen}
-        title="Delete Purchase Bill"
-        message={`Are you sure you want to delete purchase voucher "${bill.billNumber}"? This action cannot be undone.`}
-        confirmLabel="Delete"
-        isDanger
-        isLoading={isDeleting}
-        onConfirm={handleDelete}
-        onClose={() => setDeleteModalOpen(false)}
-      />
+      {/* Delete Bill Dialog */}
+      {deleteModalOpen && (
+        <ConfirmDialog
+          isOpen={deleteModalOpen}
+          onClose={() => setDeleteModalOpen(false)}
+          onConfirm={handleDelete}
+          title="Delete Purchase Bill"
+          message={`Are you sure you want to permanently delete purchase bill ${bill.billNumber}? This action cannot be undone.`}
+          confirmLabel="Delete Bill"
+          isDanger={true}
+          isLoading={isDeleting}
+        />
+      )}
 
-      {/* Delete Payment Modal */}
-      <ConfirmDialog
-        isOpen={Boolean(deletingPaymentId)}
-        title="Remove this payment?"
-        message="The purchase bill balance and status will be recalculated without this payment."
-        confirmLabel="Remove Payment"
-        isDanger
-        isLoading={isDeletingPayment}
-        onConfirm={handleConfirmDeletePayment}
-        onClose={() => setDeletingPaymentId(null)}
-      />
+      {/* Delete Payment Dialog */}
+      {Boolean(deletingPaymentId) && (
+        <ConfirmDialog
+          isOpen={Boolean(deletingPaymentId)}
+          onClose={() => setDeletingPaymentId(null)}
+          onConfirm={handleConfirmDeletePayment}
+          title="Remove Payment"
+          message="Are you sure you want to remove this vendor disbursement? The bill balance and status will be recalculated."
+          confirmLabel="Remove Payment"
+          isDanger={true}
+          isLoading={isDeletingPayment}
+        />
+      )}
     </DashboardLayout>
   );
 }

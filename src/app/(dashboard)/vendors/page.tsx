@@ -26,17 +26,16 @@ import { vendorsApi } from '@/lib/purchases';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Vendor, VendorListParams } from '@/types/purchase';
 import { PaginationMeta } from '@/types/index';
-import { formatCurrency } from '@/lib/utils';
-import { VendorModal } from '@/components/vendors/VendorModal';
+import { formatCurrency, cn } from '@/lib/utils';
 import {
   Truck,
   Plus,
   Search,
+  Eye,
   Pencil,
   Trash2,
   Mail,
   Phone,
-  Building2,
   MapPin,
   Receipt
 } from 'lucide-react';
@@ -62,9 +61,6 @@ export default function VendorsPage() {
   const [page, setPage] = useState(1);
   const [typeFilter, setTypeFilter] = useState<'INDIVIDUAL' | 'BUSINESS' | ''>('');
 
-  // Modals
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [deleteVendor, setDeleteVendor] = useState<Vendor | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -176,119 +172,174 @@ export default function VendorsPage() {
             onAction={() => router.push('/vendors/new')}
           />
         ) : (
-          <div className="bg-warm-surface border border-warm-border/70 shadow-warm rounded-none overflow-hidden">
-            <Table>
+          <div className="bg-warm-surface border border-warm-border/70 shadow-warm rounded-none overflow-x-auto">
+            <Table className="min-w-[920px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead className="hidden md:table-cell">Contact</TableHead>
-                  <TableHead className="hidden lg:table-cell">Location &amp; GSTIN</TableHead>
-                  <TableHead className="hidden sm:table-cell">Terms &amp; Bills</TableHead>
-                  <TableHead className="hidden sm:table-cell text-right">Opening Bal</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="min-w-[200px]">Vendor</TableHead>
+                  <TableHead className="min-w-[180px]">Contact</TableHead>
+                  <TableHead className="min-w-[170px]">Location &amp; GSTIN</TableHead>
+                  <TableHead className="min-w-[140px]">Payment Terms</TableHead>
+                  <TableHead className="min-w-[140px] text-right">Balance</TableHead>
+                  <TableHead className="min-w-[100px] text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {vendors.map((v) => (
                   <TableRow key={v.id}>
                     {/* Vendor Info */}
-                    <TableCell>
-                      <div className="flex flex-col space-y-1">
-                        <span className="font-bold text-warm-text text-sm">{v.name}</span>
-                        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-warm-textMuted">
-                          {v.tradeName && (
-                            <span className="font-medium text-warm-text">{v.tradeName}</span>
+                    <TableCell className="min-w-[200px]">
+                      <div className="space-y-1">
+                        <Link
+                          href={`/vendors/${v.id}`}
+                          className="font-bold text-warm-text hover:text-warm-accent transition-colors block text-sm"
+                        >
+                          {v.name}
+                        </Link>
+                        <div className="flex items-center gap-1.5 text-[11px] text-warm-textMuted whitespace-nowrap">
+                          {(v.tradeName || v.contactPerson) && (
+                            <span className="font-medium text-warm-text truncate max-w-[150px]">
+                              {v.tradeName || v.contactPerson}
+                            </span>
                           )}
-                          {v.tradeName && (
-                            <span>•</span>
+                          {(v.tradeName || v.contactPerson) && (
+                            <span className="text-warm-textSubtle">•</span>
                           )}
-                          <span className="text-[10px] uppercase font-semibold px-1.5 py-0.2 bg-warm-input text-warm-text border border-warm-border/60">
-                            {v.type === 'INDIVIDUAL' ? 'Individual' : 'Business'}
+                          <span className="text-[10px] uppercase font-semibold tracking-wider px-1.5 py-0.5 bg-warm-input text-warm-text border border-warm-border/60">
+                            {v.type === 'INDIVIDUAL' ? 'INDIVIDUAL' : 'BUSINESS'}
                           </span>
                         </div>
                       </div>
                     </TableCell>
 
                     {/* Contact */}
-                    <TableCell className="hidden md:table-cell">
+                    <TableCell className="min-w-[180px]">
                       <div className="space-y-1 text-xs text-warm-textMuted">
-                        {v.contactPerson && (
-                          <p className="font-medium text-warm-text">{v.contactPerson}</p>
-                        )}
                         {v.phone && (
-                          <p className="flex items-center gap-1.5">
+                          <p className="flex items-center gap-1.5 whitespace-nowrap">
                             <Phone className="w-3.5 h-3.5 shrink-0 text-warm-accent" />
-                            <span>{v.phone}</span>
+                            <span className="font-medium text-warm-text">{v.phone}</span>
                           </p>
                         )}
                         {v.email && (
-                          <p className="flex items-center gap-1.5">
+                          <p className="flex items-center gap-1.5 whitespace-nowrap">
                             <Mail className="w-3.5 h-3.5 shrink-0" />
-                            <span className="truncate max-w-[180px]">{v.email}</span>
+                            <span className="truncate max-w-[170px]">{v.email}</span>
                           </p>
                         )}
-                        {!v.phone && !v.email && !v.contactPerson && <span>—</span>}
+                        {!v.phone && !v.email && <span>—</span>}
                       </div>
                     </TableCell>
 
                     {/* Location & GSTIN */}
-                    <TableCell className="hidden lg:table-cell">
+                    <TableCell className="min-w-[170px]">
                       <div className="space-y-1 text-xs">
                         {(v.city || v.state) ? (
-                          <p className="flex items-center gap-1 text-warm-text font-medium">
+                          <p className="flex items-center gap-1 text-xs text-warm-text font-medium whitespace-nowrap">
                             <MapPin className="w-3.5 h-3.5 text-warm-accent shrink-0" />
-                            <span>
+                            <span className="truncate max-w-[150px]">
                               {[v.city, v.state].filter(Boolean).join(', ')}
                             </span>
                           </p>
                         ) : (
-                          <span className="text-warm-textMuted">—</span>
+                          <span className="text-warm-textMuted text-xs">—</span>
                         )}
                         {v.gstin ? (
-                          <p className="text-[11px] text-warm-textMuted">
-                            GST: {v.gstin}
+                          <p className="text-[11px] text-warm-textMuted font-mono whitespace-nowrap">
+                            GST: <span className="font-semibold text-warm-text">{v.gstin}</span>
                           </p>
                         ) : (
-                          <span className="text-[10px] text-warm-textSubtle uppercase">Unregistered</span>
-                        )}
-                      </div>
-                    </TableCell>
-
-                    {/* Terms & Bills */}
-                    <TableCell className="hidden sm:table-cell">
-                      <div className="space-y-1 text-xs">
-                        <span className="text-warm-text font-medium block">
-                          {v.paymentTerms || 'Net 30'}
-                        </span>
-                        <Link
-                          href={`/purchases?vendorId=${v.id}`}
-                          className="text-[11px] font-semibold text-warm-accent hover:underline inline-flex items-center gap-1"
-                        >
-                          <Receipt className="w-3 h-3" />
-                          <span>{v._count?.purchaseBills ?? 0} {v._count?.purchaseBills === 1 ? 'Bill' : 'Bills'}</span>
-                        </Link>
-                      </div>
-                    </TableCell>
-
-                    {/* Opening Balance */}
-                    <TableCell className="hidden sm:table-cell text-right">
-                      <div className="text-xs">
-                        {v.openingBalance && Number(v.openingBalance) > 0 ? (
-                          <span className="font-semibold text-warm-text tabular-nums">
-                            {formatCurrency(Number(v.openingBalance))}{' '}
-                            <span className="text-[10px] text-warm-textMuted font-normal">
-                              ({v.balanceType || 'CR'})
-                            </span>
+                          <span className="text-[10px] text-warm-textSubtle uppercase whitespace-nowrap">
+                            Unregistered
                           </span>
-                        ) : (
-                          <span className="text-warm-textMuted">₹0.00</span>
                         )}
                       </div>
+                    </TableCell>
+
+                    {/* Payment Terms */}
+                    <TableCell className="min-w-[140px]">
+                      <div className="space-y-1 text-xs">
+                        <span className="text-warm-text font-medium block whitespace-nowrap">
+                          {v.paymentTerms
+                            ? (v.paymentTerms.toLowerCase().includes('day') || v.paymentTerms.toLowerCase().includes('due') || v.paymentTerms.toLowerCase().includes('advance')
+                              ? v.paymentTerms
+                              : `${v.paymentTerms} Days`)
+                            : 'Net 30 Days'}
+                        </span>
+                        {v._count?.purchaseBills !== undefined && (
+                          <Link
+                            href={`/purchases?vendorId=${v.id}`}
+                            className="text-[11px] font-semibold text-warm-accent hover:underline inline-flex items-center gap-1 whitespace-nowrap"
+                          >
+                            <Receipt className="w-3 h-3" />
+                            <span>{v._count.purchaseBills} {v._count.purchaseBills === 1 ? 'Bill' : 'Bills'}</span>
+                          </Link>
+                        )}
+                      </div>
+                    </TableCell>
+
+                    {/* Balance */}
+                    <TableCell className="min-w-[140px] text-right">
+                      {(() => {
+                        let balanceVal = 0;
+                        let balType: 'Payable' | 'Receivable' = 'Payable';
+
+                        if (v.currentBalance !== undefined && v.currentBalance !== null) {
+                          balanceVal = Number(v.currentBalance);
+                          balType = (v.currentBalanceType === 'RECEIVABLE' || v.currentBalanceType === 'Receivable')
+                            ? 'Receivable'
+                            : 'Payable';
+                        } else {
+                          const opBal = v.openingBalance !== null && v.openingBalance !== undefined
+                            ? Number(v.openingBalance)
+                            : 0;
+                          balanceVal = Math.abs(opBal);
+                          const isDebit = v.balanceType && (
+                            v.balanceType.toUpperCase().startsWith('DR') ||
+                            v.balanceType.toLowerCase() === 'debit' ||
+                            v.balanceType.toLowerCase() === 'receivable'
+                          );
+                          balType = isDebit ? 'Receivable' : 'Payable';
+                        }
+
+                        if (balanceVal <= 0) {
+                          return (
+                            <div className="text-xs whitespace-nowrap">
+                              <span className="font-semibold text-warm-textMuted tabular-nums">₹0.00</span>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-0.5 text-xs whitespace-nowrap">
+                            <p className="font-bold text-warm-text tabular-nums text-sm">
+                              {formatCurrency(balanceVal)}
+                            </p>
+                            <p
+                              className={cn(
+                                'text-[11px] font-semibold',
+                                balType === 'Payable' ? 'text-blue-700' : 'text-amber-700'
+                              )}
+                            >
+                              {balType}
+                            </p>
+                          </div>
+                        );
+                      })()}
                     </TableCell>
 
                     {/* Actions */}
-                    <TableCell className="text-right">
+                    <TableCell className="min-w-[120px] text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <Link href={`/vendors/${v.id}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            title="View Vendor Details"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </Button>
+                        </Link>
                         <Link href={`/vendors/${v.id}/edit`}>
                           <Button
                             variant="ghost"
@@ -328,14 +379,6 @@ export default function VendorsPage() {
           </div>
         )}
       </div>
-
-      {/* Create / Edit Modal */}
-      <VendorModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        vendor={selectedVendor}
-        onSuccess={() => fetchVendors()}
-      />
 
       {/* Delete Confirmation */}
       <ConfirmDialog

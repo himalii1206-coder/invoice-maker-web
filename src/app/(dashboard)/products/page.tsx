@@ -192,7 +192,7 @@ export default function ProductsPage() {
               <TableHead>Product Name</TableHead>
               <TableHead>Units</TableHead>
               <TableHead>HSN Code</TableHead>
-              <TableHead className="text-right">Price in INR</TableHead>
+              <TableHead className="text-right">Selling Price</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>

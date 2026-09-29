@@ -105,6 +105,9 @@ export interface Customer {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  currentBalance?: number | null;
+  currentBalanceType?: 'Receivable' | 'Payable' | string | null;
+  rawBalance?: number | null;
   /** Only returned by the single-customer endpoint. */
   invoiceCount?: number;
   quotationCount?: number;

@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { InvoiceStatusBadge } from '@/components/invoices/InvoiceStatusBadge';
 import { InvoiceTotals } from '@/components/invoices/InvoiceTotals';
@@ -43,7 +44,15 @@ import {
   Receipt,
   AlertTriangle,
   ArrowLeft,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Truck,
+  CreditCard,
+  Clock,
+  CheckCircle2,
+  FileText,
+  Phone,
+  ChevronDown,
+  Layers,
 } from 'lucide-react';
 
 export default function InvoiceDetailPage() {
@@ -58,12 +67,17 @@ export default function InvoiceDetailPage() {
   const [emailConfigured, setEmailConfigured] = useState(false);
   const [activityKey, setActivityKey] = useState(0);
 
+  // Tab state: 'overview' | 'payments' | 'activity'
+  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'activity'>('overview');
+
+  // Actions & Modals state
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [emailMode, setEmailMode] = useState<'invoice' | 'reminder' | null>(null);
   const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
+  const [showMoreActions, setShowMoreActions] = useState(false);
 
   useEffect(() => {
     if (searchParams.get('preview') === 'true') {
@@ -72,7 +86,7 @@ export default function InvoiceDetailPage() {
   }, [searchParams]);
 
   // ---------------------------------------------------------------------------
-  // Data
+  // Data Loading
   // ---------------------------------------------------------------------------
 
   const load = useCallback(async () => {
@@ -99,14 +113,11 @@ export default function InvoiceDetailPage() {
       .catch(() => setEmailConfigured(false));
   }, []);
 
-  /** Refreshes the record and the trail together after any action. */
   const refresh = useCallback(async () => {
     await load();
     setActivityKey((key) => key + 1);
   }, [load]);
 
-  // Totals are rebuilt from the saved line items, so the detail view uses the
-  // same summary component - and the same arithmetic - as the form.
   const totals = useMemo(() => {
     if (!invoice) return null;
 
@@ -204,14 +215,14 @@ export default function InvoiceDetailPage() {
     });
 
   // ---------------------------------------------------------------------------
-  // Render
+  // Render States
   // ---------------------------------------------------------------------------
 
   if (isLoading) {
     return (
       <DashboardLayout>
-        <div className="bg-warm-surface border border-warm-border/60 shadow-warm">
-          <LoadingState message="Loading invoice..." />
+        <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-8">
+          <LoadingState message="Loading invoice details..." />
         </div>
       </DashboardLayout>
     );
@@ -231,26 +242,59 @@ export default function InvoiceDetailPage() {
     );
   }
 
+  const grandTotal = toNumber(invoice.grandTotal);
+  const amountPaid = toNumber(invoice.amountPaid);
   const balanceDue = toNumber(invoice.balanceDue);
   const isCancelled = invoice.status === 'CANCELLED';
   const isDraft = invoice.status === 'DRAFT';
+  const isPaid = invoice.status === 'PAID' || (balanceDue === 0 && grandTotal > 0);
   const canReceivePayment = !isCancelled && !isDraft && balanceDue > 0;
+
+  const hasDifferentConsignee = Boolean(
+    invoice.consigneeCustomerId ||
+      (invoice.shippingName &&
+        (invoice.shippingName !== invoice.billingName ||
+          invoice.shippingAddress !== invoice.billingAddress ||
+          invoice.shippingGstin !== invoice.billingGstin))
+  );
 
   const billingLines = [
     invoice.billingAddress,
     [invoice.billingCity, invoice.billingState, invoice.billingPostalCode]
       .filter(Boolean)
       .join(', '),
-    invoice.billingCountry,
-    invoice.billingPhone,
-    invoice.billingEmail
+    invoice.billingCountry
   ].filter(Boolean) as string[];
+
+  const shippingLines = [
+    invoice.shippingAddress,
+    [invoice.shippingCity, invoice.shippingState, invoice.shippingPostalCode]
+      .filter(Boolean)
+      .join(', '),
+    invoice.shippingCountry
+  ].filter(Boolean) as string[];
+
+  // Populated logistics badges
+  const referencePills = [
+    invoice.poNumber && { label: 'PO / Order No', value: invoice.poNumber },
+    invoice.orderDate && { label: 'Order Date', value: formatDate(invoice.orderDate) },
+    invoice.challanNo && { label: 'Challan No', value: invoice.challanNo },
+    invoice.challanDate && { label: 'Challan Date', value: formatDate(invoice.challanDate) },
+    invoice.dcNo && { label: 'D.C. No', value: invoice.dcNo },
+    invoice.dcDate && { label: 'D.C. Date', value: formatDate(invoice.dcDate) },
+    invoice.modeOfDispatch && { label: 'Dispatch Via', value: invoice.modeOfDispatch },
+    invoice.lhNo && { label: 'LH / LR No', value: invoice.lhNo },
+    invoice.lhDate && { label: 'LR Date', value: formatDate(invoice.lhDate) },
+    invoice.paymentTerms && { label: 'Terms', value: invoice.paymentTerms },
+    invoice.reference && { label: 'Ref', value: invoice.reference }
+  ].filter(Boolean) as { label: string; value: string }[];
 
   return (
     <DashboardLayout>
+      {/* Top Header */}
       <PageHeader
         title={invoice.invoiceNumber}
-        description={`${invoice.billingName} · Issued ${formatDate(invoice.issueDate)}`}
+        description={`${invoice.billingName} · Issued on ${formatDate(invoice.issueDate)}`}
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'Invoices', href: '/invoices' },
@@ -259,6 +303,7 @@ export default function InvoiceDetailPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <InvoiceStatusBadge invoice={invoice} direction="row" size="md" />
+
             {!isCancelled && (
               <Link href={`/invoices/${invoice.id}/edit`}>
                 <Button variant="secondary" size="sm" leftIcon={<Pencil className="w-3.5 h-3.5" />}>
@@ -266,12 +311,141 @@ export default function InvoiceDetailPage() {
                 </Button>
               </Link>
             )}
+
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsPreviewOpen(true)}
+              leftIcon={<Eye className="w-3.5 h-3.5 text-blue-600" />}
+              className="bg-blue-50/70 hover:bg-blue-100/70 text-blue-900 border-blue-200/80 font-medium"
+            >
+              Preview PDF
+            </Button>
+
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => handlePdf('download')}
+              isLoading={busyAction === 'download'}
+              leftIcon={<Download className="w-3.5 h-3.5" />}
+            >
+              Download
+            </Button>
+
+            {canReceivePayment && (
+              <Button
+                size="sm"
+                onClick={() => setIsPaymentOpen(true)}
+                leftIcon={<Plus className="w-3.5 h-3.5" />}
+              >
+                Record Payment
+              </Button>
+            )}
+
+            {isDraft && (
+              <Button
+                size="sm"
+                onClick={handleMarkSent}
+                isLoading={busyAction === 'send'}
+                leftIcon={<Send className="w-3.5 h-3.5" />}
+              >
+                Mark Sent
+              </Button>
+            )}
+
+            {/* More Actions Dropdown */}
+            <div className="relative">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowMoreActions((prev) => !prev)}
+                rightIcon={<ChevronDown className={cn("w-3.5 h-3.5 transition-transform", showMoreActions && "rotate-180")} />}
+              >
+                More
+              </Button>
+
+              {showMoreActions && (
+                <>
+                  <div
+                    className="fixed inset-0 z-20"
+                    onClick={() => setShowMoreActions(false)}
+                  />
+                  <div className="absolute right-0 mt-1.5 w-48 bg-warm-surface border border-warm-border shadow-lg z-30 py-1 divide-y divide-warm-border/40 animate-in fade-in zoom-in-95">
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          setShowMoreActions(false);
+                          handlePdf('print');
+                        }}
+                        className="w-full text-left px-3.5 py-2 text-xs text-warm-text hover:bg-warm-input flex items-center gap-2 transition-colors"
+                      >
+                        <Printer className="w-3.5 h-3.5 text-warm-textMuted" />
+                        <span>Print Invoice</span>
+                      </button>
+
+                      {!isCancelled && (
+                        <button
+                          onClick={() => {
+                            setShowMoreActions(false);
+                            setEmailMode('invoice');
+                          }}
+                          className="w-full text-left px-3.5 py-2 text-xs text-warm-text hover:bg-warm-input flex items-center gap-2 transition-colors"
+                        >
+                          <Mail className="w-3.5 h-3.5 text-warm-textMuted" />
+                          <span>Email to Customer</span>
+                        </button>
+                      )}
+
+                      {!isCancelled && !isDraft && balanceDue > 0 && (
+                        <button
+                          onClick={() => {
+                            setShowMoreActions(false);
+                            setEmailMode('reminder');
+                          }}
+                          className="w-full text-left px-3.5 py-2 text-xs text-warm-text hover:bg-warm-input flex items-center gap-2 transition-colors"
+                        >
+                          <BellRing className="w-3.5 h-3.5 text-warm-textMuted" />
+                          <span>Send Overdue Reminder</span>
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          setShowMoreActions(false);
+                          handleDuplicate();
+                        }}
+                        className="w-full text-left px-3.5 py-2 text-xs text-warm-text hover:bg-warm-input flex items-center gap-2 transition-colors"
+                      >
+                        <Copy className="w-3.5 h-3.5 text-warm-textMuted" />
+                        <span>Duplicate Invoice</span>
+                      </button>
+                    </div>
+
+                    {!isCancelled && (
+                      <div className="py-1">
+                        <button
+                          onClick={() => {
+                            setShowMoreActions(false);
+                            setIsCancelOpen(true);
+                          }}
+                          className="w-full text-left px-3.5 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors font-medium"
+                        >
+                          <Ban className="w-3.5 h-3.5 text-red-500" />
+                          <span>Cancel Invoice</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         }
       />
 
+      {/* Quotation Source Banner */}
       {invoice.quotations && invoice.quotations.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 mb-5 bg-purple-50/80 border border-purple-200">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 mb-5 bg-purple-50/70 border border-purple-200">
           <div className="flex items-center gap-3">
             <div className="w-7 h-7 bg-purple-100 text-purple-700 flex items-center justify-center font-bold shrink-0">
               <ArrowRightLeft className="w-3.5 h-3.5" />
@@ -300,30 +474,32 @@ export default function InvoiceDetailPage() {
         </div>
       )}
 
+      {/* Cancelled Alert Banner */}
       {isCancelled && (
-        <div className="flex items-start gap-3 p-4 mb-5 bg-red-50 border border-red-200">
+        <div className="flex items-start gap-3 p-3.5 mb-5 bg-red-50 border border-red-200">
           <Ban className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
           <div>
             <p className="text-xs font-semibold text-red-900">This invoice was cancelled</p>
             <p className="text-[11px] text-red-800 mt-0.5 leading-relaxed">
               {invoice.cancelledReason
                 ? `Reason: ${invoice.cancelledReason}`
-                : 'It stays on record so its number is never reused, but no longer counts towards receivables.'}
+                : 'It stays on record so its sequence number is never reused, but no longer counts towards receivables.'}
             </p>
           </div>
         </div>
       )}
 
+      {/* Overdue Alert Banner */}
       {invoice.status === 'OVERDUE' && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 mb-5 bg-red-50 border border-red-200">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 mb-5 bg-red-50 border border-red-200">
           <div className="flex items-start gap-3 flex-1 min-w-0">
             <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
+            <div>
               <p className="text-xs font-semibold text-red-900">
                 Payment overdue since {formatDate(invoice.dueDate)}
               </p>
               <p className="text-[11px] text-red-800 mt-0.5">
-                {formatCurrency(balanceDue)} is still outstanding.
+                {formatCurrency(balanceDue)} is still pending payment.
               </p>
             </div>
           </div>
@@ -339,499 +515,517 @@ export default function InvoiceDetailPage() {
         </div>
       )}
 
-      {/* Action bar */}
-      <div className="flex flex-wrap items-center gap-2 mb-5">
-        {isDraft && (
-          <Button
-            size="sm"
-            onClick={handleMarkSent}
-            isLoading={busyAction === 'send'}
-            leftIcon={<Send className="w-3.5 h-3.5" />}
+      {/* ---------------------------------------------------------------------- */}
+      {/* 1. Quick Glance Metric Summary Bar */}
+      {/* ---------------------------------------------------------------------- */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
+        <div className="bg-warm-surface border border-warm-border/70 shadow-warm p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle">
+              Total Amount
+            </p>
+            <Receipt className="w-4 h-4 text-warm-accent" />
+          </div>
+          <p className="text-lg font-bold text-warm-text mt-1 tabular-nums">
+            {formatCurrency(grandTotal)}
+          </p>
+          <p className="text-[11px] text-warm-textMuted mt-0.5">
+            Taxable: {formatCurrency(toNumber(invoice.taxableAmount))}
+          </p>
+        </div>
+
+        <div className="bg-warm-surface border border-warm-border/70 shadow-warm p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle">
+              Amount Paid
+            </p>
+            <CreditCard className="w-4 h-4 text-emerald-600" />
+          </div>
+          <p className="text-lg font-bold text-emerald-700 mt-1 tabular-nums">
+            {formatCurrency(amountPaid)}
+          </p>
+          <p className="text-[11px] text-warm-textMuted mt-0.5">
+            {invoice.payments.length} payment{invoice.payments.length === 1 ? '' : 's'} recorded
+          </p>
+        </div>
+
+        <div className="bg-warm-surface border border-warm-border/70 shadow-warm p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle">
+              Balance Due
+            </p>
+            {isPaid ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            ) : (
+              <Clock className="w-4 h-4 text-amber-600" />
+            )}
+          </div>
+          <p
+            className={cn(
+              "text-lg font-bold mt-1 tabular-nums",
+              balanceDue > 0 ? "text-amber-800" : "text-emerald-700"
+            )}
           >
-            Mark as Sent
-          </Button>
-        )}
+            {formatCurrency(balanceDue)}
+          </p>
+          <p className="text-[11px] text-warm-textMuted mt-0.5">
+            {isPaid ? 'Fully settled' : `Due on ${formatDate(invoice.dueDate)}`}
+          </p>
+        </div>
 
-        {canReceivePayment && (
-          <Button
-            size="sm"
-            onClick={() => setIsPaymentOpen(true)}
-            leftIcon={<Plus className="w-3.5 h-3.5" />}
-          >
-            Record Payment
-          </Button>
-        )}
-
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => setIsPreviewOpen(true)}
-          leftIcon={<Eye className="w-3.5 h-3.5 text-blue-600" />}
-          className="bg-blue-50/70 hover:bg-blue-100/70 text-blue-900 border-blue-200/80 font-medium shadow-2xs"
-        >
-          Preview PDF
-        </Button>
-
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => handlePdf('print')}
-          isLoading={busyAction === 'print'}
-          leftIcon={<Printer className="w-3.5 h-3.5" />}
-        >
-          Print
-        </Button>
-
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => handlePdf('download')}
-          isLoading={busyAction === 'download'}
-          leftIcon={<Download className="w-3.5 h-3.5" />}
-        >
-          Download PDF
-        </Button>
-
-        {!isCancelled && (
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setEmailMode('invoice')}
-            leftIcon={<Mail className="w-3.5 h-3.5" />}
-          >
-            Email
-          </Button>
-        )}
-
-        {!isCancelled && !isDraft && balanceDue > 0 && (
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setEmailMode('reminder')}
-            leftIcon={<BellRing className="w-3.5 h-3.5" />}
-          >
-            Remind
-          </Button>
-        )}
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleDuplicate}
-          isLoading={busyAction === 'duplicate'}
-          leftIcon={<Copy className="w-3.5 h-3.5" />}
-        >
-          Duplicate
-        </Button>
-
-        {!isCancelled && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsCancelOpen(true)}
-            leftIcon={<Ban className="w-3.5 h-3.5" />}
-            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-          >
-            Cancel Invoice
-          </Button>
-        )}
+        <div className="bg-warm-surface border border-warm-border/70 shadow-warm p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle">
+              Tax Regime
+            </p>
+            <Layers className="w-4 h-4 text-warm-accent" />
+          </div>
+          <p className="text-xs font-bold text-warm-text mt-1.5 truncate">
+            {invoice.isIgst ? 'Inter-State (IGST)' : 'Intra-State (CGST+SGST)'}
+          </p>
+          <p className="text-[11px] text-warm-textMuted mt-0.5 truncate">
+            POS: {invoice.placeOfSupply || invoice.billingState || '—'}
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2 space-y-5">
-          {/* Parties + supply + dispatch */}
-          <div className="bg-warm-surface border border-warm-border/60 shadow-warm">
-            <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-warm-border/50">
-              <div className="p-5">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Building2 className="w-3.5 h-3.5 text-warm-accent" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-warm-accent">
-                    Bill To (Customer)
-                  </span>
+      {/* ---------------------------------------------------------------------- */}
+      {/* 2. Main Content Tabs */}
+      {/* ---------------------------------------------------------------------- */}
+      <div className="flex items-center border-b border-warm-border/70 mb-5 gap-1">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={cn(
+            'px-4 py-2.5 text-xs font-bold transition-colors border-b-2 flex items-center gap-2',
+            activeTab === 'overview'
+              ? 'border-warm-accent text-warm-accent bg-warm-accentLight/30'
+              : 'border-transparent text-warm-textMuted hover:text-warm-text hover:bg-warm-input/40'
+          )}
+        >
+          <FileText className="w-3.5 h-3.5" />
+          <span>Invoice Details</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('payments')}
+          className={cn(
+            'px-4 py-2.5 text-xs font-bold transition-colors border-b-2 flex items-center gap-2',
+            activeTab === 'payments'
+              ? 'border-warm-accent text-warm-accent bg-warm-accentLight/30'
+              : 'border-transparent text-warm-textMuted hover:text-warm-text hover:bg-warm-input/40'
+          )}
+        >
+          <CreditCard className="w-3.5 h-3.5" />
+          <span>Payments ({invoice.payments.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('activity')}
+          className={cn(
+            'px-4 py-2.5 text-xs font-bold transition-colors border-b-2 flex items-center gap-2',
+            activeTab === 'activity'
+              ? 'border-warm-accent text-warm-accent bg-warm-accentLight/30'
+              : 'border-transparent text-warm-textMuted hover:text-warm-text hover:bg-warm-input/40'
+          )}
+        >
+          <Clock className="w-3.5 h-3.5" />
+          <span>Activity Feed</span>
+        </button>
+      </div>
+
+      {/* Tab 1: Overview & Items */}
+      {activeTab === 'overview' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div className="lg:col-span-2 space-y-5">
+            {/* Parties: Buyer & Consignee */}
+            <div className="bg-warm-surface border border-warm-border/60 shadow-warm">
+              <div
+                className={cn(
+                  'grid divide-y sm:divide-y-0 divide-warm-border/50',
+                  hasDifferentConsignee
+                    ? 'grid-cols-1 sm:grid-cols-2 sm:divide-x'
+                    : 'grid-cols-1'
+                )}
+              >
+                {/* Bill To */}
+                <div className="p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-warm-accent" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-warm-accent">
+                        Bill To (Buyer)
+                      </span>
+                    </div>
+                    {invoice.customerId && (
+                      <Link
+                        href={`/customers`}
+                        className="text-[10px] text-warm-accent hover:underline font-semibold"
+                      >
+                        View Profile ↗
+                      </Link>
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-bold text-warm-text">{invoice.billingName}</p>
+                    {billingLines.map((line, idx) => (
+                      <p key={idx} className="text-xs text-warm-textMuted leading-relaxed">
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    {invoice.billingGstin && (
+                      <span className="inline-flex items-center px-2 py-0.5 bg-warm-input text-warm-text text-[10px] font-semibold border border-warm-border">
+                        GST: {invoice.billingGstin}
+                      </span>
+                    )}
+                    {invoice.billingPhone && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-warm-textMuted">
+                        <Phone className="w-3 h-3" /> {invoice.billingPhone}
+                      </span>
+                    )}
+                    {invoice.billingEmail && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-warm-textMuted">
+                        <Mail className="w-3 h-3" /> {invoice.billingEmail}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                <Link
-                  href={`/customers`}
-                  className="text-sm font-semibold text-warm-text hover:text-warm-accent transition-colors"
-                >
-                  {invoice.billingName}
-                </Link>
+                {/* Ship To (Only if different consignee) */}
+                {hasDifferentConsignee && (
+                  <div className="p-4 space-y-2 bg-amber-50/15">
+                    <div className="flex items-center gap-1.5">
+                      <Truck className="w-3.5 h-3.5 text-amber-700" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800">
+                        Ship To (Consignee)
+                      </span>
+                    </div>
 
-                <div className="mt-1.5 space-y-0.5">
-                  {billingLines.map((line, index) => (
-                    <p key={index} className="text-[11px] text-warm-textMuted leading-relaxed">
-                      {line}
-                    </p>
-                  ))}
-                </div>
-                {invoice.billingGstin && (
-                  <p className="text-[11px] font-semibold text-warm-text mt-2">
-                    GSTIN: {invoice.billingGstin}
-                  </p>
+                    <div>
+                      <p className="text-sm font-bold text-warm-text">
+                        {invoice.shippingName || invoice.billingName}
+                      </p>
+                      {shippingLines.map((line, idx) => (
+                        <p key={idx} className="text-xs text-warm-textMuted leading-relaxed">
+                          {line}
+                        </p>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      {invoice.shippingGstin && (
+                        <span className="inline-flex items-center px-2 py-0.5 bg-amber-100/60 text-amber-900 text-[10px] font-semibold border border-amber-300">
+                          GST: {invoice.shippingGstin}
+                        </span>
+                      )}
+                      {invoice.shippingPhone && (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-warm-textMuted">
+                          <Phone className="w-3 h-3" /> {invoice.shippingPhone}
+                        </span>
+                      )}
+                      {invoice.shippingEmail && (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-warm-textMuted">
+                          <Mail className="w-3 h-3" /> {invoice.shippingEmail}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
 
-              <div className="p-5">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Receipt className="w-3.5 h-3.5 text-warm-accent" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-warm-accent">
-                    Document &amp; Tax Details
+              {/* Populated logistics & reference pills */}
+              {referencePills.length > 0 && (
+                <div className="px-4 py-2.5 border-t border-warm-border/50 bg-warm-input/20 flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle mr-1">
+                    Logistics:
                   </span>
-                </div>
-
-                <dl className="space-y-1.5">
-                  {[
-                    ['Bill Type', (invoice.billType || 'TAX_INVOICE').replace(/_/g, ' ')],
-                    ['Bill Date', formatDate(invoice.issueDate)],
-                    ['Due Date', formatDate(invoice.dueDate)],
-                    ['Place of Supply', invoice.placeOfSupply || '—'],
-                    [
-                      'Supply Type',
-                      invoice.isIgst ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'
-                    ],
-                    ['Financial Year', invoice.financialYear || '—'],
-                    ...(invoice.isReverseCharge ? [['Reverse Charge', 'Applicable']] : [])
-                  ].map(([label, value]) => (
-                    <div key={label as string} className="flex items-start justify-between gap-3">
-                      <dt className="text-[11px] text-warm-textMuted">{label as string}</dt>
-                      <dd className="text-[11px] font-semibold text-warm-text text-right">
-                        {value as string}
-                      </dd>
-                    </div>
+                  {referencePills.map((pill, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-warm-surface border border-warm-border text-[11px]"
+                    >
+                      <span className="text-warm-textMuted">{pill.label}:</span>
+                      <span className="font-semibold text-warm-text">{pill.value}</span>
+                    </span>
                   ))}
-                </dl>
+                </div>
+              )}
+            </div>
+
+            {/* Line Items Table */}
+            <div className="bg-warm-surface border border-warm-border/60 shadow-warm">
+              <div className="px-4 py-3 border-b border-warm-border/50 flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-warm-text">
+                  Line Items ({invoice.items.length})
+                </h3>
+                <span className="text-[11px] text-warm-textMuted">
+                  Amounts in {invoice.currency || 'INR'} (₹)
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[640px] text-left border-collapse">
+                  <thead className="bg-warm-input/40 border-b border-warm-border/60">
+                    <tr className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle">
+                      <th className="py-2.5 px-4 w-10">#</th>
+                      <th className="py-2.5 px-3">Item &amp; Description</th>
+                      <th className="py-2.5 px-3">HSN/SAC</th>
+                      <th className="py-2.5 px-3 text-right">Qty</th>
+                      <th className="py-2.5 px-3">Unit</th>
+                      <th className="py-2.5 px-3 text-right">Rate</th>
+                      <th className="py-2.5 px-3 text-right">GST %</th>
+                      <th className="py-2.5 px-4 text-right">Amount</th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-warm-border/30 text-xs">
+                    {invoice.items.map((item, idx) => (
+                      <tr key={item.id || idx} className="hover:bg-warm-input/20 transition-colors">
+                        <td className="py-3 px-4 text-warm-textMuted font-medium">
+                          {idx + 1}
+                        </td>
+                        <td className="py-3 px-3">
+                          <p className="font-semibold text-warm-text">{item.name}</p>
+                          {item.description && (
+                            <p className="text-[11px] text-warm-textMuted mt-0.5 max-w-sm line-clamp-2">
+                              {item.description}
+                            </p>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-warm-text">
+                          {item.hsnSacCode || '—'}
+                        </td>
+                        <td className="py-3 px-3 text-right font-medium text-warm-text tabular-nums">
+                          {toNumber(item.quantity)}
+                        </td>
+                        <td className="py-3 px-3 text-warm-text uppercase font-medium">
+                          {item.unit || 'PCS'}
+                        </td>
+                        <td className="py-3 px-3 text-right text-warm-text tabular-nums">
+                          {formatCurrency(toNumber(item.unitPrice))}
+                          {toNumber(item.discountPercent) > 0 && (
+                            <span className="block text-[10px] text-warm-accent">
+                              -{toNumber(item.discountPercent)}%
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-right text-warm-text tabular-nums">
+                          {toNumber(item.taxRate)}%
+                        </td>
+                        <td className="py-3 px-4 text-right font-semibold text-warm-text tabular-nums">
+                          {formatCurrency(toNumber(item.taxableAmount))}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            {/* Additional Order, DC & Dispatch details row */}
-            {(invoice.poNumber ||
-              invoice.orderDate ||
-              invoice.challanNo ||
-              invoice.challanDate ||
-              invoice.dcNo ||
-              invoice.dcDate ||
-              invoice.modeOfDispatch ||
-              invoice.lhNo ||
-              invoice.lhDate ||
-              invoice.paymentTerms) && (
-              <div className="border-t border-warm-border/50 grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-warm-border/50 bg-warm-input/30">
-                <div className="p-4 space-y-1.5">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle mb-2">
-                    Order &amp; Delivery Challan
-                  </p>
-                  <div className="space-y-1">
-                    {invoice.quotations && invoice.quotations.length > 0 && (
-                      <div className="flex items-start justify-between gap-2 text-[11px]">
-                        <span className="text-warm-textMuted">Quotation Ref:</span>
-                        <Link
-                          href={`/quotations/${invoice.quotations[0].id}`}
-                          className="font-bold text-purple-700 hover:text-purple-900 hover:underline inline-flex items-center gap-1"
-                        >
-                          <span>{invoice.quotations[0].quotationNumber}</span>
-                          <span className="text-[10px] text-purple-600">↗</span>
-                        </Link>
-                      </div>
-                    )}
-                    {invoice.poNumber && (
-                      <div className="flex items-start justify-between gap-2 text-[11px]">
-                        <span className="text-warm-textMuted">Order / PO No:</span>
-                        <span className="font-semibold text-warm-text">{invoice.poNumber}</span>
-                      </div>
-                    )}
-                    {invoice.orderDate && (
-                      <div className="flex items-start justify-between gap-2 text-[11px]">
-                        <span className="text-warm-textMuted">Order Date:</span>
-                        <span className="font-semibold text-warm-text">
-                          {formatDate(invoice.orderDate)}
-                        </span>
-                      </div>
-                    )}
-                    {invoice.challanNo && (
-                      <div className="flex items-start justify-between gap-2 text-[11px]">
-                        <span className="text-warm-textMuted">Challan No:</span>
-                        <span className="font-semibold text-warm-text">{invoice.challanNo}</span>
-                      </div>
-                    )}
-                    {invoice.challanDate && (
-                      <div className="flex items-start justify-between gap-2 text-[11px]">
-                        <span className="text-warm-textMuted">Challan Date:</span>
-                        <span className="font-semibold text-warm-text">
-                          {formatDate(invoice.challanDate)}
-                        </span>
-                      </div>
-                    )}
-                    {invoice.dcNo && (
-                      <div className="flex items-start justify-between gap-2 text-[11px]">
-                        <span className="text-warm-textMuted">Your D.C. No:</span>
-                        <span className="font-semibold text-warm-text">{invoice.dcNo}</span>
-                      </div>
-                    )}
-                    {invoice.dcDate && (
-                      <div className="flex items-start justify-between gap-2 text-[11px]">
-                        <span className="text-warm-textMuted">Your D.C. Date:</span>
-                        <span className="font-semibold text-warm-text">
-                          {formatDate(invoice.dcDate)}
-                        </span>
-                      </div>
-                    )}
-                    {invoice.reference && (
-                      <div className="flex items-start justify-between gap-2 text-[11px]">
-                        <span className="text-warm-textMuted">Reference:</span>
-                        <span className="text-warm-text">{invoice.reference}</span>
-                      </div>
-                    )}
+            {/* Notes and Terms */}
+            {(invoice.notes || invoice.terms || invoice.internalNotes) && (
+              <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-4 space-y-3.5">
+                {invoice.notes && (
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-warm-accent mb-1">
+                      Notes
+                    </p>
+                    <p className="text-xs text-warm-textMuted leading-relaxed whitespace-pre-line bg-warm-input/20 p-2.5 border border-warm-border/40">
+                      {invoice.notes}
+                    </p>
                   </div>
-                </div>
+                )}
 
-                <div className="p-4 space-y-1.5">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle mb-2">
-                    Dispatch &amp; Payment Terms
-                  </p>
-                  <div className="space-y-1">
-                    {invoice.modeOfDispatch && (
-                      <div className="flex items-start justify-between gap-2 text-[11px]">
-                        <span className="text-warm-textMuted">Mode of Dispatch:</span>
-                        <span className="font-semibold text-warm-text">
-                          {invoice.modeOfDispatch}
-                        </span>
-                      </div>
-                    )}
-                    {invoice.lhNo && (
-                      <div className="flex items-start justify-between gap-2 text-[11px]">
-                        <span className="text-warm-textMuted">LH No (LR No):</span>
-                        <span className="font-semibold text-warm-text">{invoice.lhNo}</span>
-                      </div>
-                    )}
-                    {invoice.lhDate && (
-                      <div className="flex items-start justify-between gap-2 text-[11px]">
-                        <span className="text-warm-textMuted">LH Date:</span>
-                        <span className="font-semibold text-warm-text">
-                          {formatDate(invoice.lhDate)}
-                        </span>
-                      </div>
-                    )}
-                    {invoice.paymentTerms && (
-                      <div className="flex items-start justify-between gap-2 text-[11px]">
-                        <span className="text-warm-textMuted">Payment Terms:</span>
-                        <span className="font-semibold text-warm-accent">
-                          {invoice.paymentTerms}
-                        </span>
-                      </div>
-                    )}
+                {invoice.terms && (
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-warm-accent mb-1">
+                      Terms &amp; Conditions
+                    </p>
+                    <p className="text-xs text-warm-textMuted leading-relaxed whitespace-pre-line bg-warm-input/20 p-2.5 border border-warm-border/40">
+                      {invoice.terms}
+                    </p>
                   </div>
-                </div>
+                )}
+
+                {invoice.internalNotes && (
+                  <div className="pt-2 border-t border-dashed border-warm-border">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle mb-1">
+                      Internal Private Notes (Not Printed on PDF)
+                    </p>
+                    <p className="text-xs text-warm-textSubtle italic leading-relaxed">
+                      {invoice.internalNotes}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* Line items */}
-          <div className="bg-warm-surface border border-warm-border/60 shadow-warm">
-            <div className="px-4 py-3 border-b border-warm-border/50">
-              <h3 className="text-sm font-semibold text-warm-text tracking-tight">
-                Line Items
-                <span className="ml-2 text-[11px] font-normal text-warm-textMuted">
-                  {invoice.items.length} item{invoice.items.length === 1 ? '' : 's'}
-                </span>
-              </h3>
+          {/* Right Column: Financial Summary */}
+          <div className="space-y-5">
+            <InvoiceTotals
+              totals={totals}
+              isIgst={invoice.isIgst}
+              isReverseCharge={invoice.isReverseCharge}
+              amountPaid={amountPaid}
+              creditNoteTotal={toNumber(invoice.creditNoteTotal)}
+              debitNoteTotal={toNumber(invoice.debitNoteTotal)}
+              balanceDue={balanceDue}
+            />
+
+            {/* Document Metadata Card */}
+            <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-4 space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-warm-accent pb-1 border-b border-warm-border/40">
+                Invoice Specifications
+              </p>
+              <dl className="space-y-1.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <dt className="text-warm-textMuted text-[11px]">Bill Type</dt>
+                  <dd className="font-semibold text-warm-text">
+                    {(invoice.billType || 'TAX_INVOICE').replace(/_/g, ' ')}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between">
+                  <dt className="text-warm-textMuted text-[11px]">Issue Date</dt>
+                  <dd className="font-semibold text-warm-text">{formatDate(invoice.issueDate)}</dd>
+                </div>
+                <div className="flex items-center justify-between">
+                  <dt className="text-warm-textMuted text-[11px]">Due Date</dt>
+                  <dd className="font-semibold text-warm-text">{formatDate(invoice.dueDate)}</dd>
+                </div>
+                {invoice.financialYear && (
+                  <div className="flex items-center justify-between">
+                    <dt className="text-warm-textMuted text-[11px]">FY</dt>
+                    <dd className="font-semibold text-warm-text">{invoice.financialYear}</dd>
+                  </div>
+                )}
+                {invoice.isReverseCharge && (
+                  <div className="flex items-center justify-between">
+                    <dt className="text-warm-textMuted text-[11px]">Reverse Charge</dt>
+                    <dd className="font-semibold text-amber-700">Applicable</dd>
+                  </div>
+                )}
+              </dl>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-left border-collapse">
-                <thead className="bg-warm-input/70 border-b border-warm-border/80">
-                  <tr className="text-[10px] font-semibold uppercase tracking-wider text-warm-textMuted">
-                    <th className="py-2.5 px-4">Item</th>
-                    <th className="py-2.5 px-3">HSN/SAC</th>
-                    <th className="py-2.5 px-3 text-right">Qty</th>
-                    <th className="py-2.5 px-3 text-right">Rate</th>
-                    <th className="py-2.5 px-3 text-right">Taxable</th>
-                    <th className="py-2.5 px-3 text-right">GST</th>
-                    <th className="py-2.5 px-4 text-right">Amount</th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-warm-border/40">
-                  {invoice.items.map((item) => (
-                    <tr key={item.id}>
-                      <td className="py-3 px-4">
-                        <p className="text-xs font-semibold text-warm-text">{item.name}</p>
-                        {item.description && (
-                          <p className="text-[11px] text-warm-textSubtle mt-0.5 max-w-xs">
-                            {item.description}
-                          </p>
-                        )}
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className="text-[11px] text-warm-textMuted">
-                          {item.hsnSacCode || '—'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-right">
-                        <span className="text-xs text-warm-text tabular-nums">
-                          {toNumber(item.quantity)}
-                        </span>
-                        <span className="block text-[10px] text-warm-textSubtle">{item.unit}</span>
-                      </td>
-                      <td className="py-3 px-3 text-right">
-                        <span className="text-xs text-warm-text tabular-nums">
-                          {formatCurrency(toNumber(item.unitPrice))}
-                        </span>
-                        {toNumber(item.discountPercent) > 0 && (
-                          <span className="block text-[10px] text-warm-textSubtle">
-                            -{toNumber(item.discountPercent)}%
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3 text-right">
-                        <span className="text-xs text-warm-text tabular-nums">
-                          {formatCurrency(toNumber(item.taxableAmount))}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-right">
-                        <span className="text-xs text-warm-text tabular-nums">
-                          {formatCurrency(toNumber(item.taxAmount))}
-                        </span>
-                        <span className="block text-[10px] text-warm-textSubtle">
-                          @ {toNumber(item.taxRate)}%
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <span className="text-xs font-semibold text-warm-text tabular-nums">
-                          {formatCurrency(toNumber(item.total))}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Link
+              href="/invoices"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-warm-textMuted hover:text-warm-accent transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Back to Invoices list
+            </Link>
           </div>
+        </div>
+      )}
 
-          {/* Payments */}
+      {/* Tab 2: Payments */}
+      {activeTab === 'payments' && (
+        <div className="space-y-5">
           <div className="bg-warm-surface border border-warm-border/60 shadow-warm">
-            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-warm-border/50">
-              <h3 className="text-sm font-semibold text-warm-text tracking-tight">
-                Payments
-                <span className="ml-2 text-[11px] font-normal text-warm-textMuted">
-                  {formatCurrency(toNumber(invoice.amountPaid))} received
-                </span>
-              </h3>
+            <div className="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-warm-border/50">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-warm-text">
+                  Payment Transactions
+                </h3>
+                <p className="text-[11px] text-warm-textMuted mt-0.5">
+                  Total {formatCurrency(amountPaid)} paid of {formatCurrency(grandTotal)}
+                </p>
+              </div>
 
               {canReceivePayment && (
                 <Button
-                  variant="secondary"
                   size="sm"
                   onClick={() => setIsPaymentOpen(true)}
                   leftIcon={<Plus className="w-3.5 h-3.5" />}
                 >
-                  Add
+                  Record Payment
                 </Button>
               )}
             </div>
 
             {invoice.payments.length === 0 ? (
-              <p className="text-xs text-warm-textMuted text-center py-8">
-                No payments recorded against this invoice yet.
-              </p>
-            ) : (
-              <ul className="divide-y divide-warm-border/40">
-                {invoice.payments.map((payment) => (
-                  <li
-                    key={payment.id}
-                    className="flex items-center justify-between gap-4 px-4 py-3"
+              <div className="py-12 text-center space-y-3">
+                <CreditCard className="w-8 h-8 text-warm-textSubtle mx-auto" />
+                <p className="text-xs font-medium text-warm-textMuted">
+                  No payment transactions recorded for this invoice yet.
+                </p>
+                {canReceivePayment && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsPaymentOpen(true)}
+                    leftIcon={<Plus className="w-3.5 h-3.5" />}
                   >
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-warm-text">
-                        {formatCurrency(toNumber(payment.amount))}
-                        <span className="ml-2 font-normal text-warm-textMuted">
-                          via {PAYMENT_METHOD_LABELS[payment.paymentMethod] ?? payment.paymentMethod}
-                        </span>
-                      </p>
-                      <p className="text-[11px] text-warm-textSubtle mt-0.5 truncate">
-                        {formatDate(payment.paymentDate)}
-                        {payment.referenceNumber && ` · Ref ${payment.referenceNumber}`}
-                        {payment.notes && ` · ${payment.notes}`}
-                      </p>
-                    </div>
-
-                    {!isCancelled && (
-                      <button
-                        title="Remove payment"
-                        onClick={() => setDeletingPaymentId(payment.id)}
-                        className="p-1.5 shrink-0 text-warm-textMuted hover:text-red-600 hover:bg-red-50 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
+                    Record First Payment
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-warm-input/50 border-b border-warm-border/60">
+                    <tr className="text-[10px] font-semibold uppercase tracking-wider text-warm-textMuted">
+                      <th className="py-2.5 px-4">Date</th>
+                      <th className="py-2.5 px-3">Method</th>
+                      <th className="py-2.5 px-3">Reference / Notes</th>
+                      <th className="py-2.5 px-4 text-right">Amount</th>
+                      <th className="py-2.5 px-4 text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-warm-border/30">
+                    {invoice.payments.map((p) => (
+                      <tr key={p.id} className="hover:bg-warm-input/20 transition-colors">
+                        <td className="py-3 px-4 text-xs font-semibold text-warm-text">
+                          {formatDate(p.paymentDate)}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className="inline-block px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-semibold">
+                            {PAYMENT_METHOD_LABELS[p.paymentMethod] ?? p.paymentMethod}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-xs text-warm-textMuted">
+                          {p.referenceNumber && <span className="font-mono font-medium text-warm-text mr-2">Ref: {p.referenceNumber}</span>}
+                          {p.notes && <span>{p.notes}</span>}
+                          {!p.referenceNumber && !p.notes && <span className="text-warm-textSubtle">—</span>}
+                        </td>
+                        <td className="py-3 px-4 text-right text-xs font-bold text-emerald-700 tabular-nums">
+                          {formatCurrency(toNumber(p.amount))}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          {!isCancelled && (
+                            <button
+                              title="Delete Payment"
+                              onClick={() => setDeletingPaymentId(p.id)}
+                              className="p-1 text-warm-textMuted hover:text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
-
-          {/* Notes and terms */}
-          {(invoice.notes || invoice.terms || invoice.internalNotes) && (
-            <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-5 space-y-4">
-              {invoice.notes && (
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-warm-accent mb-1">
-                    Notes
-                  </p>
-                  <p className="text-xs text-warm-textMuted leading-relaxed whitespace-pre-line">
-                    {invoice.notes}
-                  </p>
-                </div>
-              )}
-
-              {invoice.terms && (
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-warm-accent mb-1">
-                    Terms &amp; Conditions
-                  </p>
-                  <p className="text-xs text-warm-textMuted leading-relaxed whitespace-pre-line">
-                    {invoice.terms}
-                  </p>
-                </div>
-              )}
-
-              {invoice.internalNotes && (
-                <div className="pt-3 border-t border-dashed border-warm-border">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle mb-1">
-                    Internal Notes · not printed
-                  </p>
-                  <p className="text-xs text-warm-textSubtle leading-relaxed whitespace-pre-line">
-                    {invoice.internalNotes}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
         </div>
+      )}
 
-        {/* Sidebar */}
+      {/* Tab 3: Activity Feed */}
+      {activeTab === 'activity' && (
         <div className="space-y-5">
-          <InvoiceTotals
-            totals={totals}
-            isIgst={invoice.isIgst}
-            isReverseCharge={invoice.isReverseCharge}
-            amountPaid={toNumber(invoice.amountPaid)}
-            creditNoteTotal={toNumber(invoice.creditNoteTotal)}
-            debitNoteTotal={toNumber(invoice.debitNoteTotal)}
-            balanceDue={balanceDue}
-          />
-
           <InvoiceActivityFeed invoiceId={invoice.id} refreshKey={activityKey} />
-
-          <Link
-            href="/invoices"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-warm-textMuted hover:text-warm-accent transition-colors"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Back to all invoices
-          </Link>
         </div>
-      </div>
+      )}
 
-      {/* Modals */}
+      {/* ---------------------------------------------------------------------- */}
+      {/* Modals & Dialogs */}
+      {/* ---------------------------------------------------------------------- */}
       <PdfPreviewModal
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}

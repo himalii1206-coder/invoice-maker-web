@@ -42,6 +42,9 @@ export interface Vendor {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  currentBalance?: number | null;
+  currentBalanceType?: 'Payable' | 'Receivable' | string | null;
+  rawBalance?: number | null;
   _count?: {
     purchaseBills: number;
   };

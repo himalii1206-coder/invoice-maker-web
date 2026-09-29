@@ -180,7 +180,7 @@ export default function PurchasesPage() {
             />
 
             <StatCard
-              label="Input GST (ITC Claimable)"
+              label="Input GST (ITC)"
               value={metrics.itcSummary.totalItc}
               hint={
                 <div className="text-[10px] text-warm-textMuted flex gap-2">
@@ -195,7 +195,7 @@ export default function PurchasesPage() {
             />
 
             <StatCard
-              label="Outstanding Payables"
+              label="Amount Payable"
               value={metrics.outstandingPayables}
               hint={`Paid: ${formatCurrency(metrics.totalPaid)}`}
               icon={<DollarSign className="w-4 h-4" />}
@@ -400,9 +400,6 @@ export default function PurchasesPage() {
                       <TableCell className="text-right">
                         <span className="font-semibold text-warm-text tabular-nums text-xs">
                           {formatCurrency(grandTotalNum)}
-                        </span>
-                        <span className="block text-[10px] text-warm-textSubtle uppercase">
-                          {bill.isIgst ? 'IGST (ITC)' : 'CGST+SGST (ITC)'}
                         </span>
                       </TableCell>
 

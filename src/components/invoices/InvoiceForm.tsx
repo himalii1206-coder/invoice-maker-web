@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'react-toastify';
@@ -19,11 +19,11 @@ import { quotationsApi } from '@/lib/quotations';
 import { toNumber } from '@/lib/products';
 import { apiErrorMessage, customersApi } from '@/lib/customers';
 import { Customer } from '@/types/index';
-import { Invoice, InvoiceDefaults, InvoiceReferenceData } from '@/types/invoice';
+import { Invoice, InvoiceDefaults, InvoiceReferenceData, InvoicePayload } from '@/types/invoice';
 import { Quotation } from '@/types/quotation';
-import { cn, formatCurrency, formatGstin } from '@/lib/utils';
-import { INDIAN_STATES, normalizeStateName } from '@/lib/geo';
-import { Save, Send, X, AlertTriangle, MapPin, FileSpreadsheet } from 'lucide-react';
+import { cn, formatCurrency, formatGstin, formatDate } from '@/lib/utils';
+import { normalizeStateName, INDIAN_STATES } from '@/lib/geo';
+import { Save, Send, X, AlertTriangle, MapPin, FileSpreadsheet, Check, Truck } from 'lucide-react';
 
 /**
  * Create / edit form for an invoice.
@@ -41,6 +41,16 @@ export interface InvoiceFormProps {
 interface FormState {
   customerId: string;
   customerName: string;
+  hasDifferentConsignee: boolean;
+  consigneeCustomerId: string;
+  shippingName: string;
+  shippingAddress: string;
+  shippingCity: string;
+  shippingState: string;
+  shippingPostalCode: string;
+  shippingGstin: string;
+  shippingPhone: string;
+  shippingEmail: string;
   billType: string;
   issueDate: string;
   dueDate: string;
@@ -66,6 +76,16 @@ interface FormState {
 const EMPTY_FORM: FormState = {
   customerId: '',
   customerName: '',
+  hasDifferentConsignee: false,
+  consigneeCustomerId: '',
+  shippingName: '',
+  shippingAddress: '',
+  shippingCity: '',
+  shippingState: '',
+  shippingPostalCode: '',
+  shippingGstin: '',
+  shippingPhone: '',
+  shippingEmail: '',
   billType: 'TAX_INVOICE',
   issueDate: '',
   dueDate: '',
@@ -122,8 +142,11 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [items, setItems] = useState<EditorItem[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedConsigneeCustomer, setSelectedConsigneeCustomer] = useState<Customer | null>(null);
+  const [importFromQuotation, setImportFromQuotation] = useState<boolean>(false);
   const [selectedQuotationId, setSelectedQuotationId] = useState<string>('');
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
+  const hasAutoLoadedRef = useRef(false);
 
   const [defaults, setDefaults] = useState<InvoiceDefaults | null>(null);
   const [reference, setReference] = useState<InvoiceReferenceData | null>(null);
@@ -160,9 +183,25 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
         setReference(referenceData);
 
         if (invoice) {
+          const hasDiff = Boolean(
+            invoice.consigneeCustomerId ||
+            (invoice.shippingName && invoice.shippingName !== invoice.billingName) ||
+            (invoice.shippingAddress && invoice.shippingAddress !== invoice.billingAddress)
+          );
+
           setForm({
             customerId: invoice.customerId,
             customerName: invoice.customer?.name ?? invoice.billingName,
+            hasDifferentConsignee: hasDiff,
+            consigneeCustomerId: invoice.consigneeCustomerId ?? '',
+            shippingName: invoice.shippingName ?? '',
+            shippingAddress: invoice.shippingAddress ?? '',
+            shippingCity: invoice.shippingCity ?? '',
+            shippingState: invoice.shippingState ?? '',
+            shippingPostalCode: invoice.shippingPostalCode ?? '',
+            shippingGstin: invoice.shippingGstin ?? '',
+            shippingPhone: invoice.shippingPhone ?? '',
+            shippingEmail: invoice.shippingEmail ?? '',
             billType: invoice.billType ?? 'TAX_INVOICE',
             issueDate: toDateInput(invoice.issueDate),
             dueDate: toDateInput(invoice.dueDate),
@@ -220,10 +259,11 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
    */
   const buyerState = useMemo(() => {
     if (form.placeOfSupply) return stripStateCode(form.placeOfSupply);
+    if (form.hasDifferentConsignee && form.shippingState) return form.shippingState;
     if (selectedCustomer?.state) return selectedCustomer.state;
     if (isEdit && invoice?.billingState) return invoice.billingState;
     return null;
-  }, [form.placeOfSupply, selectedCustomer, isEdit, invoice]);
+  }, [form.placeOfSupply, form.hasDifferentConsignee, form.shippingState, selectedCustomer, isEdit, invoice]);
 
   const isIgst = useMemo(
     () => isInterState(sellerState, buyerState),
@@ -254,7 +294,9 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
   // Handle auto-load from URL query (?quotationId=...)
   useEffect(() => {
     const qId = searchParams.get('quotationId');
-    if (qId && !isEdit && !selectedQuotationId) {
+    if (qId && !isEdit && !hasAutoLoadedRef.current) {
+      hasAutoLoadedRef.current = true;
+      setImportFromQuotation(true);
       handleQuotationChange(qId, null);
     }
   }, [searchParams, isEdit]);
@@ -264,6 +306,34 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
 
     if (!quotationId) {
       setSelectedQuotation(null);
+      setSelectedCustomer(null);
+      setSelectedConsigneeCustomer(null);
+      setForm((prev) => ({
+        ...prev,
+        customerId: '',
+        customerName: '',
+        hasDifferentConsignee: false,
+        consigneeCustomerId: '',
+        shippingName: '',
+        shippingAddress: '',
+        shippingCity: '',
+        shippingState: '',
+        shippingPostalCode: '',
+        shippingGstin: '',
+        shippingPhone: '',
+        shippingEmail: '',
+        placeOfSupply: '',
+        reference: '',
+        poNumber: '',
+        orderDate: '',
+        paymentTerms: defaults?.defaultDueDays ? `Net ${defaults.defaultDueDays} Days` : '',
+        extraCharges: '0',
+        notes: defaults?.notes ?? '',
+        terms: defaults?.terms ?? ''
+      }));
+      setItems([createEmptyItem(defaults?.defaultTaxRate ?? 18, defaults?.defaultUnit ?? 'PCS')]);
+      setFieldErrors({});
+      setItemErrors({});
       return;
     }
 
@@ -338,8 +408,8 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
       orderDate: targetQuotation.inquiryDate ? toDateInput(targetQuotation.inquiryDate) : prev.orderDate,
       paymentTerms: targetQuotation.paymentTerms || prev.paymentTerms,
       extraCharges: targetQuotation.forwardingPackagingAmount ? String(targetQuotation.forwardingPackagingAmount) : prev.extraCharges,
-      notes: prev.notes || targetQuotation.notes || '',
-      terms: prev.terms || targetQuotation.termsAndConditions || ''
+      notes: targetQuotation.notes || defaults?.notes || prev.notes || '',
+      terms: targetQuotation.termsAndConditions || defaults?.terms || prev.terms || ''
     }));
 
     if (targetQuotation.customerId) {
@@ -367,8 +437,6 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
         }))
       );
     }
-
-    toast.success(`Loaded ${targetQuotation.items?.length ?? 0} items from Quotation ${targetQuotation.quotationNumber}`);
   };
 
   const handleCustomerChange = (customerIdOrCustomer: string | Customer | null, maybeCustomer?: Customer | null) => {
@@ -379,7 +447,7 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
       ...prev,
       customerId,
       customerName: customer?.name ?? '',
-      placeOfSupply: customer?.state ? `${customer.state}` : ''
+      placeOfSupply: customer?.state ? `${customer.state}` : prev.placeOfSupply
     }));
     if (customerId) {
       setFieldErrors((prev) => {
@@ -390,24 +458,115 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
     }
   };
 
+  const handleConsigneeToggle = (checked: boolean) => {
+    setForm((prev) => {
+      if (checked) {
+        return {
+          ...prev,
+          hasDifferentConsignee: true
+        };
+      } else {
+        setSelectedConsigneeCustomer(null);
+        return {
+          ...prev,
+          hasDifferentConsignee: false,
+          consigneeCustomerId: '',
+          shippingName: '',
+          shippingAddress: '',
+          shippingCity: '',
+          shippingState: '',
+          shippingPostalCode: '',
+          shippingGstin: '',
+          shippingPhone: '',
+          shippingEmail: ''
+        };
+      }
+    });
+
+    if (!checked) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next.shippingName;
+        delete next.shippingAddress;
+        delete next.shippingState;
+        return next;
+      });
+    }
+  };
+
+  const handleConsigneeCustomerChange = (
+    customerIdOrCustomer: string | Customer | null,
+    maybeCustomer?: Customer | null
+  ) => {
+    const customer = typeof customerIdOrCustomer === 'string' ? maybeCustomer : customerIdOrCustomer;
+    const customerId = typeof customerIdOrCustomer === 'string' ? customerIdOrCustomer : customer?.id ?? '';
+    setSelectedConsigneeCustomer(customer ?? null);
+    if (customer) {
+      setForm((prev) => ({
+        ...prev,
+        consigneeCustomerId: customerId,
+        shippingName: customer.name,
+        shippingAddress: customer.address || customer.factoryAddress || '',
+        shippingCity: customer.city || '',
+        shippingState: customer.state || '',
+        shippingPostalCode: customer.postalCode || '',
+        shippingGstin: customer.gstin || '',
+        shippingPhone: customer.phone || '',
+        shippingEmail: customer.email || ''
+      }));
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next.shippingName;
+        delete next.shippingAddress;
+        delete next.shippingState;
+        return next;
+      });
+    } else {
+      setForm((prev) => ({
+        ...prev,
+        consigneeCustomerId: ''
+      }));
+    }
+  };
+
   /**
-   * Updating the issue date slides the due date forward by the company's
-   * default terms window, unless the due date was already customised.
+   * Updating the bill date preserves an already selected due date if it is valid
+   * (i.e. not empty and not before the new bill date).
+   * If due date is not yet chosen or falls before the new bill date, it is adjusted.
    */
   const handleIssueDateChange = (value: string) => {
     setForm((prev) => {
       const next = { ...prev, issueDate: value };
 
-      if (defaults?.defaultDueDays && value) {
-        const issue = new Date(value);
-        if (!Number.isNaN(issue.getTime())) {
-          issue.setDate(issue.getDate() + defaults.defaultDueDays);
-          next.dueDate = issue.toISOString().slice(0, 10);
+      if (!value) {
+        return next;
+      }
+
+      // If dueDate is not chosen or is earlier than the new bill date, adjust it
+      if (!prev.dueDate || prev.dueDate < value) {
+        if (defaults?.defaultDueDays) {
+          const issue = new Date(value);
+          if (!Number.isNaN(issue.getTime())) {
+            issue.setDate(issue.getDate() + defaults.defaultDueDays);
+            next.dueDate = issue.toISOString().slice(0, 10);
+          } else {
+            next.dueDate = value;
+          }
+        } else {
+          next.dueDate = value;
         }
       }
 
       return next;
     });
+
+    if (fieldErrors.issueDate) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next.issueDate;
+        return next;
+      });
+    }
   };
 
   // ---------------------------------------------------------------------------
@@ -444,6 +603,18 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
       }
     });
 
+    if (form.hasDifferentConsignee) {
+      if (!form.shippingName.trim()) {
+        errors.shippingName = 'Consignee Name is required';
+      }
+      if (!form.shippingAddress.trim()) {
+        errors.shippingAddress = 'Delivery Address is required';
+      }
+      if (!form.shippingState.trim()) {
+        errors.shippingState = 'Delivery State is required';
+      }
+    }
+
     setFieldErrors(errors);
     setItemErrors(rowErrors);
 
@@ -453,41 +624,67 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
     return ok;
   };
 
-  const buildPayload = () => ({
-    customerId: form.customerId,
-    quotationId: selectedQuotationId || undefined,
-    billType: form.billType,
-    issueDate: form.issueDate,
-    dueDate: form.dueDate,
-    poNumber: form.poNumber.trim(),
-    orderDate: form.orderDate || undefined,
-    challanNo: form.challanNo.trim(),
-    challanDate: form.challanDate || undefined,
-    reference: form.reference.trim(),
-    modeOfDispatch: form.modeOfDispatch.trim(),
-    lhNo: form.lhNo.trim(),
-    lhDate: form.lhDate || undefined,
-    dcNo: form.dcNo.trim(),
-    dcDate: form.dcDate || undefined,
-    paymentTerms: form.paymentTerms.trim(),
-    placeOfSupply: form.placeOfSupply.trim(),
-    isReverseCharge: form.isReverseCharge,
-    extraCharges: parseFloat(form.extraCharges) || 0,
-    notes: form.notes.trim(),
-    terms: form.terms.trim(),
-    internalNotes: form.internalNotes.trim(),
-    items: items.map((item) => ({
-      productId: item.productId,
-      name: item.name.trim(),
-      description: item.description.trim(),
-      hsnSacCode: item.hsnSacCode.trim(),
-      unit: item.unit,
-      quantity: Number(item.quantity),
-      unitPrice: Number(item.unitPrice),
-      discountPercent: item.discountPercent ? Number(item.discountPercent) : 0,
-      taxRate: item.taxRate ? Number(item.taxRate) : 0
-    }))
-  });
+  const buildPayload = (): InvoicePayload => {
+    const payload: InvoicePayload = {
+      customerId: form.customerId,
+      quotationId: selectedQuotationId || undefined,
+      billType: form.billType,
+      issueDate: form.issueDate,
+      dueDate: form.dueDate,
+      poNumber: form.poNumber.trim() || undefined,
+      orderDate: form.orderDate || undefined,
+      challanNo: form.challanNo.trim() || undefined,
+      challanDate: form.challanDate || undefined,
+      reference: form.reference.trim() || undefined,
+      modeOfDispatch: form.modeOfDispatch.trim() || undefined,
+      lhNo: form.lhNo.trim() || undefined,
+      lhDate: form.lhDate || undefined,
+      dcNo: form.dcNo.trim() || undefined,
+      dcDate: form.dcDate || undefined,
+      paymentTerms: form.paymentTerms.trim() || undefined,
+      placeOfSupply: form.placeOfSupply.trim() || undefined,
+      isReverseCharge: form.isReverseCharge,
+      extraCharges: parseFloat(form.extraCharges) || 0,
+      notes: form.notes.trim() || undefined,
+      terms: form.terms.trim() || undefined,
+      internalNotes: form.internalNotes.trim() || undefined,
+      items: items.map((item) => ({
+        productId: item.productId,
+        name: item.name.trim(),
+        description: item.description.trim(),
+        hsnSacCode: item.hsnSacCode.trim(),
+        unit: item.unit,
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unitPrice),
+        discountPercent: item.discountPercent ? Number(item.discountPercent) : 0,
+        taxRate: item.taxRate ? Number(item.taxRate) : 0
+      }))
+    };
+
+    if (form.hasDifferentConsignee) {
+      payload.consigneeCustomerId = form.consigneeCustomerId || null;
+      payload.shippingName = form.shippingName.trim() || undefined;
+      payload.shippingAddress = form.shippingAddress.trim() || undefined;
+      payload.shippingCity = form.shippingCity.trim() || undefined;
+      payload.shippingState = form.shippingState.trim() || undefined;
+      payload.shippingPostalCode = form.shippingPostalCode.trim() || undefined;
+      payload.shippingGstin = form.shippingGstin.trim() || undefined;
+      payload.shippingPhone = form.shippingPhone.trim() || undefined;
+      payload.shippingEmail = form.shippingEmail.trim() || undefined;
+    } else {
+      payload.consigneeCustomerId = null;
+      payload.shippingName = undefined;
+      payload.shippingAddress = undefined;
+      payload.shippingCity = undefined;
+      payload.shippingState = undefined;
+      payload.shippingPostalCode = undefined;
+      payload.shippingGstin = undefined;
+      payload.shippingPhone = undefined;
+      payload.shippingEmail = undefined;
+    }
+
+    return payload;
+  };
 
   const submit = async (status: 'DRAFT' | 'SENT') => {
     if (!validate()) return;
@@ -559,6 +756,14 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
     }))
   ];
 
+  const shippingStateOptions = [
+    { value: '', label: 'Select Delivery State' },
+    ...INDIAN_STATES.map((s) => ({
+      value: s.name,
+      label: `${s.code} — ${s.name}`
+    }))
+  ];
+
   return (
     <form
       onSubmit={(e) => {
@@ -582,54 +787,127 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
         </div>
       )}
 
-      {/* 1. Header & General Document Settings */}
-      <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-5 space-y-4">
+      {/* Quotation Import / Conversion Card */}
+      {!isEdit && (
+        <div className="bg-warm-surface border border-warm-border/80 shadow-warm p-4 sm:p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-warm-accentLight border border-warm-accent/30 text-warm-accent flex items-center justify-center shrink-0">
+                <FileSpreadsheet className="w-4 h-4 text-warm-accent" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-warm-text uppercase tracking-wider">
+                  Create invoice from an existing quotation?
+                </h3>
+                <p className="text-xs text-warm-textMuted mt-0.5">
+                  Select &quot;Yes&quot; to auto-fill customer, line items, rates, discounts, and terms from a quotation.
+                </p>
+              </div>
+            </div>
+
+            {/* Yes / No Toggle buttons */}
+            <div className="flex items-center bg-warm-input border border-warm-border/80 p-0.5 shrink-0 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  if (importFromQuotation) {
+                    setImportFromQuotation(false);
+                    if (selectedQuotationId) {
+                      handleQuotationChange('', null);
+                    }
+                  }
+                }}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer',
+                  !importFromQuotation
+                    ? 'bg-warm-surface text-warm-text shadow-sm border border-warm-border/60'
+                    : 'text-warm-textMuted hover:text-warm-text'
+                )}
+              >
+                No
+              </button>
+              <button
+                type="button"
+                onClick={() => setImportFromQuotation(true)}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5',
+                  importFromQuotation
+                    ? 'bg-warm-accent text-white shadow-sm'
+                    : 'text-warm-textMuted hover:text-warm-text'
+                )}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+
+          {/* Shown only if user selected Yes */}
+          {importFromQuotation && (
+            <div className="pt-3 border-t border-warm-border/50 space-y-3 animate-in fade-in duration-150">
+              <QuotationSelect
+                value={selectedQuotationId}
+                label="Select Quotation / Estimate"
+                initialLabel={
+                  selectedQuotation
+                    ? `${selectedQuotation.quotationNumber} — ${selectedQuotation.billingName} (${formatCurrency(Number(selectedQuotation.grandTotal))})`
+                    : ''
+                }
+                onChange={handleQuotationChange}
+                placeholder="Search quotation by number (e.g. QT-0001), customer name, or subject..."
+              />
+
+              {selectedQuotation && (
+                <div className="p-3.5 bg-warm-accentLight/40 border border-warm-accent/30 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-warm-text">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] text-warm-textMuted uppercase font-semibold">Quotation:</span>
+                      <span className="font-bold text-warm-accent font-mono text-sm">{selectedQuotation.quotationNumber}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] text-warm-textMuted uppercase font-semibold">Customer:</span>
+                      <span className="font-semibold text-warm-text">{selectedQuotation.billingName}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] text-warm-textMuted uppercase font-semibold">Total:</span>
+                      <span className="font-bold text-warm-text font-mono">{formatCurrency(Number(selectedQuotation.grandTotal))}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-warm-textMuted">
+                      <span>({selectedQuotation.items?.length ?? 0} item{(selectedQuotation.items?.length ?? 0) === 1 ? '' : 's'} loaded)</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1 border border-emerald-200">
+                      <Check className="w-3.5 h-3.5 shrink-0" />
+                      <span>Quotation loaded</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleQuotationChange('', null)}
+                      className="text-xs font-semibold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100/80 border border-red-200 px-2.5 py-1 flex items-center gap-1 cursor-pointer transition-colors"
+                      title="Clear selected quotation"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      Clear
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 1. Buyer & Consignee Information */}
+      <div className="bg-warm-surface border border-warm-border/60 shadow-warm p-5 space-y-5">
         <div className="flex items-center justify-between border-b border-warm-border/40 pb-3">
           <h2 className="text-sm font-bold text-warm-text uppercase tracking-wider">
-            1. Customer Information
+            1. Buyer &amp; Consignee Information
           </h2>
           <span className="text-[11px] font-semibold text-warm-accent px-2 py-0.5 bg-warm-accentLight">
             {form.billType.replace(/_/g, ' ')}
           </span>
         </div>
-
-        {/* Quotation Selection Menu */}
-        {!isEdit && (
-          <div className="p-3.5 bg-warm-accent-light/30 border border-warm-accent/20 space-y-2">
-            <QuotationSelect
-              value={selectedQuotationId}
-              initialLabel={
-                selectedQuotation
-                  ? `${selectedQuotation.quotationNumber} — ${selectedQuotation.billingName} (${formatCurrency(Number(selectedQuotation.grandTotal))})`
-                  : ''
-              }
-              onChange={handleQuotationChange}
-              label="Import from Quotation / Estimate"
-              placeholder="Search and select an existing quotation to auto-fill customer, line items & terms..."
-            />
-            {selectedQuotation && (
-              <div className="p-2.5 bg-purple-50 border border-purple-200 text-xs text-purple-950 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <FileSpreadsheet className="w-4 h-4 text-purple-700 shrink-0" />
-                  <span>
-                    Loaded <strong>{selectedQuotation.quotationNumber}</strong> for{' '}
-                    <strong>{selectedQuotation.billingName}</strong>
-                  </span>
-                  <span className="font-semibold text-purple-700 font-mono text-[11px]">
-                    (Total: {formatCurrency(Number(selectedQuotation.grandTotal))})
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleQuotationChange('', null)}
-                  className="text-purple-700 hover:text-purple-900 underline text-[11px] font-medium cursor-pointer"
-                >
-                  Clear Selection
-                </button>
-              </div>
-            )}
-          </div>
-        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Select
@@ -637,7 +915,6 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
             value={form.billType}
             options={BILL_TYPES}
             onChange={(e) => setForm((prev) => ({ ...prev, billType: e.target.value }))}
-            // helperText="Document classification"
           />
 
           <Input
@@ -645,11 +922,6 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
             value={isEdit ? invoice?.invoiceNumber ?? '' : defaults?.invoiceNumber ?? ''}
             readOnly
             disabled
-            // helperText={
-            //   isEdit
-            //     ? 'An issued number never changes.'
-            //     : 'Generated automatically upon save.'
-            // }
           />
 
           <Input
@@ -667,41 +939,55 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
             required
             value={form.dueDate}
             min={form.issueDate || undefined}
-            onChange={(e) => setForm((prev) => ({ ...prev, dueDate: e.target.value }))}
+            onChange={(e) => {
+              const val = e.target.value;
+              setForm((prev) => ({ ...prev, dueDate: val }));
+              if (fieldErrors.dueDate) {
+                setFieldErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.dueDate;
+                  return next;
+                });
+              }
+            }}
             error={fieldErrors.dueDate}
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-2">
-          <div className="lg:col-span-2">
-            <CustomerSelect
-              label="Customer Name"
-              required
-              value={form.customerId}
-              initialLabel={form.customerName}
-              onChange={handleCustomerChange}
+        {/* Buyer / Bill To Area */}
+        <div className="space-y-3 pt-1">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2">
+              <CustomerSelect
+                label="Customer"
+                required
+                value={form.customerId}
+                initialLabel={form.customerName}
+                onChange={handleCustomerChange}
+                disabled={isLocked}
+                error={fieldErrors.customerId}
+              />
+            </div>
+
+            <Select
+              label="Place of Supply (State)"
+              options={stateOptions}
+              value={form.placeOfSupply}
               disabled={isLocked}
-              error={fieldErrors.customerId}
+              onChange={(e) => setForm((prev) => ({ ...prev, placeOfSupply: e.target.value }))}
             />
           </div>
 
-          <Select
-            label="Place of Supply (State)"
-            options={stateOptions}
-            value={form.placeOfSupply}
-            disabled={isLocked}
-            onChange={(e) => setForm((prev) => ({ ...prev, placeOfSupply: e.target.value }))}
-            // helperText="Overrides destination state for GST calculation."
-          />
-
           {(selectedCustomer || invoice) && (
-            <div className="lg:col-span-3 p-3 bg-warm-input/40 border border-warm-border/60 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="p-3 bg-warm-input/40 border border-warm-border/60 flex flex-wrap items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-2 text-warm-text font-medium">
                 <MapPin className="w-3.5 h-3.5 text-warm-accent shrink-0" />
                 <span>
                   <strong>{selectedCustomer?.city || invoice?.billingCity || 'City not set'}</strong>
                   {(selectedCustomer?.state || invoice?.billingState) && (
-                    <span className="text-warm-textMuted">, {normalizeStateName(selectedCustomer?.state || invoice?.billingState || '')}</span>
+                    <span className="text-warm-textMuted">
+                      , {normalizeStateName(selectedCustomer?.state || invoice?.billingState || '')}
+                    </span>
                   )}
                 </span>
                 {(selectedCustomer?.postalCode || invoice?.billingPostalCode) && (
@@ -728,53 +1014,181 @@ export function InvoiceForm({ invoice }: InvoiceFormProps) {
               </div>
             </div>
           )}
+        </div>
 
-          {/* GST Determination & Seller State Rule */}
-          <div className="lg:col-span-3">
-            {!sellerState ? (
-              <div className="p-3 bg-amber-50 border border-amber-300 flex flex-wrap items-center justify-between gap-3 text-xs text-amber-950">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>
-                    <strong>Business State Not Set:</strong> Please configure your home state in Company Settings so the system can determine whether CGST+SGST or IGST applies.
-                  </span>
-                </div>
-                <Link
-                  href="/company"
-                  className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-[11px] transition-colors shrink-0 shadow-xs"
-                >
-                  Set Business State
-                </Link>
-              </div>
-            ) : (
-              <div className="p-2.5 bg-warm-input/60 border border-warm-border/50 flex flex-wrap items-center justify-between gap-2 text-[11px] text-warm-textMuted">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-semibold text-warm-text">Seller State:</span>
-                  <span className="px-1.5 py-0.5 bg-warm-surface border border-warm-border text-warm-accent font-medium text-[10px]">
-                    {normalizeStateName(sellerState)}
-                  </span>
-                  <span className="text-warm-textSubtle">➔</span>
-                  <span className="font-semibold text-warm-text">Place of Supply:</span>
-                  <span className="px-1.5 py-0.5 bg-warm-surface border border-warm-border text-warm-text font-medium text-[10px]">
-                    {normalizeStateName(buyerState || sellerState)}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <span className="font-semibold text-warm-textSubtle uppercase text-[10px]">Tax Mode:</span>
-                  <span
-                    className={`font-semibold px-2 py-0.5 border text-[10px] ${
-                      isIgst
-                        ? 'bg-blue-50 text-blue-700 border-blue-200'
-                        : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                    }`}
-                  >
-                    {isIgst ? 'Inter-State (IGST 100%)' : 'Intra-State (CGST 50% + SGST 50%)'}
-                  </span>
-                </div>
-              </div>
-            )}
+        {/* Consignee / Ship To Toggle & Section */}
+        <div className="pt-2 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-warm-input/30 border border-warm-border/50">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={form.hasDifferentConsignee}
+                onChange={(e) => handleConsigneeToggle(e.target.checked)}
+                disabled={isLocked}
+                className="w-4 h-4 rounded-none text-warm-accent border-warm-border focus:ring-warm-accent cursor-pointer"
+              />
+              <span className="text-xs font-bold text-warm-text uppercase tracking-wider">
+                Delivery to a different consignee (Ship To)
+              </span>
+            </label>
+            <span className="text-[11px] text-warm-textMuted">
+              {form.hasDifferentConsignee
+                ? 'Consignee delivery details are active below'
+                : 'Using Buyer details as the delivery address (Default)'}
+            </span>
           </div>
+
+          {form.hasDifferentConsignee && (
+            <div className="p-4 sm:p-5 bg-warm-surface border border-warm-border/80 shadow-warm space-y-4 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between border-b border-warm-border/40 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-warm-accent shrink-0" />
+                  <h3 className="text-xs font-bold text-warm-text uppercase tracking-wider">
+                    Consignee / Ship To Details
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleConsigneeToggle(false)}
+                  disabled={isLocked}
+                  className="text-[11px] text-warm-accent hover:underline cursor-pointer font-medium"
+                >
+                  Reset / Same as Buyer
+                </button>
+              </div>
+
+              {/* Fast lookup from customer directory */}
+              <div>
+                <CustomerSelect
+                  label="Select Existing Customer as Consignee (Optional)"
+                  placeholder="Choose an existing customer or branch to auto-fill consignee fields..."
+                  value={form.consigneeCustomerId}
+                  initialLabel={selectedConsigneeCustomer?.name || form.shippingName}
+                  onChange={handleConsigneeCustomerChange}
+                  disabled={isLocked}
+                />
+              </div>
+
+              {/* Editable Consignee Fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <Input
+                  label="Consignee Name"
+                  required
+                  placeholder="e.g. ABC Manufacturing Ltd. / Site Office"
+                  value={form.shippingName}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setForm((prev) => ({ ...prev, shippingName: val }));
+                    if (val.trim()) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.shippingName;
+                        return next;
+                      });
+                    }
+                  }}
+                  disabled={isLocked}
+                  error={fieldErrors.shippingName}
+                />
+
+                <Input
+                  label="Contact Person / Phone"
+                  placeholder="e.g. 9876543210"
+                  value={form.shippingPhone}
+                  onChange={(e) => setForm((prev) => ({ ...prev, shippingPhone: e.target.value }))}
+                  disabled={isLocked}
+                />
+
+                <Input
+                  label="Consignee GSTIN (Optional)"
+                  placeholder="e.g. 24AAACA1234F1Z2"
+                  value={form.shippingGstin}
+                  onChange={(e) => setForm((prev) => ({ ...prev, shippingGstin: e.target.value.toUpperCase() }))}
+                  disabled={isLocked}
+                />
+
+                <div className="sm:col-span-2 lg:col-span-3">
+                  <Input
+                    label="Delivery Address"
+                    required
+                    placeholder="Plot No., Industrial Area, Street Address..."
+                    value={form.shippingAddress}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setForm((prev) => ({ ...prev, shippingAddress: val }));
+                      if (val.trim()) {
+                        setFieldErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.shippingAddress;
+                          return next;
+                        });
+                      }
+                    }}
+                    disabled={isLocked}
+                    error={fieldErrors.shippingAddress}
+                  />
+                </div>
+
+                <Input
+                  label="City"
+                  placeholder="e.g. Surat"
+                  value={form.shippingCity}
+                  onChange={(e) => setForm((prev) => ({ ...prev, shippingCity: e.target.value }))}
+                  disabled={isLocked}
+                />
+
+                <Select
+                  label="State"
+                  required
+                  options={shippingStateOptions}
+                  value={form.shippingState}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setForm((prev) => ({ ...prev, shippingState: val }));
+                    if (val.trim()) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.shippingState;
+                        return next;
+                      });
+                    }
+                  }}
+                  disabled={isLocked}
+                  error={fieldErrors.shippingState}
+                />
+
+                <Input
+                  label="PIN Code"
+                  placeholder="e.g. 395001"
+                  value={form.shippingPostalCode}
+                  onChange={(e) => setForm((prev) => ({ ...prev, shippingPostalCode: e.target.value }))}
+                  disabled={isLocked}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* GST Determination & Seller State Rule */}
+        <div className="pt-2">
+          {!sellerState ? (
+            <div className="p-3 bg-amber-50 border border-amber-300 flex flex-wrap items-center justify-between gap-3 text-xs text-amber-950">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>
+                  <strong>Business State Not Set:</strong> Please configure your home state in Company Settings so the system can determine whether CGST+SGST or IGST applies.
+                </span>
+              </div>
+              <Link
+                href="/company"
+                className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-[11px] transition-colors shrink-0 shadow-xs"
+              >
+                Set Business State
+              </Link>
+            </div>
+          ) : (
+            null
+          )}
         </div>
       </div>
 

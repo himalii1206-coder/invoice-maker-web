@@ -269,88 +269,125 @@ export default function CustomerDetailPage() {
       />
 
       <div className="space-y-6 max-w-5xl mx-auto pb-12">
-        {/* Top Summary Banner */}
+        {/* Top Profile Card */}
         <div className="bg-warm-surface border border-warm-border/70 p-5 shadow-warm flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="p-3 bg-warm-accentLight/60 border border-warm-accent/20">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-none bg-warm-accentLight/70 border border-warm-accent/20 flex items-center justify-center shrink-0">
               <Building2 className="w-6 h-6 text-warm-accent" />
             </div>
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h3 className="text-xl font-bold text-warm-text">{customer.name}</h3>
+                <span className="text-[10px] uppercase font-semibold px-2 py-0.5 bg-warm-input text-warm-text border border-warm-border/60">
+                  {customer.type === 'INDIVIDUAL' ? 'Individual' : 'Business'}
+                </span>
                 <Badge status={customer.isActive ? 'ACTIVE' : 'INACTIVE'} />
               </div>
-              <div className="flex items-center gap-3 text-xs text-warm-textMuted mt-1 flex-wrap">
+
+              <div className="flex items-center gap-2 text-xs text-warm-textMuted mt-1 flex-wrap">
                 {customer.customerCode && (
-                  <span className="font-mono font-semibold bg-warm-input px-2 py-0.5 border border-warm-border/60 text-warm-text">
-                    {customer.customerCode}
-                  </span>
+                  <>
+                    <span className="font-semibold text-warm-text">{customer.customerCode}</span>
+                    <span className="text-warm-textSubtle">•</span>
+                  </>
                 )}
                 {customer.accountGroup && (
-                  <span className="font-bold text-warm-text uppercase tracking-wider bg-warm-surface px-2 py-0.5 border border-warm-border">
-                    {customer.accountGroup.toUpperCase()}
-                  </span>
+                  <>
+                    <span className="font-medium text-warm-text capitalize">{customer.accountGroup.toLowerCase()}</span>
+                    <span className="text-warm-textSubtle">•</span>
+                  </>
                 )}
                 {customer.partyCategory && (
-                  <span className="font-medium bg-warm-surface text-warm-text px-2 py-0.5 border border-warm-border">
-                    {customer.partyCategory}
-                  </span>
-                )}
-                {customer.openingBalance !== null && customer.openingBalance !== undefined && Number(customer.openingBalance) > 0 && (
-                  <span className="font-semibold bg-warm-surface text-warm-text px-2 py-0.5 border border-warm-border">
-                    Opening Bal: {formatCurrency(Number(customer.openingBalance))} ({customer.balanceType || 'Dr.'})
-                  </span>
+                  <>
+                    <span className="text-warm-text">{customer.partyCategory}</span>
+                    <span className="text-warm-textSubtle">•</span>
+                  </>
                 )}
                 <span>Added on {formatDate(customer.createdAt)}</span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <button
-              type="button"
-              onClick={() => setActiveTab('quotations')}
-              className={cn(
-                'flex items-center gap-2 text-xs font-semibold px-3 py-2 border transition-colors cursor-pointer',
-                activeTab === 'quotations'
-                  ? 'bg-warm-accent text-white border-warm-accent'
-                  : 'text-warm-text bg-warm-input hover:bg-warm-input/80 border-warm-border/60'
-              )}
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>{quotations.length}</span>
-              <span className={activeTab === 'quotations' ? 'text-white/80' : 'text-warm-textMuted'}>quotations</span>
-            </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {customer.phone && (
+              <span className="inline-flex items-center gap-1.5 text-xs text-warm-textMuted bg-warm-input/50 px-3 py-1.5 border border-warm-border/60">
+                <Phone className="w-3.5 h-3.5 text-warm-accent" />
+                <span className="font-medium text-warm-text">{customer.phone}</span>
+              </span>
+            )}
+            {customer.gstin && (
+              <span className="inline-flex items-center gap-1.5 text-xs text-warm-textMuted bg-warm-input/50 px-3 py-1.5 border border-warm-border/60">
+                <span className="font-semibold text-warm-text">GST: {customer.gstin}</span>
+              </span>
+            )}
+          </div>
+        </div>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('invoices')}
-              className={cn(
-                'flex items-center gap-2 text-xs font-semibold px-3 py-2 border transition-colors cursor-pointer',
-                activeTab === 'invoices'
-                  ? 'bg-warm-accent text-white border-warm-accent'
-                  : 'text-warm-text bg-warm-input hover:bg-warm-input/80 border-warm-border/60'
-              )}
-            >
-              <FileText className="w-4 h-4" />
-              <span>{invoices.length}</span>
-              <span className={activeTab === 'invoices' ? 'text-white/80' : 'text-warm-textMuted'}>invoices</span>
-            </button>
+        {/* 4 Glanceable Executive Summary Metric Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+          <div className="bg-warm-surface border border-warm-border/70 shadow-warm p-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle">
+                Total Invoiced
+              </p>
+              <Receipt className="w-4 h-4 text-warm-accent" />
+            </div>
+            <p className="text-lg font-bold text-warm-text mt-1 tabular-nums">
+              {formatCurrency(totalInvoiced)}
+            </p>
+            <p className="text-[11px] text-warm-textMuted mt-0.5">
+              {invoices.length} invoice{invoices.length === 1 ? '' : 's'} billed
+            </p>
+          </div>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('transactions')}
+          <div className="bg-warm-surface border border-warm-border/70 shadow-warm p-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle">
+                Total Collected
+              </p>
+              <CreditCard className="w-4 h-4 text-emerald-600" />
+            </div>
+            <p className="text-lg font-bold text-emerald-700 mt-1 tabular-nums">
+              {formatCurrency(totalPaid)}
+            </p>
+            <p className="text-[11px] text-warm-textMuted mt-0.5">
+              {payments.length} transaction{payments.length === 1 ? '' : 's'} recorded
+            </p>
+          </div>
+
+          <div className="bg-warm-surface border border-warm-border/70 shadow-warm p-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle">
+                Net Outstanding
+              </p>
+              <TrendingUp className={cn("w-4 h-4", netOutstanding > 0 ? "text-amber-600" : "text-emerald-600")} />
+            </div>
+            <p
               className={cn(
-                'flex items-center gap-2 text-xs font-semibold px-3 py-2 border transition-colors cursor-pointer',
-                activeTab === 'transactions'
-                  ? 'bg-warm-accent text-white border-warm-accent'
-                  : 'text-warm-text bg-warm-input hover:bg-warm-input/80 border-warm-border/60'
+                'text-lg font-bold mt-1 tabular-nums',
+                netOutstanding > 0 ? 'text-amber-800' : 'text-emerald-700'
               )}
             >
-              <Receipt className="w-4 h-4" />
-              <span>{payments.length}</span>
-              <span className={activeTab === 'transactions' ? 'text-white/80' : 'text-warm-textMuted'}>transactions</span>
-            </button>
+              {formatCurrency(Math.abs(netOutstanding))}
+            </p>
+            <p className="text-[11px] text-warm-textMuted mt-0.5">
+              {netOutstanding > 0 ? 'Receivable (Dr.)' : netOutstanding < 0 ? 'Advance / Credit (Cr.)' : 'Zero Balance'}
+            </p>
+          </div>
+
+          <div className="bg-warm-surface border border-warm-border/70 shadow-warm p-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-warm-textSubtle">
+                Opening Balance
+              </p>
+              <Layers className="w-4 h-4 text-warm-accent" />
+            </div>
+            <p className="text-lg font-bold text-warm-text mt-1 tabular-nums">
+              {formatCurrency(openingBal)}
+            </p>
+            <p className="text-[11px] text-warm-textMuted mt-0.5">
+              Type: {customer.balanceType || 'Dr.'}
+            </p>
           </div>
         </div>
 
