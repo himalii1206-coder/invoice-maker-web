@@ -38,16 +38,11 @@ import {
   Receipt,
   FileText,
   AlertTriangle,
-  CreditCard,
-  Truck,
   Calendar,
   Clock,
   ChevronDown,
-  Layers,
   Phone,
   Mail,
-  Check,
-  Package
 } from 'lucide-react';
 
 export default function QuotationDetailPage() {
